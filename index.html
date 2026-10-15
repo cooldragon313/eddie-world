@@ -850,10 +850,27 @@ const SB_LINE_MAT = new THREE.MeshBasicMaterial({ color: SB_INK, side: THREE.Bac
 const _sbSize = new THREE.Vector3();
 // Inverted-hull outline: a slightly larger back-face copy in ink colour.
 // Per-axis scale keeps the line the same thickness on long thin boxes.
+// Rounded box: a segmented box whose corners are pushed onto spheres.
+function sbRoundBox(w, h, d, r, s){
+  s = s || 3; r = Math.min(r, w/2 - 1e-3, h/2 - 1e-3, d/2 - 1e-3);
+  const g = new THREE.BoxGeometry(w, h, d, s, s, s);
+  const p = g.attributes.position, n = g.attributes.normal;
+  const v = new THREE.Vector3(), c = new THREE.Vector3(), k = new THREE.Vector3();
+  const hx = w/2 - r, hy = h/2 - r, hz = d/2 - r;
+  const cl = (x, a) => Math.max(-a, Math.min(a, x));
+  for (let i = 0; i < p.count; i++){
+    v.fromBufferAttribute(p, i);
+    c.set(cl(v.x, hx), cl(v.y, hy), cl(v.z, hz));
+    k.subVectors(v, c); if (k.lengthSq() < 1e-12) continue;
+    k.normalize(); v.copy(c).addScaledVector(k, r);
+    p.setXYZ(i, v.x, v.y, v.z); n.setXYZ(i, k.x, k.y, k.z);
+  }
+  return g;
+}
 function sbOutline(root, t){
   t = t || 0.04;
   root.traverse(o => {
-    if (!o.isMesh || o.userData.sbLine || o.userData.sbHasLine) return;
+    if (!o.isMesh || o.userData.sbLine || o.userData.sbHasLine || o.userData.noLine) return;
     const m = o.material, g = o.geometry;
     if (!m || !m.isMeshToonMaterial || m.transparent || !g || g.type === 'PlaneGeometry') return;
     if (!g.boundingBox) g.computeBoundingBox();
@@ -2200,11 +2217,28 @@ const BODY_SPEED_MUL = { thin: 1.10, normal: 1.0, large: 0.85 };
 // COSMETICS — 20 items the player can buy in the costume shop.
 // Each builds a small voxel mesh that gets attached to the avatar.
 // ============================================================
+// Anchors for the Q 版 body (big round head, face toward -z).
 const COSMETIC_OFFSETS = {
-  hat:       { y: 3.10, z:  0    },
-  face:      { y: 2.72, z: -0.50 },
-  back:      { y: 1.55, z:  0.65 },
-  accessory: { y: 2.00, z: -0.42 },
+  hat:       { y: 2.88, z:  0    },
+  face:      { y: 2.24, z: -0.86 },
+  back:      { y: 1.20, z:  0.62 },
+  accessory: { y: 1.42, z:  0    },
+};
+// Per-item nudges so pieces built for the old box head sit on the round one.
+const COSMETIC_TWEAKS = {
+  space_helmet: { y: -1.14, s: 1.45 },
+  pirate_hat:   { y: -0.05, s: 1.4 },
+  poop_hat:     { s: 1.35 },
+  sunglasses:   { s: 1.35, z: 0.02 },
+  '3d_glasses': { s: 1.35, z: 0.02 },
+  mustache:     { y: -0.36, s: 1.2 },
+  red_nose:     { y: -0.12, z: 0.03 },
+  unicorn_horn: { y: 0.15, z: 0.3 },
+  bowtie:       { y: -0.02, z: -0.5 },
+  gold_chain:   { s: 1.05 },
+  rainbow_scarf:{ y: 0.12, s: 1.15 },
+  red_cape:     { y: -0.15, z: 0.05 },
+  angel_wings:  { y: 0.15 },
 };
 const _cosBox = (w,h,d,c, mat={}) => new THREE.Mesh(
   new THREE.BoxGeometry(w,h,d),
@@ -2396,84 +2430,116 @@ function attachCosmetics(group, cosmetics){
     const def = COSMETICS_BY_ID[id];
     if (!def) continue;
     const m = def.build();
-    const off = COSMETIC_OFFSETS[slot];
-    m.position.set(off.x ?? 0, off.y ?? 0, off.z ?? 0);
+    const off = COSMETIC_OFFSETS[slot], tw = COSMETIC_TWEAKS[id] || {};
+    m.position.set((off.x ?? 0) + (tw.x ?? 0), (off.y ?? 0) + (tw.y ?? 0), (off.z ?? 0) + (tw.z ?? 0));
+    if (tw.s) m.scale.setScalar(tw.s);
     group.add(m);
   }
 }
 
 function buildAvatar(custom){
   custom = custom || DEFAULT_CUSTOM;
+  // Q 版 storybook body: big round head, small round body, stubby limbs.
+  // Face points toward -z. Arms/legs are pivot groups at the shoulder/hip so
+  // the main loop's rotation.x swings them naturally.
   const g = new THREE.Group();
   const isFem = custom.gender === 'female';
-  // Female silhouette: narrower torso + small chest hint + slimmer arms.
-  // Voxel style, so cues stay blocky and recognizable from a distance.
-  const torsoW = isFem ? 0.95 : 1.2;
-  const torsoH = isFem ? 1.25 : 1.3;
-  const torsoD = isFem ? 0.58 : 0.7;
-  const torso = mk(torsoW, torsoH, torsoD, custom.shirt); torso.position.y = 1.55; g.add(torso);
-  if (isFem){
-    // Two small boxes on the chest, sitting just proud of the torso front
-    const chestY = 1.92;
-    const chestZ = -torsoD / 2 - 0.05;
-    const chestL = mk(0.22, 0.20, 0.12, custom.shirt); chestL.position.set(-0.20, chestY, chestZ); g.add(chestL);
-    const chestR = mk(0.22, 0.20, 0.12, custom.shirt); chestR.position.set( 0.20, chestY, chestZ); g.add(chestR);
+  const M = c => new THREE.MeshLambertMaterial({ color: c });
+  const flat = c => new THREE.MeshBasicMaterial({ color: c });
+  const part = (geo, mat, x, y, z, parent, noLine) => {
+    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z);
+    if (noLine) m.userData.noLine = true;
+    (parent || g).add(m); return m;
+  };
+  const skin = M(custom.skin), shirt = M(custom.shirt), pants = M(custom.pants),
+        shoes = M(custom.shoes), hair = M(custom.hairColor);
+
+  // Body
+  const torso = part(new THREE.SphereGeometry(0.58, 24, 16), shirt, 0, 1.0, 0);
+  torso.scale.set(isFem ? 0.9 : 1.0, 1.1, isFem ? 0.82 : 0.88);
+  // Head
+  const HEAD_Y = 2.25, HEAD_R = 0.85;
+  part(new THREE.SphereGeometry(HEAD_R, 32, 22), skin, 0, HEAD_Y, 0);
+
+  // Face (unlit flat colours, no outline)
+  const eyeMat = flat(0x2a1d18), glint = flat(0xffffff), blush = flat(isFem ? 0xff9fb4 : 0xffb3a8);
+  for (const s of [-1, 1]){
+    const e = part(new THREE.SphereGeometry(0.14, 16, 12), eyeMat, s * 0.29, 2.22, -0.76, g, true);
+    e.scale.set(1, 1.35, 0.5);
+    part(new THREE.SphereGeometry(0.05, 8, 6), glint, s * 0.29 - 0.045, 2.31, -0.83, g, true);
+    if (isFem){
+      const lash = part(new THREE.BoxGeometry(0.1, 0.03, 0.03), eyeMat, s * 0.42, 2.37, -0.72, g, true);
+      lash.rotation.z = s * -0.5;
+    }
+    const b = part(new THREE.SphereGeometry(0.11, 12, 8), blush, s * 0.5, 2.03, -0.66, g, true);
+    b.scale.set(1, 0.55, 0.35);
   }
-  const head  = mk(0.9, 0.9, 0.9, custom.skin); head.position.y = 2.65; g.add(head);
-  const eyeL  = mk(0.14, 0.14, 0.05, 0x000000); eyeL.position.set(-0.2, 2.72, -0.46); g.add(eyeL);
-  const eyeR  = mk(0.14, 0.14, 0.05, 0x000000); eyeR.position.set( 0.2, 2.72, -0.46); g.add(eyeR);
   if (custom.expression === 'smile'){
-    const m  = mk(0.40, 0.07, 0.05, 0xaa3030); m.position.set(0, 2.46, -0.46); g.add(m);
-    const cl = mk(0.07, 0.12, 0.05, 0xaa3030); cl.position.set(-0.21, 2.40, -0.46); g.add(cl);
-    const cr = mk(0.07, 0.12, 0.05, 0xaa3030); cr.position.set( 0.21, 2.40, -0.46); g.add(cr);
+    const smile = part(new THREE.TorusGeometry(0.12, 0.028, 6, 14, Math.PI), flat(0x8a3a2a), 0, 2.02, -0.82, g, true);
+    smile.rotation.z = Math.PI;
   } else {
-    const m = mk(0.34, 0.07, 0.05, 0x222222); m.position.set(0, 2.42, -0.46); g.add(m);
+    const m = part(new THREE.SphereGeometry(0.08, 10, 6), flat(0x3a2a22), 0, 1.98, -0.83, g, true);
+    m.scale.set(1.3, 0.35, 0.4);
   }
-  const hairParts = [];   // each: { group, type } — animated by main loop
+
+  // Hair
+  const hairParts = [];
+  const capGeo = new THREE.SphereGeometry(HEAD_R + 0.06, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
+  const addCap = () => { const c = part(capGeo, hair, 0, HEAD_Y + 0.02, 0); c.rotation.x = 0.42; return c; };
   if (custom.hair === 'short'){
-    const h = mk(0.95, 0.4, 0.95, custom.hairColor); h.position.y = 2.95; g.add(h);
+    addCap();
+    part(new THREE.SphereGeometry(0.34, 16, 12), hair, 0, HEAD_Y - 0.12, 0.62);
   } else if (custom.hair === 'cap'){
-    const cap  = mk(1.0, 0.4, 1.0, custom.hairColor); cap.position.y = 2.95; g.add(cap);
-    const brim = mk(1.2, 0.1, 0.6, custom.hairColor); brim.position.set(0, 2.83, -0.5); g.add(brim);
+    const c = part(new THREE.SphereGeometry(HEAD_R + 0.07, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), hair, 0, HEAD_Y + 0.05, 0);
+    c.rotation.x = 0.12;
+    const brim = part(new THREE.CylinderGeometry(0.62, 0.62, 0.08, 24, 1, false, Math.PI * 0.5, Math.PI), hair, 0, HEAD_Y + 0.28, -0.55);
+    brim.rotation.x = -0.12;
+    part(new THREE.SphereGeometry(0.09, 10, 8), hair, 0, HEAD_Y + 0.93, 0, g, true);
   } else if (custom.hair === 'spiky'){
-    const base = mk(0.92, 0.2, 0.92, custom.hairColor); base.position.y = 2.85; g.add(base);
+    addCap();
     for (let i = -1; i <= 1; i++){
-      // wrap spike in a Group so we can pivot at its base (top of head)
       const spikeGroup = new THREE.Group();
-      spikeGroup.position.set(i * 0.32, 2.95, 0);
-      const sp = mk(0.22, 0.5, 0.22, custom.hairColor);
-      sp.position.y = 0.25;
-      spikeGroup.add(sp);
+      spikeGroup.position.set(i * 0.34, HEAD_Y + 0.72 - Math.abs(i) * 0.12, 0.05);
+      spikeGroup.rotation.z = -i * 0.35;
+      part(new THREE.ConeGeometry(0.2, 0.55, 12), hair, 0, 0.24, 0, spikeGroup);
       g.add(spikeGroup);
       hairParts.push({ group: spikeGroup, type: 'spike' });
     }
   } else if (custom.hair === 'long'){
-    const top = mk(1.0, 0.35, 1.0, custom.hairColor); top.position.y = 2.95; g.add(top);
-    // three strands hanging from back of head — pivot at the top
+    addCap();
     for (let i = -1; i <= 1; i++){
       const strandGroup = new THREE.Group();
-      strandGroup.position.set(i * 0.3, 3.05, 0.42);
-      const strand = mk(0.26, 1.4, 0.12, custom.hairColor);
-      strand.position.y = -0.7;
-      strandGroup.add(strand);
+      strandGroup.position.set(i * 0.32, HEAD_Y + 0.35, 0.62);
+      const st = part(new THREE.SphereGeometry(0.2, 14, 10), hair, 0, -0.6, 0, strandGroup);
+      st.scale.set(1, 3.2, 0.7);
       g.add(strandGroup);
       hairParts.push({ group: strandGroup, type: 'strand' });
     }
   }
-  const lL = mk(0.45, 1, 0.55, custom.pants); lL.position.set(-0.32, 0.5, 0); g.add(lL);
-  const lR = mk(0.45, 1, 0.55, custom.pants); lR.position.set( 0.32, 0.5, 0); g.add(lR);
-  const armW   = isFem ? 0.28 : 0.35;
-  const armOff = isFem ? 0.66 : 0.78;
-  const aL = mk(armW, 1.0, 0.4, custom.skin); aL.position.set(-armOff, 1.6, 0); g.add(aL);
-  const aR = mk(armW, 1.0, 0.4, custom.skin); aR.position.set( armOff, 1.6, 0); g.add(aR);
-  // Wooden bat — child of right arm, hangs from the hand
-  const batHandle = mk(0.20, 0.30, 0.20, 0x5a3a1a); batHandle.position.set(0, -0.65, 0); aR.add(batHandle);
-  const batHead   = mk(0.30, 0.75, 0.30, 0x8b5a2b); batHead.position.set(0,   -1.18, 0); aR.add(batHead);
-  const shoeL = mk(0.5, 0.18, 0.7, custom.shoes); shoeL.position.set(-0.32, 0.09, 0.05); g.add(shoeL);
-  const shoeR = mk(0.5, 0.18, 0.7, custom.shoes); shoeR.position.set( 0.32, 0.09, 0.05); g.add(shoeR);
-  const pack  = mk(0.7, 0.8, 0.4, 0x5a3a1a); pack.position.set(0, 1.6, 0.45); g.add(pack);
+
+  // Legs (pivot at hip)
+  const legs = [-1, 1].map(s => {
+    const l = new THREE.Group(); l.position.set(s * 0.24, 0.62, 0); g.add(l);
+    const leg = part(new THREE.SphereGeometry(0.2, 14, 10), pants, 0, -0.22, 0, l); leg.scale.set(1, 1.5, 1);
+    const shoe = part(new THREE.SphereGeometry(0.23, 14, 10), shoes, 0, -0.5, -0.07, l); shoe.scale.set(1.1, 0.6, 1.35);
+    return l;
+  });
+  // Arms (pivot at shoulder)
+  const armOff = isFem ? 0.56 : 0.6;
+  const arms = [-1, 1].map(s => {
+    const a = new THREE.Group(); a.position.set(s * armOff, 1.32, 0); g.add(a);
+    part(new THREE.SphereGeometry(0.2, 14, 10), shirt, 0, -0.06, 0, a);
+    const arm = part(new THREE.SphereGeometry(0.16, 14, 10), skin, 0, -0.32, 0, a); arm.scale.set(1, 1.9, 1);
+    return a;
+  });
+  // Wooden bat in the right hand
+  const bat = part(new THREE.CylinderGeometry(0.13, 0.08, 0.95, 12), M(0xc08a4a), 0, -0.95, -0.05, arms[1]);
+  bat.rotation.x = 0.15;
+  // Backpack (hidden when a back cosmetic takes its place)
+  if (!(custom.cosmetics && custom.cosmetics.back)) part(sbRoundBox(0.66, 0.7, 0.32, 0.12), M(0xc98a4a), 0, 1.08, 0.55);
+
   attachCosmetics(g, custom.cosmetics);
-  return { group: g, legL: lL, legR: lR, armL: aL, armR: aR, hairParts };
+  return { group: g, legL: legs[0], legR: legs[1], armL: arms[0], armR: arms[1], hairParts };
 }
 
 function buildPlayer(custom){
