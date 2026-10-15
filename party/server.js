@@ -743,6 +743,7 @@ export default class WorldServer {
       })),
       chests: this.chests.filter(c => c.available).map(c => ({
         id: c.id, x: c.x, z: c.z, value: c.value, slots: c.slots,
+        ownerName: c.ownerName, bag: c.bag || '',
       })),
       bigTreasure: this.bigTreasure.available ? {
         x: this.bigTreasure.x, z: this.bigTreasure.z, value: this.bigTreasure.value,
@@ -861,13 +862,14 @@ export default class WorldServer {
         z: +msg.z || 0,
         value, slots,
         ownerName: player.name,
+        bag: String(msg.bag || '').slice(0, 24),
         available: true,
       };
       this.chests.push(chest);
       this.broadcast({
         type: 'chest_spawn',
         id: chest.id, x: chest.x, z: chest.z,
-        value, slots, ownerName: chest.ownerName,
+        value, slots, ownerName: chest.ownerName, bag: chest.bag,
       });
     } else if (msg.type === 'plot_buy'){
       const plot = this.plots.find(p => p.id === msg.plotId);

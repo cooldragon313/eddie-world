@@ -868,6 +868,7 @@
     <button data-slot="face">臉</button>
     <button data-slot="back">背</button>
     <button data-slot="accessory">配件</button>
+    <button data-slot="bag">背包</button>
   </div>
   <div id="cos-list"></div>
   <button id="cos-redesign" type="button">$50 整套造型重選（換髮 / 衣 / 身材…）</button>
@@ -2109,20 +2110,21 @@ function clearAllCoins(){
 
 // ----- Death chests (server-tracked when MP, local when not) -----
 const chests = [];   // { id, mesh, x, z, value, slots, collected, attempting, ownerName }
-function makeChestMesh(){
-  return new THREE.Mesh(
-    sbRoundBox(1.2, 1.0, 1.2, 0.18),
-    new THREE.MeshLambertMaterial({ color: 0xffaa00, emissive: 0x331100, emissiveIntensity: 0.5 })
-  );
+// Death drop: the player's own backpack, big enough to spot from afar
+function makeChestMesh(bagId){
+  const g = makeBagMesh(bagId || '');
+  g.scale.setScalar(1.7);
+  g.rotation.x = -0.25;
+  return g;
 }
 function addChestFromServer(c){
   const g = new THREE.Group();
   g.position.set(c.x, 0, c.z);
-  const m = makeChestMesh();
+  const m = makeChestMesh(c.bag);
   m.position.y = 0.6;
   g.add(m);
   if (c.ownerName){
-    const label = makeNameLabel(`${c.ownerName} 的遺留物`);
+    const label = makeNameLabel(`${c.ownerName} 的背包`);
     label.scale.set(3.0, 0.75, 1);
     label.position.y = 1.9;
     g.add(label);
@@ -2521,6 +2523,39 @@ const COSMETICS = [
     return g;
   }},
 ];
+// ---- BAG (背包) — worn on the back AND dropped as your death bag ----
+const BAG_SKINS = {
+  '':         { name:'經典背包', color:0xc98a4a, flap:0x9a6430 },
+  bag_dino:   { name:'恐龍背包', color:0x7cc06a, flap:0x4f9a45, extra:'spikes' },
+  bag_bear:   { name:'小熊背包', color:0xa8784c, flap:0x7a5236, extra:'ears' },
+  bag_melon:  { name:'西瓜背包', color:0x5fae5a, flap:0xff6b6b, extra:'seeds' },
+  bag_shark:  { name:'鯊魚背包', color:0x7fa6c9, flap:0xf2f2f2, extra:'fin' },
+  bag_gold:   { name:'黃金背包', color:0xffc83d, flap:0xd9962a, extra:'shine' },
+};
+function makeBagMesh(id){
+  const skin = BAG_SKINS[id] || BAG_SKINS[''];
+  const g = new THREE.Group();
+  const M = c => new THREE.MeshLambertMaterial({ color: c, ...(skin.extra === 'shine' ? { emissive: 0x553300 } : {}) });
+  g.add(new THREE.Mesh(sbRoundBox(0.66, 0.7, 0.32, 0.12), M(skin.color)));
+  const flap = new THREE.Mesh(sbRoundBox(0.6, 0.3, 0.1, 0.06), M(skin.flap));
+  flap.position.set(0, 0.2, 0.17); g.add(flap);
+  const pocket = new THREE.Mesh(sbRoundBox(0.4, 0.22, 0.08, 0.05), M(skin.flap));
+  pocket.position.set(0, -0.15, 0.17); g.add(pocket);
+  if (skin.extra === 'spikes'){
+    for (let i = 0; i < 3; i++){ const c = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 8), M(0xf0e070)); c.position.set(0, 0.32 - i * 0.22, 0.2); c.rotation.x = Math.PI / 2; g.add(c); }
+  } else if (skin.extra === 'ears'){
+    for (const s of [-1, 1]){ const e = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8), M(skin.flap)); e.position.set(s * 0.24, 0.38, 0); g.add(e); }
+  } else if (skin.extra === 'seeds'){
+    for (const [x, y] of [[-0.15, -0.02], [0.12, 0.05], [0.02, -0.25], [-0.2, -0.28], [0.2, -0.22]]){ const d = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), new THREE.MeshBasicMaterial({ color: 0x2a1d18 })); d.position.set(x, y, 0.17); g.add(d); }
+  } else if (skin.extra === 'fin'){
+    const f = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.34, 3), M(skin.color)); f.position.set(0, 0.48, 0); g.add(f);
+  }
+  return g;
+}
+for (const [id, b] of Object.entries(BAG_SKINS)){
+  if (!id) continue;
+  COSMETICS.push({ id, slot: 'bag', name: b.name, price: ({ bag_dino:80, bag_bear:100, bag_melon:60, bag_shark:150, bag_gold:300 })[id], build: () => makeBagMesh(id) });
+}
 const COSMETICS_BY_ID = Object.fromEntries(COSMETICS.map(c => [c.id, c]));
 
 function attachCosmetics(group, cosmetics){
@@ -2636,8 +2671,11 @@ function buildAvatar(custom){
   // Wooden bat in the right hand
   const bat = part(new THREE.CylinderGeometry(0.13, 0.08, 0.95, 12), M(0xc08a4a), 0, -0.95, -0.05, arms[1]);
   bat.rotation.x = 0.15;
-  // Backpack (hidden when a back cosmetic takes its place)
-  if (!(custom.cosmetics && custom.cosmetics.back)) part(sbRoundBox(0.66, 0.7, 0.32, 0.12), M(0xc98a4a), 0, 1.08, 0.55);
+  // Backpack in the chosen bag skin (hidden when a back cosmetic takes its place)
+  if (!(custom.cosmetics && custom.cosmetics.back)){
+    const bag = makeBagMesh((custom.cosmetics && custom.cosmetics.bag) || '');
+    bag.position.set(0, 1.08, 0.55); g.add(bag);
+  }
 
   attachCosmetics(g, custom.cosmetics);
   return { group: g, legL: legs[0], legR: legs[1], armL: arms[0], armR: arms[1], hairParts };
@@ -3459,7 +3497,7 @@ document.getElementById('cos-list').addEventListener('click', e => {
       state.cosmeticsOwned = state.cosmeticsOwned.filter(x => x !== existing);
     }
     state.cosmeticsOwned.push(id);
-    state.custom.cosmetics = state.custom.cosmetics || { hat:'', face:'', back:'', accessory:'' };
+    state.custom.cosmetics = state.custom.cosmetics || { hat:'', face:'', back:'', accessory:'', bag:'' };
     state.custom.cosmetics[slot] = id;
     sfx.buy();
     toast(`購買 ${def.name}！`);
@@ -3468,7 +3506,7 @@ document.getElementById('cos-list').addEventListener('click', e => {
     renderCosShop();
     updateHUD();
   } else if (btn.dataset.act === 'equip'){
-    state.custom.cosmetics = state.custom.cosmetics || { hat:'', face:'', back:'', accessory:'' };
+    state.custom.cosmetics = state.custom.cosmetics || { hat:'', face:'', back:'', accessory:'', bag:'' };
     state.custom.cosmetics[slot] = id;
     saveProgress();
     rebuildLocalAvatar();
@@ -3514,15 +3552,16 @@ function killPlayer(){
         type: 'chest_drop',
         x: player.position.x, z: player.position.z,
         value: state.bagValue, slots: state.bag,
+        bag: (state.custom.cosmetics && state.custom.cosmetics.bag) || '',
       }));
     } else {
       // Local fallback: drop chest with owner-name label (legacy)
       const dropGroup = new THREE.Group();
       dropGroup.position.set(player.position.x, 0, player.position.z);
-      const drop = makeChestMesh();
+      const drop = makeChestMesh((state.custom.cosmetics && state.custom.cosmetics.bag) || '');
       drop.position.y = 0.6;
       dropGroup.add(drop);
-      const label = makeNameLabel(`${state.custom?.name || '我'} 的遺留物`);
+      const label = makeNameLabel(`${state.custom?.name || '我'} 的背包`);
       label.scale.set(3.0, 0.75, 1);
       label.position.y = 1.9;
       dropGroup.add(label);
@@ -3692,7 +3731,7 @@ function update(now){
             state.bagValue += c.value;
             c.collected = true;
             scene.remove(c.mesh);
-            if (c.dropped){ toast(`找回死亡寶藏 +$${c.value}（帶回山頂存款）`); sfx.bigCoin(); }
+            if (c.dropped){ toast(`撿回背包 +$${c.value}（帶回山頂存款）`); sfx.bigCoin(); }
             else sfx.coin();
           }
         } else if (mpAuthoritative){
@@ -3956,11 +3995,17 @@ function update(now){
       emitWaveSplash(ts.obj.group.position.x, ts.obj.group.position.z - 1.5, ts.obj.wallW * 0.8);
     }
     // Collision: in-pit (y < -0.3) is safe; jumped above low waves is safe
+    // Swept test: a fast wave can move more than its own thickness in one
+    // frame, so also count it as a hit when it passed the player since last frame.
+    const waveZ = ts.obj.group.position.z;
+    const prevWaveZ = ts._prevZ !== undefined ? ts._prevZ : waveZ;
+    ts._prevZ = waveZ;
     if (state.alive && player.position.z < SAFETY_LINE_Z && player.position.y >= -0.3){
-      const dz = player.position.z - ts.obj.group.position.z;
+      const dz = player.position.z - waveZ;
+      const passed = (player.position.z - prevWaveZ) > 0 && dz < 0;
       const dx = player.position.x - ts.obj.group.position.x;
       const halfW = ts.obj.wallW / 2;
-      if (Math.abs(dz) < 2.4 && Math.abs(dx) < halfW){
+      if ((Math.abs(dz) < 2.4 || passed) && Math.abs(dx) < halfW){
         if (player.position.y > ts.waveType.height * ts.obj.group.scale.y + 0.3){
           // jumped clean over the wave (works for any type if jump high enough)
         } else {
@@ -5753,7 +5798,7 @@ spawnCrates();
 // painted background and keeps the draw-call count phone-friendly.
 buildAvatar = (orig => function(custom){ const r = orig(custom); sbOutline(r.group, 0.035); return r; })(buildAvatar);
 makeCoinMesh = (orig => function(v){ return sbOutline(orig(v), 0.03); })(makeCoinMesh);
-makeChestMesh = (orig => function(){ return sbOutline(orig(), 0.05); })(makeChestMesh);
+makeChestMesh = (orig => function(bagId){ return sbOutline(orig(bagId), 0.05); })(makeChestMesh);
 refreshPlotVisual = (orig => function(plot){ const r = orig(plot); if (plot && plot.buildGroup) sbOutline(plot.buildGroup, 0.05); return r; })(refreshPlotVisual);
 if (player) sbOutline(player, 0.035);
 for (const c of coins) if (c.mesh) sbOutline(c.mesh, 0.03);
