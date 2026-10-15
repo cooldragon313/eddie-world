@@ -4413,7 +4413,7 @@ window.addEventListener('beforeunload', saveProgress);
 const audioPrefs = {
   // Migrate legacy single 'etfm-audio' key into both sfx + bgm
   sfx: (localStorage.getItem('etfm-sfx') ?? localStorage.getItem('etfm-audio')) !== 'off',
-  bgm: (localStorage.getItem('etfm-bgm') ?? localStorage.getItem('etfm-audio')) !== 'off',
+  bgm: localStorage.getItem('etfm-bgm') === 'on',   // music starts off; 🎵 turns it on (remembered)
   volume: parseFloat(localStorage.getItem('etfm-audio-vol') || '0.6'),
 };
 let audioCtx = null;
