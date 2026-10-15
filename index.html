@@ -594,6 +594,11 @@
   /* Close ✕ on every shop panel + jump from upgrades to the costume shop */
   #shop, #build-shop, #cos-shop { position: fixed; z-index: 1500; }
   body.panel-open #touch-controls, body.panel-open #chat-mic { display: none !important; }
+  .panel-close-bottom { display: block; margin: 14px auto 0; padding: 10px 34px; border-radius: 999px;
+                        border: 2.5px solid var(--sb-ink); background: #fff; color: var(--sb-ink);
+                        font: 700 16px/1 var(--sb-font); cursor: pointer; box-shadow: 0 3px 0 rgba(91,58,41,0.3); }
+  #panel-backdrop { display: none; position: fixed; inset: 0; z-index: 1400; background: rgba(70,48,32,0.25); }
+  body.panel-open #panel-backdrop { display: block; }
   .panel-close { position: absolute; top: 10px; right: 12px; width: 36px; height: 36px; border-radius: 50%;
                  border: 2.5px solid var(--sb-ink); background: #fff; color: var(--sb-ink);
                  font: 700 18px/1 var(--sb-font); cursor: pointer; box-shadow: 0 3px 0 rgba(91,58,41,0.3); }
@@ -859,6 +864,7 @@
   <div id="shop-list"></div>
   <button id="goto-cos" type="button">✨ 造型店：衝浪板 · 背包 · 帽子 →</button>
   <div class="hint">按 <kbd>B</kbd> 或 <kbd>Esc</kbd> 關閉</div>
+  <button class="panel-close-bottom" data-close="shop" type="button">關閉</button>
 </div>
 
 <div id="build-shop">
@@ -874,6 +880,7 @@
   </div>
   <div id="b-list"></div>
   <div class="hint">在自己的地塊上按 <kbd>H</kbd> 開啟 / <kbd>Esc</kbd> 關閉<br>每個槽位只能裝一件，買新的會覆蓋舊的</div>
+  <button class="panel-close-bottom" data-close="build" type="button">關閉</button>
 </div>
 
 <div id="cos-shop">
@@ -890,7 +897,9 @@
   <div id="cos-list"></div>
   <button id="cos-redesign" type="button">$50 整套造型重選（換髮 / 衣 / 身材…）</button>
   <div class="hint">沒衣櫃時，買新的會自動賣掉舊的（退 1/3 價）<br>按 <kbd>C</kbd> 或 <kbd>Esc</kbd> 關閉</div>
+  <button class="panel-close-bottom" data-close="cos" type="button">關閉</button>
 </div>
+<div id="panel-backdrop" data-close="any"></div>
 
 <div id="touch-controls">
   <div id="stick"><div id="stick-knob"></div></div>
@@ -6057,13 +6066,22 @@ update = (orig => function(now){
 // Shop close buttons, costume-shop shortcut, phone 造型 button
 // Hide the phone controls while any shop is open so nothing sits on top of it
 setInterval(() => document.body.classList.toggle('panel-open', !!(shopOpen || cosShopOpen || buildShopOpen)), 150);
-document.querySelectorAll('.panel-close').forEach(b => b.addEventListener('click', e => {
-  e.stopPropagation();
-  const k = b.dataset.close;
-  if (k === 'shop' && shopOpen) toggleShop();
-  else if (k === 'cos' && cosShopOpen) toggleCosShop();
-  else if (k === 'build' && buildShopOpen) toggleBuildShop();
-}));
+// Close on ✕, the bottom 關閉 button, or a tap outside. Bound to pointerup as
+// well as click because some phone web views drop the click.
+let _lastPanelClose = 0;
+function closePanels(which){
+  if (performance.now() - _lastPanelClose < 250) return;
+  _lastPanelClose = performance.now();
+  if ((which === 'shop' || which === 'any') && shopOpen) toggleShop();
+  if ((which === 'cos' || which === 'any') && cosShopOpen) toggleCosShop();
+  if ((which === 'build' || which === 'any') && buildShopOpen) toggleBuildShop();
+  document.body.classList.toggle('panel-open', !!(shopOpen || cosShopOpen || buildShopOpen));
+}
+document.querySelectorAll('.panel-close, .panel-close-bottom, #panel-backdrop').forEach(b => {
+  const go = e => { e.preventDefault(); e.stopPropagation(); closePanels(b.dataset.close); };
+  b.addEventListener('pointerup', go);
+  b.addEventListener('click', go);
+});
 document.getElementById('goto-cos').addEventListener('click', () => { if (shopOpen) toggleShop(); if (!cosShopOpen) toggleCosShop(); });
 bindTouchButton('btn-cos', () => { toggleCosShop(); });
 
