@@ -35,6 +35,7 @@ const WAVE_TYPES = [
   { id:'wide',   height:18, width:32, speedMul:0.85, weight:14, storm:false },
   { id:'purple', height:28, width:RUNWAY_HALF_W*2 + 12, speedMul:0.7, weight:4, storm:true },
   { id:'titan',  height:50, width:RUNWAY_HALF_W*2 + 12, speedMul:0.5, weight:1, storm:true },
+  { id:'surf',   height:6,  width:10, speedMul:0.9,  weight:14, storm:false },
 ];
 function pickWaveType(stormBoost){
   let total = 0;

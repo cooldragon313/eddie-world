@@ -1017,6 +1017,8 @@ const WAVE_TYPES = [
   { id:'wide',   name:'寬浪',  color:0x1976d2, height:18, width:32, speedMul:0.85,weight:14, lethal:'normal',     storm:false },
   { id:'purple', name:'巨浪',  color:0x6a1b9a, height:28, width:RUNWAY_HALF_W*2 + 12, speedMul:0.7, weight:4,  lethal:'fullscreen', storm:true },
   { id:'titan',  name:'災難',  color:0x4a148c, height:50, width:RUNWAY_HALF_W*2 + 12, speedMul:0.5, weight:1,  lethal:'fullscreen', storm:true },
+  // Teal surf wave: narrow and swaying. Kills like any wave, unless you have a board equipped.
+  { id:'surf',   name:'衝浪浪', color:0x2ec4b6, height:6,  width:10, speedMul:0.9, weight:14, lethal:'jumpable',   storm:false },
 ];
 // Required jump Lv to clear a given height (h+0.3 margin)
 function reqJumpLv(h){
@@ -3736,7 +3738,7 @@ function update(now){
   const sprintHeld = (keys['ShiftLeft'] || keys['ShiftRight'] || touchInput.sprint);
   const magnetActive = (t < state.buffMagnetUntil);
   const pickupSuppressed = sprintHeld && !magnetActive;
-  if (state.alive && !pickupSuppressed){
+  if (state.alive && !pickupSuppressed && !state.surf){
     const lootMul = state.storm ? 2 : 1;
     const magnetMul = magnetActive ? 2.5 : 1.0;
     const pickRad = state.pickupRadius * magnetMul;
@@ -4022,7 +4024,9 @@ function update(now){
     const waveZ = ts.obj.group.position.z;
     const prevWaveZ = ts._prevZ !== undefined ? ts._prevZ : waveZ;
     ts._prevZ = waveZ;
-    if (state.alive && player.position.z < SAFETY_LINE_Z && player.position.y >= -0.3){
+    // While surfing you ride on the water: other waves can't take you out
+    // (they'd come from behind, outside the surf camera's view).
+    if (state.alive && !state.surf && player.position.z < SAFETY_LINE_Z && player.position.y >= -0.3){
       const dz = player.position.z - waveZ;
       const passed = (player.position.z - prevWaveZ) > 0 && dz < 0;
       const dx = player.position.x - ts.obj.group.position.x;
@@ -4030,6 +4034,10 @@ function update(now){
       if ((Math.abs(dz) < 2.4 || passed) && Math.abs(dx) < halfW){
         if (player.position.y > ts.waveType.height * ts.obj.group.scale.y + 0.3){
           // jumped clean over the wave (works for any type if jump high enough)
+        } else if (ts.surfed){
+          // already riding (or rode) this one
+        } else if (ts.waveType.id === 'surf' && typeof equippedBoard === 'function' && equippedBoard() && !state.surf){
+          startSurf(ts);
         } else if (ts.waveType.id !== 'titan' && shelterAt(player.position.x, player.position.z)){
           if (!ts.shelterToast){ ts.shelterToast = true; toast('躲在石頭後面，浪從頭上打過去！'); }
         } else {
@@ -5344,7 +5352,11 @@ document.getElementById('title-continue').addEventListener('click', () => {
   getAudioCtx();
   startBgm();
   hide('title-screen');
-  if (PREVIEW_SOLO){ applyCustomToUI(); show('creator-screen'); return; }   // no accounts in preview
+  if (PREVIEW_SOLO){
+    // Preview links start with pocket money so the shops (boards, bags) can be tried
+    if (state.money < 1000){ state.money = 1000; updateHUD(); }
+    applyCustomToUI(); show('creator-screen'); return;   // no accounts in preview
+  }
   if (!authToken){
     showAuthScreen();
     return;
@@ -5815,6 +5827,196 @@ spawnCrates();
     });
   }
 }
+
+// ============================================================
+// SURFING — only the teal 衝浪浪 can be surfed, and only with a board
+// equipped. Getting hit by it with a board starts a short ride back toward
+// base on a personal swell: steer to stay on the crest, jump the rocks.
+// Boards are pure skins (same ride for every board, different pose).
+// ============================================================
+const SURF_SPEED = 30;           // units / s toward base while riding
+const SURF_TIME  = 5;            // seconds per ride
+const SURF_BALANCE = 2.6;        // how far off the crest centre you can drift
+const BOARD_SKINS = {
+  board_short:  { name:'短板',     price:150 },
+  board_long:   { name:'長板',     price:200 },
+  board_turtle: { name:'烏龜',     price:250 },
+  board_pole:   { name:'竹竿輕功', price:400 },
+};
+function makeBoardMesh(id){
+  const g = new THREE.Group();
+  const M = c => new THREE.MeshLambertMaterial({ color: c });
+  if (id === 'board_turtle'){
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(1.0, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), M(0x5fae5a));
+    shell.scale.set(1, 0.55, 1.25); g.add(shell);
+    const belly = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.95, 0.12, 20), M(0xe8d9a0)); belly.scale.z = 1.25; g.add(belly);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 10), M(0x8fc472)); head.position.set(0, 0.15, 1.4); g.add(head);
+    for (const s of [-1, 1]){
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshBasicMaterial({ color: 0x2a1d18 }));
+      eye.position.set(s * 0.13, 0.27, 1.65); eye.userData.noLine = true; g.add(eye);
+    }
+    g.userData.flippers = [];
+    for (const [x, z] of [[-1, 0.7], [1, 0.7], [-0.9, -0.8], [0.9, -0.8]]){
+      const f = new THREE.Mesh(sbRoundBox(0.6, 0.1, 0.3, 0.05), M(0x8fc472));
+      f.position.set(x, 0.02, z); g.add(f); g.userData.flippers.push(f);
+    }
+  } else if (id === 'board_pole'){
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.2, 10), M(0xc9b45a));
+    pole.rotation.x = Math.PI / 2; g.add(pole);
+    for (let i = -1; i <= 1; i++){
+      const knot = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 10), M(0x9a8a3a));
+      knot.rotation.x = Math.PI / 2; knot.position.z = i * 1.0; g.add(knot);
+    }
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 6), M(0x7cc06a));
+    leaf.scale.set(0.4, 0.12, 1); leaf.position.set(0.1, 0.06, -1.55); g.add(leaf);
+  } else {
+    const long = id === 'board_long';
+    const len = long ? 1.55 : 1.05;
+    const deck = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 10), M(long ? 0xfff1d0 : 0xff8a3d));
+    deck.scale.set(0.42, 0.07, len); g.add(deck);
+    const stripe = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 6), M(long ? 0x4f9ad8 : 0xffffff));
+    stripe.scale.set(0.09, 0.075, len * 0.92); stripe.position.y = 0.01; g.add(stripe);
+  }
+  return sbOutline(g, 0.04);
+}
+for (const [id, b] of Object.entries(BOARD_SKINS)){
+  COSMETICS.push({ id, slot: 'board', name: b.name, price: b.price, build: () => makeBoardMesh(id) });
+  COSMETICS_BY_ID[id] = COSMETICS[COSMETICS.length - 1];
+}
+{
+  const tabs = document.getElementById('cos-tabs');
+  if (tabs && !tabs.querySelector('[data-slot="board"]')){
+    const b = document.createElement('button'); b.dataset.slot = 'board'; b.textContent = '衝浪板'; tabs.appendChild(b);
+  }
+}
+
+state.surf = null;
+function equippedBoard(){ return (state.custom.cosmetics && state.custom.cosmetics.board) || ''; }
+
+function startSurf(ts){
+  ts.surfed = true;
+  const swell = createTsunami({ ...ts.waveType, height: 3.2, width: 7 });
+  swell.group.position.set(player.position.x, 0, player.position.z - 2.4);
+  // See-through so it never hides the rider from the surf camera
+  swell.group.traverse(o => {
+    if (!o.isMesh) return;
+    if (o.userData.sbLine){ o.visible = false; return; }
+    o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.5; o.material.depthWrite = false;
+  });
+  scene.add(swell.group);
+  const boardId = equippedBoard();
+  const board = makeBoardMesh(boardId);
+  player.add(board);
+  state.surf = {
+    swell, board, boardId, t0: t, startZ: player.position.z,
+    amp: 3 + Math.random() * 3, freq: 0.9 + Math.random() * 0.6, dir: Math.random() < 0.5 ? -1 : 1,
+    jumpY: 0, jumpV: 0, savedYaw: state.cameraYaw, savedPitch: state.cameraPitch, savedDist: state.cameraDist,
+  };
+  // keep the whole sway on the runway
+  const lim = RUNWAY_HALF_W - 4 - state.surf.amp;
+  state.surf.baseX = Math.max(-lim, Math.min(lim, player.position.x));
+  // Look back down the runway from high up so the rocks ahead are visible over the swell
+  state.cameraYaw = Math.PI; state.cameraPitch = 1.1; state.cameraDist = Math.max(14, state.cameraDist);
+  toast(`🏄 衝浪！跟著浪頭，跳過石頭！`);
+  sfx.jump();
+}
+function endSurf(landed){
+  const sf = state.surf; if (!sf) return;
+  scene.remove(sf.swell.group);
+  player.remove(sf.board);
+  player.rotation.z = 0;
+  for (const l of [legL, legR, armL, armR]) if (l){ l.rotation.z = 0; l.rotation.x = 0; }
+  player.children.forEach(c => { if (c.userData.surfLift) c.position.y = 0; });
+  state.cameraYaw = sf.savedYaw; state.cameraPitch = sf.savedPitch; state.cameraDist = sf.savedDist;
+  state.surf = null;
+  if (landed){
+    const dist = Math.max(0, Math.round(player.position.z - sf.startZ));
+    const bonus = Math.max(1, Math.floor(dist / 12));
+    state.bagValue += bonus;
+    player.position.y = 0; state.vy = 0.25;
+    state.stunUntil = 0;
+    toast(`衝浪 ${dist} 公尺！+$${bonus}`);
+    sfx.bigCoin && sfx.bigCoin();
+    updateHUD();
+  }
+}
+function wipeout(msg){
+  endSurf(false);
+  toast(msg);
+  killPlayer();
+}
+// Poses per board — applied after the normal animation each frame
+function applySurfPose(sf, dt){
+  const wob = Math.sin(t * 3.2);
+  const id = sf.boardId;
+  const yaw = (id === 'board_short' || id === 'board_long') ? -Math.PI / 2 : Math.PI;
+  player.rotation.y = yaw;
+  sf.board.rotation.y = -yaw + Math.PI;      // keep the board's long axis along the runway
+  sf.board.position.y = 0.02;
+  for (const l of [legL, legR, armL, armR]) if (l){ l.rotation.x = 0; l.rotation.z = 0; }
+  if (id === 'board_short'){
+    legL.rotation.z = 0.35; legR.rotation.z = -0.35;
+    armL.rotation.z = -1.25 + wob * 0.15; armR.rotation.z = 1.25 + wob * 0.15;
+    player.rotation.z = wob * 0.1;
+  } else if (id === 'board_long'){
+    legL.rotation.z = 0.15; legR.rotation.z = -0.15;
+    armL.rotation.z = -0.7; armR.rotation.z = 0.7 + wob * 0.1;
+    player.rotation.z = wob * 0.05;
+  } else if (id === 'board_turtle'){
+    legL.rotation.x = -1.35; legR.rotation.x = -1.35;
+    armL.rotation.x = -0.7; armR.rotation.x = -0.7;
+    sf.board.position.y = -0.55;            // sit on the shell
+    (sf.board.userData.flippers || []).forEach((f, i) => { f.rotation.y = Math.sin(t * 6 + i * 1.6) * 0.5; });
+  } else {   // bamboo pole: crane stance on one leg, kung-fu hands
+    legR.rotation.x = -1.7;
+    armL.rotation.z = -2.5; armL.rotation.x = 0.2;
+    armR.rotation.x = -1.45;
+    player.rotation.z = wob * 0.04;
+  }
+}
+function surfTick(dt){
+  const sf = state.surf; if (!sf) return;
+  if (!state.alive){ endSurf(false); return; }
+  state.stunUntil = t + 0.05;               // the normal movement code stays out of the way
+  // The swell rolls toward base and sways
+  const sw = sf.swell.group;
+  sw.position.z += SURF_SPEED * dt;
+  // starts under your feet, sway grows in over the first second
+  const ramp = Math.min(1, (t - sf.t0) / 1.2);
+  sw.position.x = sf.baseX + sf.dir * Math.sin((t - sf.t0) * sf.freq * 2) * sf.amp * ramp;
+  sf.swell.foam.forEach(f => { f.position.y = sf.swell.wallH + sf.swell.foamH / 2 + Math.sin(t * 5 + f.userData.phase) * 0.15; });
+  // Steering: camera is turned around, so screen-left is world +x
+  let mx = 0;
+  if (keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
+  if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
+  if (Math.abs(touchInput.jx) > 0.12) mx = touchInput.jx;
+  const steer = -Math.cos(state.cameraYaw) * mx;
+  let x = player.position.x + steer * 10 * dt;
+  if (t - sf.t0 < 0.4) x += (sw.position.x - x) * Math.min(1, dt * 8);   // settle onto the board
+  x = Math.max(-RUNWAY_HALF_W + 0.6, Math.min(RUNWAY_HALF_W - 0.6, x));
+  // Jumping off the swell
+  if (keys['Space'] && sf.jumpY <= 0.001){ sf.jumpV = 13; sfx.jump(); }
+  sf.jumpV -= 30 * dt; sf.jumpY = Math.max(0, sf.jumpY + sf.jumpV * dt);
+  if (sf.jumpY === 0 && sf.jumpV < 0) sf.jumpV = 0;
+  player.position.set(x, 0.6 + sf.jumpY, sw.position.z + 2.4);   // riding the front of the swell
+  applySurfPose(sf, dt);
+  // Balance: drift too far from the crest and you fall off
+  if (Math.abs(x - sw.position.x) > SURF_BALANCE && sf.jumpY < 0.3){ wipeout('從浪上摔下來了！'); return; }
+  // Rocks: jump them or crash
+  for (const sh of shelters){
+    if (Math.abs(player.position.z - sh.z) < sh.rz && Math.abs(x - sh.x) < sh.r * 0.85 && sf.jumpY + 0.6 < sh.h - 0.4){
+      wipeout('撞到石頭了！'); return;
+    }
+  }
+  // Ride over: land safely
+  if (t - sf.t0 > SURF_TIME || player.position.z > SAFETY_LINE_Z - 3) endSurf(true);
+}
+killPlayer = (orig => function(){ if (state.surf) endSurf(false); return orig(); })(killPlayer);
+update = (orig => function(now){
+  orig(now);
+  try { surfTick(Math.min(0.05, (state._lastSurfNow ? (now - state._lastSurfNow) / 1000 : 0.016))); } catch(e){ console.error(e); state.surf = null; }
+  state._lastSurfNow = now;
+})(update);
 
 // Storybook ink lines: wrap every builder of things the player looks at
 // (characters, loot, power-ups, houses) so new spawns get outlines too.
