@@ -5364,7 +5364,8 @@ document.getElementById('title-continue').addEventListener('click', () => {
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(PREVIEW_SAVE_KEY) || 'null'); } catch(e){}
     if (saved) applyProfileToState(saved);
-    else { state.money = Math.max(state.money, 1000); savePreviewProgress(); }
+    state.money = Math.max(state.money, 777);   // preview: always enough pocket money to try the shops
+    savePreviewProgress();
     updateHUD();
     if (!window._previewAutosave){
       window._previewAutosave = setInterval(savePreviewProgress, 5000);
