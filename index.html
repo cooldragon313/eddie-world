@@ -4326,8 +4326,14 @@ function applyProfileToState(profile){
 }
 let _pendingSave = false;
 let _lastSaveSentAt = 0;
+const PREVIEW_SAVE_KEY = 'etfm-preview-save';
+function savePreviewProgress(){
+  if (!PREVIEW_SOLO) return;
+  try { localStorage.setItem(PREVIEW_SAVE_KEY, JSON.stringify(snapshotProfile())); } catch(e){}
+}
 function saveProgress(){
   const snap = snapshotProfile();
+  savePreviewProgress();
   // Local cache so a brief disconnect doesn't visibly wipe the HUD next boot
   if (myUserId){
     try { localStorage.setItem('etfm-cache-' + myUserId, JSON.stringify(snap)); } catch(e){}
@@ -5353,8 +5359,18 @@ document.getElementById('title-continue').addEventListener('click', () => {
   startBgm();
   hide('title-screen');
   if (PREVIEW_SOLO){
-    // Preview links start with pocket money so the shops (boards, bags) can be tried
-    if (state.money < 1000){ state.money = 1000; updateHUD(); }
+    // Preview has no accounts, so progress lives in this browser. The very
+    // first visit gets pocket money so the shops (boards, bags) can be tried.
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(PREVIEW_SAVE_KEY) || 'null'); } catch(e){}
+    if (saved) applyProfileToState(saved);
+    else { state.money = Math.max(state.money, 1000); savePreviewProgress(); }
+    updateHUD();
+    if (!window._previewAutosave){
+      window._previewAutosave = setInterval(savePreviewProgress, 5000);
+      addEventListener('pagehide', savePreviewProgress);
+      document.addEventListener('visibilitychange', () => { if (document.hidden) savePreviewProgress(); });
+    }
     applyCustomToUI(); show('creator-screen'); return;   // no accounts in preview
   }
   if (!authToken){
