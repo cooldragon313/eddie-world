@@ -592,7 +592,8 @@
     #chat-input.show + #chat-mic { top: calc(6px + env(safe-area-inset-top, 0px)); bottom: auto; left: calc(50% + min(30vw, 210px) + 6px); }
   }
   /* Close ✕ on every shop panel + jump from upgrades to the costume shop */
-  #shop, #build-shop, #cos-shop { position: fixed; }
+  #shop, #build-shop, #cos-shop { position: fixed; z-index: 1500; }
+  body.panel-open #touch-controls, body.panel-open #chat-mic { display: none !important; }
   .panel-close { position: absolute; top: 10px; right: 12px; width: 36px; height: 36px; border-radius: 50%;
                  border: 2.5px solid var(--sb-ink); background: #fff; color: var(--sb-ink);
                  font: 700 18px/1 var(--sb-font); cursor: pointer; box-shadow: 0 3px 0 rgba(91,58,41,0.3); }
@@ -911,7 +912,7 @@
   <kbd>Shift</kbd> 衝刺 · <kbd>F</kbd> 揮棒（敲木箱）·
   <kbd>B</kbd> 升級 / <kbd>C</kbd> 造型 / <kbd>P</kbd> 買地 / <kbd>H</kbd> 蓋屋 / <kbd>Enter</kbd> 聊天 ·
   <kbd>左鍵拖曳</kbd> 轉鏡頭 / <kbd>滾輪</kbd>/兩指捏合 縮放 / <kbd>R</kbd> 復位 ·
-  躲到石頭後面（地上藍色那塊）海嘯就捲不走你，只有黑色災難浪擋不住 ·
+  躲到石頭後面（地上藍色那塊）海嘯就捲不走你 ·
   <span style="color:#88ff66">綠 Lv3+</span> / <span style="color:#5588ff">藍標準 Lv6+</span> / <span style="color:#ff5050">紅快 Lv6+</span> /
   <span style="color:#aa88ff">紫巨 Lv9+</span> / <span style="color:#cc99ff">黑災難 Lv15+</span> 跳得過去就不用躲
 </div>
@@ -4053,7 +4054,7 @@ function update(now){
           // jumped clean over the wave (works for any type if jump high enough)
         } else if (ts.surfed){
           // already riding (or rode) this one
-        } else if (ts.waveType.id !== 'titan' && shelterAt(player.position.x, player.position.z)){
+        } else if (shelterAt(player.position.x, player.position.z)){
           // Hiding behind a rock always wins, even over surfing
           if (!ts.shelterToast){ ts.shelterToast = true; toast('躲在石頭後面，浪從頭上打過去！'); }
         } else if (ts.waveType.id === 'surf' && typeof equippedBoard === 'function' && equippedBoard() && !state.surf){
@@ -5288,7 +5289,7 @@ const TUTORIAL_STEPS = [
   '⚡ 按住 Shift（手機點「衝刺」）→ 跑得快但不會自動撿幣，讓你穿越低值區直奔深區。慢走才會自動撿。撿磁鐵道具時例外，磁鐵期間照常吸幣。',
   '看到「海嘯警報」會顯示需要的跳高 Lv。跳得夠高就跳過去（綠浪 Lv3 / 藍紅 Lv6 / 紫巨 Lv9 / 黑災 Lv15）；不夠就躲到石頭後面。⚠ 窄浪現在 30% 機率變雙重夾擊（左右各一條），中間才是安全通道。',
   '跑道上的大石頭可以當掩護：站在石頭「後面」地上那塊淡藍色的地方，海嘯會從頭上打過去。越深的區域石頭越小、越少。',
-  '⚠ 黑色災難浪連石頭都擋不住，只能跳過去或逃回基地！',
+  '石頭擋得住所有的浪，連黑色災難浪也可以躲！',
   '活著回到山頂（金色光柱）→ 自動把背包換成存款。按 B 開商店升級裝備。',
   '死了寶藏掉在原地變大金箱，所有玩家都能撿。背包滿時撿到剩餘的會灑在地上變散幣。',
   '右手拿著木棒！按 F（手機點「揍」按鈕）對前方 6 公尺內的玩家揮棒，被打中的會被擊飛、50% 機率暈眩 0.5 秒。冷卻 2 秒。商店裡升級「力量」可以打得更遠（甚至可以把人打進海嘯裡）。',
@@ -6054,6 +6055,8 @@ update = (orig => function(now){
 })(update);
 
 // Shop close buttons, costume-shop shortcut, phone 造型 button
+// Hide the phone controls while any shop is open so nothing sits on top of it
+setInterval(() => document.body.classList.toggle('panel-open', !!(shopOpen || cosShopOpen || buildShopOpen)), 150);
 document.querySelectorAll('.panel-close').forEach(b => b.addEventListener('click', e => {
   e.stopPropagation();
   const k = b.dataset.close;
