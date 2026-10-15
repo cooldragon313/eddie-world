@@ -1,0 +1,767 @@
+<meta charset="utf-8">
+<title>海嘯撿錢風格試玩</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Noto+Sans+TC:wght@500;800&display=swap">
+<style>
+/* Layout: full-bleed 3D canvas; style switcher pinned top, touch controls pinned to the bottom corners. Single committed look (game UI over a bright sky). */
+:root{
+  --ink:#0f2236;
+  --chip:rgba(10,28,48,.72);
+  --chip-line:rgba(255,255,255,.18);
+  --paper:#ffffff;
+  --gold:#ffc83d;
+  --sea:#2fa8ff;
+  --font-display:"Fredoka","Noto Sans TC",system-ui,sans-serif;
+  --font-ui:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;overflow:hidden;background:#7cc7ff;color:var(--paper);font-family:var(--font-ui);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+#game{position:fixed;inset:0;touch-action:none}
+#game canvas{display:block;width:100%;height:100%}
+
+.top{position:fixed;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 0;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;z-index:5}
+.styles{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--chip);border:1px solid var(--chip-line);backdrop-filter:blur(6px);pointer-events:auto;max-width:100%}
+.styles button{font:800 14px/1 var(--font-ui);color:#cfe3f5;background:transparent;border:0;border-radius:999px;padding:9px 14px;cursor:pointer;white-space:nowrap}
+.styles button[aria-pressed="true"]{background:var(--paper);color:var(--ink)}
+.styles button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.variants{background:rgba(255,200,61,.92);border-color:rgba(0,0,0,.08)}
+.variants button{font-size:13px;padding:7px 12px;color:#5a4300}
+.variants button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.has-variants .hud,.has-variants .lb-btn{top:calc(env(safe-area-inset-top,0px) + 136px)}
+.desc{font:500 12px/1.4 var(--font-ui);color:#e8f3ff;background:var(--chip);padding:5px 12px;border-radius:999px;text-align:center;max-width:100%}
+
+.hud{position:fixed;left:16px;top:calc(env(safe-area-inset-top,0px) + 96px);display:flex;flex-direction:column;gap:6px;z-index:4;pointer-events:none}
+.pill{display:flex;align-items:center;gap:8px;background:var(--chip);border:1px solid var(--chip-line);border-radius:999px;padding:5px 12px 5px 6px;font:700 18px/1 var(--font-display);font-variant-numeric:tabular-nums}
+.coin{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3b0,var(--gold) 45%,#d48a00);box-shadow:inset 0 -2px 0 rgba(0,0,0,.2)}
+.meter{width:22px;height:22px;border-radius:50%;background:var(--sea);display:grid;place-items:center;font:700 11px/1 var(--font-display)}
+
+#toast{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);font:800 clamp(20px,5vw,30px)/1.2 var(--font-ui);text-align:center;color:var(--paper);text-shadow:0 3px 0 rgba(0,0,0,.35),0 0 18px rgba(0,0,0,.35);pointer-events:none;opacity:0;transition:opacity .25s;z-index:6;padding-inline:16px;width:max-content;max-width:calc(100% - 32px)}
+#toast.show{opacity:1}
+
+.touch{display:none}
+.is-touch .touch{display:block}
+#stick{position:fixed;left:calc(16px + env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 18px);width:130px;height:130px;border-radius:50%;background:rgba(10,28,48,.35);border:2px solid rgba(255,255,255,.35);touch-action:none;z-index:5}
+#knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(255,255,255,.85);box-shadow:0 3px 0 rgba(0,0,0,.2)}
+.btns{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;align-items:flex-end;gap:12px;z-index:5}
+.btn{border-radius:50%;border:0;display:grid;place-items:center;font:800 16px/1 var(--font-ui);color:var(--ink);touch-action:none;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+#bJump{width:86px;height:86px;background:var(--gold)}
+#bRun{width:64px;height:64px;background:var(--paper);margin-bottom:40px}
+.btn.on{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+
+.keys{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);font:500 12px/1.4 var(--font-ui);background:var(--chip);padding:6px 14px;border-radius:999px;z-index:4;white-space:nowrap}
+.is-touch .keys{display:none}
+.lb-btn{position:fixed;right:16px;top:calc(env(safe-area-inset-top,0px) + 96px);z-index:4;font:800 14px/1 var(--font-ui);color:var(--ink);background:var(--gold);border:0;border-radius:999px;padding:9px 14px;box-shadow:0 3px 0 rgba(0,0,0,.22);cursor:pointer}
+.lb-btn:focus-visible,.sheet button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.sheet{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:16px;background:rgba(8,20,36,.45)}
+.sheet-card{--cream:#fff8ec;--line:#ecdcc0;--muted:#7a6a55;width:min(420px,100%);max-height:min(86vh,680px);overflow:auto;background:var(--cream);color:var(--ink);border-radius:22px;padding:14px 16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sheet-card h2{margin:0;font:800 18px/1.2 var(--font-ui);text-wrap:balance}
+.sheet-card .x,.sheet-card .back{border:0;background:transparent;color:var(--ink);font:800 15px/1 var(--font-ui);padding:8px;cursor:pointer;border-radius:10px}
+.note{margin:4px 0 10px;font:500 12px/1.4 var(--font-ui);color:var(--muted)}
+.lb-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.lb-row{width:100%;display:grid;grid-template-columns:30px 52px minmax(0,1fr) auto;align-items:center;gap:10px;padding:6px 10px 6px 6px;border:1px solid var(--line);border-radius:16px;background:#fff;color:var(--ink);font:700 15px/1.2 var(--font-ui);text-align:left;cursor:pointer}
+.lb-row.me{background:#fff3c9;border-color:#f1d27a}
+.lb-row .rk{font:700 17px/1 var(--font-display);text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+.lb-row[data-rank="1"] .rk{color:#d99a00}.lb-row[data-rank="2"] .rk{color:#8b98a6}.lb-row[data-rank="3"] .rk{color:#c27a3c}
+.lb-row img{width:52px;height:52px;border-radius:50%;background:#e9f5ff;display:block}
+.lb-row[data-rank="1"] img{box-shadow:0 0 0 3px #ffc83d}.lb-row[data-rank="2"] img{box-shadow:0 0 0 3px #c9d3dd}.lb-row[data-rank="3"] img{box-shadow:0 0 0 3px #e0a36b}
+.lb-row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-row .ds{font:700 15px/1 var(--font-display);font-variant-numeric:tabular-nums;color:#2a6fb0}
+.stage{height:260px;border-radius:18px;margin-top:4px;background:radial-gradient(circle at 50% 70%,#fffdf6,#d9efff);touch-action:none;cursor:grab;overflow:hidden}
+.stage canvas{width:100%!important;height:100%!important;display:block}
+.hint{margin:6px 0 2px;text-align:center;font:500 12px/1.4 var(--font-ui);color:var(--muted)}
+.pname{text-align:center;margin-top:6px!important}
+.pdist{text-align:center;margin:4px 0 10px;font:700 16px/1 var(--font-display);color:#2a6fb0}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.chip{font:700 13px/1 var(--font-ui);padding:7px 11px;border-radius:999px;background:#fff;border:1px solid var(--line)}
+.chip.none{color:var(--muted);font-weight:500}
+@media (max-width:420px){.styles button{padding:8px 9px;font-size:12.5px}}
+</style>
+
+<div id="game"></div>
+
+<div class="top">
+  <div class="styles" id="styleBar" role="group" aria-label="切換風格">
+    <button id="s-voxel" data-style="voxel" aria-pressed="false">精緻方塊</button>
+    <button id="s-chibi" data-style="chibi" aria-pressed="false">Q版可愛</button>
+    <button id="s-cozy" data-style="cozy" aria-pressed="false">動森風</button>
+    <button id="s-jelly" data-style="jelly" aria-pressed="false">果凍派對</button>
+  </div>
+  <div class="styles variants" id="variants" role="group" aria-label="Q版變化" hidden>
+    <button id="v-orig" data-variant="orig" aria-pressed="false">原版</button>
+    <button id="v-soft" data-variant="soft" aria-pressed="false">不刺眼</button>
+    <button id="v-book" data-variant="book" aria-pressed="false">繪本</button>
+    <button id="v-color" data-variant="color" aria-pressed="false">彩色描邊</button>
+  </div>
+  <div class="desc" id="desc"></div>
+</div>
+
+<div class="hud">
+  <div class="pill"><span class="coin"></span><span id="coins">0</span></div>
+  <div class="pill"><span class="meter">m</span><span id="dist">0</span></div>
+</div>
+
+<button id="lbBtn" class="lb-btn" aria-haspopup="dialog">排行榜</button>
+
+<div id="lb" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="lbTitle">
+  <div class="sheet-card">
+    <div class="sheet-head">
+      <h2 id="lbTitle">排行榜 · 最遠距離</h2>
+      <button class="x" id="lbClose" aria-label="關閉排行榜">✕</button>
+    </div>
+    <p class="note">點頭像看造型 · 其他玩家是範例資料</p>
+    <ol id="lbList" class="lb-list"></ol>
+  </div>
+</div>
+
+<div id="card" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="cardName">
+  <div class="sheet-card profile">
+    <div class="sheet-head">
+      <button class="back" id="cardBack">← 排行榜</button>
+      <button class="x" id="cardClose" aria-label="關閉">✕</button>
+    </div>
+    <div id="cardStage" class="stage"></div>
+    <p class="hint">拖曳可以轉角色</p>
+    <h2 id="cardName" class="pname"></h2>
+    <p id="cardDist" class="pdist"></p>
+    <div id="cardChips" class="chips"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="stick" class="touch" aria-label="移動搖桿"><div id="knob"></div></div>
+<div class="btns touch">
+  <button class="btn" id="bRun" aria-label="衝刺">衝刺</button>
+  <button class="btn" id="bJump" aria-label="跳">跳</button>
+</div>
+<div class="keys">WASD／方向鍵 移動 · 空白鍵 跳 · Shift 衝刺 · 1–4 換風格 · 站著不動角色會轉身</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+const STYLES = {
+  voxel: { name:'精緻方塊', desc:'保留方塊人，邊角磨圓、加光澤和柔和陰影' },
+  chibi: { name:'Q版可愛', desc:'大頭小身體、卡通著色加黑描邊，像動畫' },
+  cozy:  { name:'動森風', desc:'同樣的 Q 版角色，拿掉描邊、柔和光影、暖色調' },
+  jelly: { name:'果凍派對', desc:'軟糖豆身體、亮面反光，跳起來會 Q 彈' },
+};
+const RUN_W = 12, RUN_END = -390, START_Z = 6;
+
+// ---------- renderer ----------
+const host = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+host.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 400);
+function resize(){
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = w < h ? 78 : 58;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0x88aa77, 0.7); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left:-14, right:14, top:14, bottom:-14, near:1, far:60 });
+sun.shadow.bias = -0.0008;
+scene.add(sun, sun.target);
+
+// ---------- geometry helpers ----------
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+function RB(w,h,d,r,s){
+  s = s || 4; r = Math.min(r, w/2-1e-3, h/2-1e-3, d/2-1e-3);
+  const g = new THREE.BoxGeometry(w,h,d,s,s,s);
+  const p = g.attributes.position, n = g.attributes.normal;
+  const v = new THREE.Vector3(), c = new THREE.Vector3(), k = new THREE.Vector3();
+  const hx=w/2-r, hy=h/2-r, hz=d/2-r;
+  for (let i=0;i<p.count;i++){
+    v.fromBufferAttribute(p,i);
+    c.set(clamp(v.x,-hx,hx), clamp(v.y,-hy,hy), clamp(v.z,-hz,hz));
+    k.subVectors(v,c); if (k.lengthSq() < 1e-12) continue;
+    k.normalize(); v.copy(c).addScaledVector(k,r);
+    p.setXYZ(i,v.x,v.y,v.z); n.setXYZ(i,k.x,k.y,k.z);
+  }
+  return g;
+}
+function capsule(r,len,seg){
+  seg = seg || 10; const pts=[];
+  for (let i=0;i<=seg;i++){ const t=-Math.PI/2+(Math.PI/2)*(i/seg); pts.push(new THREE.Vector2(Math.max(0,r*Math.cos(t)), r*Math.sin(t))); }
+  for (let i=0;i<=seg;i++){ const t=(Math.PI/2)*(i/seg); pts.push(new THREE.Vector2(Math.max(0,r*Math.cos(t)), len+r*Math.sin(t))); }
+  const g = new THREE.LatheGeometry(pts, 24); g.translate(0,-len/2,0); return g;
+}
+const sphere = (r,ws,hs) => new THREE.SphereGeometry(r, ws||28, hs||18);
+
+const toonRamp = (() => {
+  const t = new THREE.DataTexture(new Uint8Array([90,90,90, 180,180,180, 255,255,255]), 3, 1, THREE.RGBFormat);
+  t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t;
+})();
+const outlineMat = new THREE.MeshBasicMaterial({ color:0x1b1530, side:THREE.BackSide });
+outlineMat.userData.shared = true;
+
+// Q版 variants: same character, different line / light / color treatment
+const QV = {
+  orig:  { name:'原版', desc:'黑描邊、鮮豔、明暗分明', ramp:[90,180,255], line:0x1b1530, lineK:1, sat:0, lum:0, hemi:.85, sun:.85,
+           pal:{ sky:['#8fd3ff','#fff1fb'], ground:0xa6e48e, plank:[0xf0bd84,0xe3aa6e], rail:0xffffff } },
+  soft:  { name:'不刺眼', desc:'一樣有描邊，降低亮度和飽和，看久不累', ramp:[80,155,215], line:0x2c2440, lineK:.7, sat:-.14, lum:-.05, hemi:.72, sun:.6,
+           pal:{ sky:['#6db7ea','#cfe6f2'], ground:0x8cc874, plank:[0xd9a674,0xcc9866], rail:0xe9e3d8 } },
+  book:  { name:'繪本', desc:'咖啡色細描邊、暖色調，像童書插畫', ramp:[115,165,210,240], line:0x5b3a29, lineK:.6, sat:-.1, lum:-.03, hemi:.78, sun:.55, warm:true,
+           pal:{ sky:['#9fd0ee','#f6ead2'], ground:0x9fcc7f, plank:[0xd8ae80,0xcca072], rail:0xf0e2c8 } },
+  color: { name:'彩色描邊', desc:'描邊用物件自己的深色，鮮豔但不刺眼', ramp:[85,165,235], tintLine:true, lineK:.8, sat:-.05, lum:-.03, hemi:.75, sun:.7,
+           pal:{ sky:['#7cc6f5','#e2f2fa'], ground:0x92d47c, plank:[0xe6b07a,0xd9a06a], rail:0xffffff } },
+};
+let VARIANT = 'orig';
+const rampCache = {}, lineCache = {};
+function rampFor(v){
+  if (rampCache[v]) return rampCache[v];
+  const r = QV[v].ramp, d = new Uint8Array(r.length*3); r.forEach((x,i) => d.fill(x, i*3, i*3+3));
+  const t = new THREE.DataTexture(d, r.length, 1, THREE.RGBFormat);
+  t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true;
+  return rampCache[v] = t;
+}
+function outlineFor(mat){
+  const v = QV[VARIANT];
+  if (v.tintLine){
+    const c = mat && mat.color ? mat.color.clone().offsetHSL(0,.06,-.32) : new THREE.Color(0x222222);
+    return new THREE.MeshBasicMaterial({ color:c, side:THREE.BackSide });
+  }
+  if (!lineCache[VARIANT]){ lineCache[VARIANT] = new THREE.MeshBasicMaterial({ color:v.line, side:THREE.BackSide }); lineCache[VARIANT].userData.shared = true; }
+  return lineCache[VARIANT];
+}
+const lineScale = k => 1 + (k - 1) * QV[VARIANT].lineK;
+
+let STYLE = 'voxel';
+function M(color, o){
+  o = o || {};
+  if (STYLE === 'voxel') return new THREE.MeshStandardMaterial(Object.assign({ color, roughness:.55, metalness:0 }, o));
+  if (STYLE === 'chibi'){
+    const v = QV[VARIANT], c = new THREE.Color(color).offsetHSL(0, v.sat, v.lum);
+    return new THREE.MeshToonMaterial(Object.assign({ color:c, gradientMap:rampFor(VARIANT) }, o));
+  }
+  if (STYLE === 'cozy') return new THREE.MeshStandardMaterial(Object.assign({ color, roughness:.92, metalness:0 }, o));
+  return new THREE.MeshPhysicalMaterial(Object.assign({ color, roughness:.28, clearcoat:1, clearcoatRoughness:.12 }, o));
+}
+function mesh(geo, mat, x, y, z, parent, opt){
+  const m = new THREE.Mesh(geo, mat); m.position.set(x||0, y||0, z||0);
+  m.castShadow = true; m.receiveShadow = !!(opt && opt.receive);
+  if (STYLE === 'chibi' && !(opt && opt.noOutline)){
+    const o = new THREE.Mesh(geo, outlineFor(mat)); o.scale.setScalar(lineScale((opt && opt.ol) || 1.07)); m.add(o);
+  }
+  if (parent) parent.add(m); return m;
+}
+function limb(parent, x, y, z){ const p = new THREE.Group(); p.position.set(x,y,z); parent.add(p); return p; }
+
+// ---------- avatars (face toward +z) ----------
+const DEFAULT_LOOK = { skin:0xf5cfb0, shirt:0x7ec8ff, pants:0x6a7bd8, hair:0x6b4430, shoes:0xff8fa3, hat:'', face:'', back:'' };
+function avatarVoxel(c){
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const skin=M(c.skin), shirt=M(c.shirt), pants=M(c.pants), shoe=M(c.shoes), hair=M(c.hair), pack=M(0x8b5a2b), dark=M(0x111111,{roughness:.3}), white=M(0xffffff);
+  mesh(RB(1.1,1.2,.65,.1), shirt, 0,1.55,0, body);
+  mesh(RB(.95,.95,.95,.14), skin, 0,2.66,0, body);
+  mesh(RB(1.02,.34,1.02,.1), hair, 0,3.03,0, body);
+  mesh(RB(1.02,.62,.26,.08), hair, 0,2.76,-.4, body);
+  for (const s of [-1,1]){
+    mesh(RB(.16,.22,.06,.03), dark, s*.21,2.7,.48, body);
+    mesh(new THREE.BoxGeometry(.06,.06,.02), white, s*.21-.03,2.77,.515, body);
+  }
+  mesh(RB(.32,.07,.05,.02), M(0xa83a3a), 0,2.44,.48, body);
+  mesh(RB(.76,.82,.36,.1), pack, 0,1.6,-.5, body);
+  const arms=[], legs=[];
+  for (const s of [-1,1]){
+    const a = limb(body, s*.72, 2.1, 0);
+    mesh(RB(.36,.42,.42,.08), shirt, 0,-.16,0, a);
+    mesh(RB(.32,.95,.38,.09), skin, 0,-.55,0, a);
+    if (s>0){ mesh(new THREE.CylinderGeometry(.09,.13,.9,10), M(0xb57b3e), 0,-1.25,.08, a); }
+    arms.push(a);
+    const l = limb(body, s*.3, 1.0, 0);
+    mesh(RB(.42,1.0,.5,.09), pants, 0,-.5,0, l);
+    mesh(RB(.46,.2,.64,.07), shoe, 0,-.92,.06, l);
+    legs.push(l);
+  }
+  return { g, body, arms, legs, squashy:false, anc:{ eyeX:.21, eyeY:2.7, top:3.2, front:.5, backZ:-.7, backY:1.7, headR:.5, w:1.1 } };
+}
+function avatarChibi(c){
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const skin=M(c.skin), shirt=M(c.shirt), pants=M(c.pants), shoe=M(c.shoes), hair=M(c.hair), pack=M(0xd99a5b);
+  const head = mesh(sphere(.9,32,22), skin, 0,2.1,0, body, {ol:1.05});
+  const cap = new THREE.SphereGeometry(.96,32,18,0,Math.PI*2,0,Math.PI*.56);
+  const hm = mesh(cap, hair, 0,2.12,0, body, {ol:1.04}); hm.rotation.x = -.45;
+  mesh(sphere(.32,20,14), hair, 0,2.0,-.78, body, {ol:1.08});
+  const eyeM = new THREE.MeshBasicMaterial({color:0x221a2e}), wM = new THREE.MeshBasicMaterial({color:0xffffff}), blushM = new THREE.MeshBasicMaterial({color:0xff9fb0, transparent:true, opacity:.75});
+  for (const s of [-1,1]){
+    const e = mesh(sphere(.15,18,14), eyeM, s*.3,2.02,.8, body, {noOutline:true}); e.scale.set(1,1.35,.5);
+    mesh(sphere(.055,10,8), wM, s*.3-.05,2.12,.88, body, {noOutline:true});
+    const b = mesh(sphere(.11,14,10), blushM, s*.53,1.84,.68, body, {noOutline:true}); b.scale.set(1,.55,.35);
+  }
+  const mo = mesh(sphere(.07,12,8), eyeM, 0,1.78,.88, body, {noOutline:true}); mo.scale.set(1.4,.7,.5);
+  const t = mesh(sphere(.55,24,16), shirt, 0,.95,0, body); t.scale.set(1,1.08,.9);
+  mesh(RB(.62,.66,.3,.12), pack, 0,1.02,-.55, body);
+  const arms=[], legs=[];
+  for (const s of [-1,1]){
+    const a = limb(body, s*.56, 1.25, 0);
+    const am = mesh(sphere(.17,14,10), skin, 0,-.28,0, a); am.scale.set(1,2,1);
+    arms.push(a);
+    const l = limb(body, s*.23, .55, 0);
+    const lm = mesh(sphere(.2,14,10), pants, 0,-.2,0, l); lm.scale.set(1,1.5,1);
+    const sh = mesh(sphere(.22,14,10), shoe, 0,-.45,.06, l); sh.scale.set(1.1,.6,1.35);
+    legs.push(l);
+  }
+  return { g, body, arms, legs, squashy:true, anc:{ eyeX:.3, eyeY:2.05, top:2.98, front:.86, backZ:-.72, backY:1.1, headR:.9, w:1.1 } };
+}
+function avatarJelly(c){
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const bean=M(c.shirt), face=M(0xffe6d4,{roughness:.4,clearcoat:.4}), pack=M(0xffb13d);
+  mesh(capsule(.72,.95), bean, 0,1.4,0, body);
+  const f = mesh(sphere(.56,28,18), face, 0,1.86,.46, body); f.scale.set(1,.78,.42);
+  const eyeM = new THREE.MeshPhysicalMaterial({color:0x14121c, roughness:.1, clearcoat:1}), wM = new THREE.MeshBasicMaterial({color:0xffffff});
+  for (const s of [-1,1]){
+    const e = mesh(sphere(.1,16,12), eyeM, s*.18,1.9,.66, body); e.scale.set(1,1.45,.6);
+    mesh(sphere(.035,8,6), wM, s*.18-.03,1.97,.72, body);
+  }
+  mesh(RB(.7,.72,.32,.15), pack, 0,1.35,-.72, body);
+  const arms=[], legs=[];
+  for (const s of [-1,1]){
+    const a = limb(body, s*.74, 1.5, 0);
+    mesh(capsule(.17,.32), bean, 0,-.3,0, a); arms.push(a);
+    const l = limb(body, s*.3, .5, 0);
+    mesh(capsule(.21,.18), bean, 0,-.24,0, l); legs.push(l);
+  }
+  return { g, body, arms, legs, squashy:true, jelly:true, anc:{ eyeX:.18, eyeY:1.9, top:2.58, front:.7, backZ:-.9, backY:1.45, headR:.72, w:1.4 } };
+}
+const COSMETICS = {
+  hat:  { crown:'金皇冠', party:'派對尖帽' },
+  face: { shades:'太陽眼鏡' },
+  back: { wings:'天使翅膀', cape:'紅披風' },
+};
+function addCosmetics(A, c){
+  const a = A.anc, b = A.body;
+  if (c.hat === 'crown'){
+    const gold = M(0xffc83d);
+    mesh(new THREE.CylinderGeometry(a.headR*.62, a.headR*.66, .3, 24, 1, true), gold, 0, a.top+.08, 0, b, {ol:1.05});
+    for (let i=0;i<5;i++){ const t = i/5*Math.PI*2; mesh(new THREE.ConeGeometry(.1,.3,10), gold, Math.sin(t)*a.headR*.62, a.top+.36, Math.cos(t)*a.headR*.62, b); }
+  } else if (c.hat === 'party'){
+    mesh(new THREE.ConeGeometry(.3,.85,20), M(0xff7aa8), 0, a.top+.38, 0, b);
+    mesh(sphere(.12,12,8), M(0xffffff), 0, a.top+.85, 0, b);
+  }
+  if (c.face === 'shades'){
+    const dk = M(0x1d1d2b);
+    for (const s of [-1,1]) mesh(RB(a.eyeX*1.25,.2,.06,.05), dk, s*a.eyeX, a.eyeY, a.front+.05, b, {noOutline:true});
+    mesh(RB(a.eyeX*.9,.05,.05,.02), dk, 0, a.eyeY+.04, a.front+.05, b, {noOutline:true});
+  }
+  if (c.back === 'wings'){
+    for (const s of [-1,1]){ const w = mesh(sphere(.6,20,14), M(0xffffff), s*.5, a.backY+.35, a.backZ-.12, b); w.scale.set(.22,1,.55); w.rotation.z = s*-.55; }
+  } else if (c.back === 'cape'){
+    mesh(RB(a.w*.95, 1.5, .07, .03), M(0xe0463e), 0, a.backY-.05, a.backZ-.06, b);
+  }
+}
+function makeAvatar(custom){
+  const c = Object.assign({}, DEFAULT_LOOK, custom);
+  const A = (STYLE==='voxel' ? avatarVoxel : (STYLE==='chibi' || STYLE==='cozy') ? avatarChibi : avatarJelly)(c);
+  addCosmetics(A, c); return A;
+}
+
+// ---------- tsunami ----------
+function waveProfile(){
+  const s = new THREE.Shape();
+  s.moveTo(-3,0); s.lineTo(1.6,0);
+  s.quadraticCurveTo(.3,.4,.5,1.6);
+  s.quadraticCurveTo(.8,2.3,1.6,1.7);
+  s.quadraticCurveTo(1.2,2.6,-.2,2.3);
+  s.quadraticCurveTo(-1.8,1.6,-3,0);
+  return s;
+}
+function buildWave(){
+  const g = new THREE.Group(), foam = [];
+  if (STYLE === 'voxel'){
+    const water = M(0x2f8cff,{transparent:true, opacity:.86, roughness:.12, metalness:.1});
+    const deep = M(0x1d5fc0,{roughness:.2});
+    const white = M(0xffffff,{roughness:.4});
+    for (let i=0;i<14;i++){
+      const x = -6.5 + i, h = 1.45 + .22*Math.sin(i*1.7);
+      mesh(RB(.98,h,2.2,.12), water, x,h/2,0, g);
+      foam.push(mesh(RB(.96,.42,1.1,.12), white, x,h+.18,.45, g));
+    }
+    mesh(RB(14,1.0,4,.2), deep, 0,.5,-2.6, g);
+  } else {
+    const geo = new THREE.ExtrudeGeometry(waveProfile(), STYLE!=='chibi'
+      ? { depth:13.4, bevelEnabled:true, bevelSize:.14, bevelThickness:.2, bevelSegments:3, curveSegments:16 }
+      : { depth:13.4, bevelEnabled:false, curveSegments:16 });
+    geo.rotateY(-Math.PI/2); geo.translate(6.7,0,0); geo.scale(1,.72,1);
+    const mat = STYLE==='jelly' ? M(0x35b4ff,{transparent:true, opacity:.9})
+      : STYLE==='cozy' ? M(0x7cc8ec,{transparent:true, opacity:.93, roughness:.5}) : M(0x5cc6ff);
+    mesh(geo, mat, 0,0,0, g, {ol:1.0, noOutline:true});
+    const fm = STYLE==='jelly' ? M(0xffffff,{roughness:.3}) : M(0xffffff);
+    for (let i=0;i<10;i++){
+      const r = .38 + .12*((i*7)%3);
+      foam.push(mesh(sphere(r,16,12), fm, -6.2+i*1.38, 1.62, .55, g, {ol:1.1}));
+    }
+  }
+  g.userData.foam = foam; return g;
+}
+
+// ---------- coins / props ----------
+function buildCoin(){
+  let m;
+  if (STYLE === 'voxel'){ m = new THREE.Mesh(RB(.8,.8,.22,.1), M(0xffc83d,{metalness:.6, roughness:.25, emissive:0x553300})); }
+  else if (STYLE === 'chibi'){ m = new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.16,28), M(0xffd24a)); m.rotation.x = Math.PI/2;
+    const o = new THREE.Mesh(m.geometry, outlineFor(m.material)); o.scale.setScalar(lineScale(1.12)); m.add(o); }
+  else if (STYLE === 'cozy'){ m = new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.18,32), M(0xf7c948,{roughness:.6, emissive:0x3a2a00})); m.rotation.x = Math.PI/2; }
+  else { m = new THREE.Mesh(new THREE.CylinderGeometry(.44,.44,.2,32), M(0xffc22e,{metalness:.3, emissive:0x442200})); m.rotation.x = Math.PI/2; }
+  const g = new THREE.Group(); m.castShadow = true; g.add(m); return g;
+}
+function seeded(n){ let s = n; return () => (s = (s*16807) % 2147483647) / 2147483647; }
+
+function buildWorld(){
+  const W = new THREE.Group(), rnd = seeded(42);
+  const pal = {
+    voxel:{ sky:['#6fb8ff','#d8eeff'], ground:0xe6cf98, plank:[0xb98552,0xa36f3d], rail:0x8a8f99 },
+    chibi:QV[VARIANT].pal,
+    jelly:{ sky:['#5ec2ff','#ffe9f5'], ground:0xffe28a, plank:[0xffc56b,0xffae47], rail:0xff6fae },
+    cozy: { sky:['#a6dbff','#fff5e3'], ground:0x9fd27f, plank:[0xd9b48a,0xcca47a], rail:0xf3e6cf },
+  }[STYLE];
+  // cozy = warm, soft, low-contrast light; others keep the neutral daylight rig
+  if (STYLE === 'cozy'){ hemi.color.setHex(0xfff2dc); hemi.groundColor.setHex(0xb9d99c); hemi.intensity = 1.0; sun.color.setHex(0xffeccc); sun.intensity = .5; }
+  else { hemi.color.setHex(0xffffff); hemi.groundColor.setHex(0x88aa77); sun.color.setHex(0xffffff); sun.intensity = .85; }
+  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
+  const x = c.getContext('2d'), gr = x.createLinearGradient(0,0,0,256);
+  gr.addColorStop(0, pal.sky[0]); gr.addColorStop(1, pal.sky[1]); x.fillStyle = gr; x.fillRect(0,0,2,256);
+  if (scene.background && scene.background.dispose) scene.background.dispose();
+  scene.background = new THREE.CanvasTexture(c);
+  scene.fog = new THREE.Fog(new THREE.Color(pal.sky[1]), 45, 160);
+  if (STYLE === 'chibi'){
+    const v = QV[VARIANT]; hemi.intensity = v.hemi; sun.intensity = v.sun;
+    if (v.warm){ hemi.color.setHex(0xfff2dc); hemi.groundColor.setHex(0xb9d99c); sun.color.setHex(0xffeccc); }
+  } else if (STYLE !== 'cozy') hemi.intensity = .7;
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 520), M(pal.ground));
+  ground.rotation.x = -Math.PI/2; ground.position.set(0,-.02,-190); ground.receiveShadow = true; W.add(ground);
+
+  const N = 400, pg = STYLE==='voxel' ? RB(RUN_W,.3,.94,.06,2) : new THREE.BoxGeometry(RUN_W,.3,.94);
+  const planks = new THREE.InstancedMesh(pg, M(0xffffff), N);
+  const mtx = new THREE.Matrix4(), col = new THREE.Color();
+  for (let i=0;i<N;i++){
+    mtx.makeTranslation(0, .0, 12 - i); planks.setMatrixAt(i, mtx);
+    col.setHex(pal.plank[i%2]).offsetHSL(0,0,(rnd()-.5)*.05); planks.setColorAt(i, col);
+  }
+  planks.receiveShadow = true; W.add(planks);
+  for (const s of [-1,1]){
+    const rail = mesh(STYLE==='voxel' ? RB(.5,.6,N,.12,2) : capsule(.28, N-1, 6), M(pal.rail), s*(RUN_W/2+.3), .35, 12-N/2, W);
+    if (STYLE !== 'voxel') rail.rotation.x = Math.PI/2;
+  }
+
+  // scenery along both sides
+  const stone=M(0x8d939e), grass=M(STYLE==='chibi'?0x7fd36a:0x6cc04a), trunk=M(0x8a5a32), leaf=M(STYLE==='chibi'?0x5fc77a:0x4caf50);
+  const candy=[0xff6fae,0x6fd6ff,0xb48cff,0x7ee08a,0xffb13d].map(h=>M(h));
+  const fruit=M(0xf2604f), petals=[0xffb7c5,0xfff1a8,0xffffff,0xc9b6ff].map(h=>M(h)), canopy=M(0x6fbf5e);
+  for (let z=10; z>RUN_END-20; z-=7){
+    for (const s of [-1,1]){
+      const px = s*(RUN_W/2 + 3 + rnd()*9), pz = z + rnd()*4, kind = rnd();
+      if (STYLE === 'voxel'){
+        if (kind < .55){ const h = 1 + Math.floor(rnd()*3);
+          for (let k=0;k<h;k++) mesh(RB(2,2,2,.22), stone, px, 1+k*2, pz, W);
+          mesh(RB(2.04,.5,2.04,.15), grass, px, h*2+.2, pz, W);
+        } else { mesh(RB(.6,2.2,.6,.1), trunk, px,1.1,pz, W); mesh(RB(2.2,2,2.2,.25), leaf, px,3,pz, W); }
+      } else if (STYLE === 'chibi'){
+        if (kind < .5){ const r = 1.6+rnd()*2.4; const h = mesh(new THREE.SphereGeometry(r,24,14,0,Math.PI*2,0,Math.PI/2), grass, px,0,pz, W, {ol:1.04}); }
+        else { mesh(new THREE.CylinderGeometry(.22,.3,1.6,10), trunk, px,.8,pz, W); mesh(sphere(1.15,20,14), leaf, px,2.3,pz, W, {ol:1.05}); }
+      } else if (STYLE === 'cozy'){
+        if (kind < .35){ mesh(new THREE.SphereGeometry(1.8+rnd()*2.2,24,14,0,Math.PI*2,0,Math.PI/2), grass, px,0,pz, W); }
+        else if (kind < .8){
+          mesh(new THREE.CylinderGeometry(.24,.34,1.7,12), trunk, px,.85,pz, W);
+          const cn = mesh(sphere(1.3,24,16), canopy, px,2.55,pz, W); cn.scale.set(1,.88,1);
+          for (let f=0; f<4; f++){ const a = f*1.7 + rnd(); mesh(sphere(.16,12,8), fruit, px+Math.cos(a)*1.15, 2.3+rnd()*.6, pz+Math.sin(a)*1.15, W); }
+        } else {
+          for (let f=0; f<6; f++) mesh(sphere(.17,10,8), petals[f%4], px+(rnd()-.5)*1.6, .17, pz+(rnd()-.5)*1.6, W);
+        }
+      } else {
+        const m = candy[Math.floor(rnd()*candy.length)];
+        if (kind < .5){ const b = mesh(capsule(.9, 1.6), m, px, 2.2, pz, W); b.rotation.z = (rnd()-.5)*.8; }
+        else { mesh(new THREE.CylinderGeometry(1.1,1.1,1.4,28), m, px,.7,pz, W); mesh(new THREE.TorusGeometry(.9,.35,14,28), candy[(Math.floor(rnd()*5))], px,1.6,pz, W).rotation.x = Math.PI/2; }
+      }
+    }
+  }
+  // treasure at the end
+  const chest = mesh(RB(2.2,1.4,1.4,.18), M(0xb8742a), 0,.7,RUN_END, W);
+  mesh(RB(2.3,.6,1.5,.2), M(0xffc83d,{emissive:0x553300}), 0,1.55,RUN_END, W);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,60,24,1,true), new THREE.MeshBasicMaterial({color:0xffd75e, transparent:true, opacity:.28, depthWrite:false, side:THREE.DoubleSide}));
+  beam.position.set(0,30,RUN_END); W.add(beam);
+  return W;
+}
+
+// ---------- state ----------
+let world, avatar, wave = null, waveTimer = 3, coins = [], money = 0, firstWave = true;
+const P = { x:0, y:0, z:START_Z, vy:0, kx:0, kz:0, yaw:0, idle:0, phase:0, squash:0, inv:0, grounded:true, best:0 };
+
+function disposeTree(o){ o.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material && !n.material.userData.shared) n.material.dispose(); }); }
+function setStyle(id, variant){
+  if (!STYLES[id]) id = 'voxel';
+  if (QV[variant]) VARIANT = variant;
+  STYLE = id;
+  for (const b of document.querySelectorAll('#styleBar button')) b.setAttribute('aria-pressed', String(b.dataset.style === id));
+  for (const b of document.querySelectorAll('#variants button')) b.setAttribute('aria-pressed', String(b.dataset.variant === VARIANT));
+  document.getElementById('variants').hidden = id !== 'chibi';
+  document.documentElement.classList.toggle('has-variants', id === 'chibi');
+  document.getElementById('desc').textContent = id === 'chibi' ? QV[VARIANT].desc : STYLES[id].desc;
+  if (world){ scene.remove(world); disposeTree(world); }
+  if (avatar){ scene.remove(avatar.g); disposeTree(avatar.g); }
+  if (wave){ scene.remove(wave); disposeTree(wave); wave = null; waveTimer = 2.5; }
+  for (const c of coins){ scene.remove(c); disposeTree(c); }
+  world = buildWorld(); scene.add(world);
+  avatar = makeAvatar(MY_LOOK); scene.add(avatar.g);
+  closeSheets();
+  coins = [];
+  for (let i=0;i<34;i++){ const c = buildCoin(); placeCoin(c, true); scene.add(c); coins.push(c); }
+  const tag = id === 'chibi' ? 'chibi-' + VARIANT : id;
+  try { localStorage.setItem('ets-style', tag); } catch(e){}
+  if (location.hash.slice(1) !== tag) history.replaceState(null, '', '#'+tag);
+}
+function setFromTag(tag){ const [s, v] = String(tag || '').split('-'); if (STYLES[s]) { setStyle(s, v); return true; } return false; }
+function placeCoin(c, initial){
+  const ahead = initial ? 4 + Math.random()*60 : 30 + Math.random()*35;
+  c.position.set((Math.random()-.5)*(RUN_W-2.4), 1.1, Math.max(RUN_END+6, P.z - ahead));
+}
+
+// ---------- input ----------
+const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+if (isTouch) document.documentElement.classList.add('is-touch');
+const key = {}; let stick = { x:0, y:0 }, run = false, jumpQueued = false;
+addEventListener('keydown', e => {
+  key[e.code] = true;
+  if (e.code === 'Space'){ jumpQueued = true; e.preventDefault(); }
+  if (e.code === 'Digit1') setStyle('voxel');
+  if (e.code === 'Digit2') setStyle('chibi');
+  if (e.code === 'Digit3') setStyle('cozy');
+  if (e.code === 'Digit4') setStyle('jelly');
+  if (e.code === 'KeyV' && STYLE === 'chibi'){ const ks = Object.keys(QV); setStyle('chibi', ks[(ks.indexOf(VARIANT)+1) % ks.length]); }
+});
+addEventListener('keyup', e => { key[e.code] = false; });
+for (const b of document.querySelectorAll('#styleBar button')) b.addEventListener('click', () => { setStyle(b.dataset.style); b.blur(); });
+for (const b of document.querySelectorAll('#variants button')) b.addEventListener('click', () => { setStyle('chibi', b.dataset.variant); b.blur(); });
+
+const stickEl = document.getElementById('stick'), knob = document.getElementById('knob');
+let stickId = null;
+function stickMove(e){
+  const r = stickEl.getBoundingClientRect(), R = r.width/2;
+  let dx = e.clientX - (r.left+R), dy = e.clientY - (r.top+R);
+  const L = Math.hypot(dx,dy), max = R*.62;
+  if (L > max){ dx *= max/L; dy *= max/L; }
+  knob.style.transform = `translate(${dx}px,${dy}px)`;
+  stick = { x: dx/max, y: -dy/max };
+}
+stickEl.addEventListener('pointerdown', e => { stickId = e.pointerId; stickEl.setPointerCapture(e.pointerId); stickMove(e); });
+stickEl.addEventListener('pointermove', e => { if (e.pointerId === stickId) stickMove(e); });
+const stickEnd = e => { if (e.pointerId !== stickId) return; stickId = null; stick = {x:0,y:0}; knob.style.transform = ''; };
+stickEl.addEventListener('pointerup', stickEnd); stickEl.addEventListener('pointercancel', stickEnd);
+function holdBtn(el, down, up){
+  el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('on'); down(); });
+  const end = () => { el.classList.remove('on'); up && up(); };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('pointerleave', end);
+}
+holdBtn(document.getElementById('bJump'), () => { jumpQueued = true; });
+holdBtn(document.getElementById('bRun'), () => { run = true; }, () => { run = false; });
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// ---------- UI ----------
+const coinsEl = document.getElementById('coins'), distEl = document.getElementById('dist'), toastEl = document.getElementById('toast');
+let toastT = 0;
+function toast(msg, sec){ toastEl.textContent = msg; toastEl.classList.add('show'); toastT = sec || 1.6; }
+
+// ---------- loop ----------
+const clock = new THREE.Clock(); let T = 0;
+const camPos = new THREE.Vector3(0, 7, START_Z + 11), look = new THREE.Vector3();
+function angLerp(a, b, t){ let d = ((b - a + Math.PI) % (Math.PI*2)) - Math.PI; if (d < -Math.PI) d += Math.PI*2; return a + d*t; }
+
+function tick(){
+  const dt = Math.min(clock.getDelta(), .05); T += dt;
+  // input
+  let ix = stick.x, iy = stick.y;
+  if (key.KeyA || key.ArrowLeft) ix -= 1; if (key.KeyD || key.ArrowRight) ix += 1;
+  if (key.KeyW || key.ArrowUp) iy += 1; if (key.KeyS || key.ArrowDown) iy -= 1;
+  if (!lbEl.hidden || !cardEl.hidden){ ix = 0; iy = 0; jumpQueued = false; }
+  const L = Math.hypot(ix, iy); if (L > 1){ ix /= L; iy /= L; }
+  const sprint = run || key.ShiftLeft || key.ShiftRight;
+  const spd = sprint ? 10.5 : 6.8, moving = L > .12;
+  P.x += (ix*spd + P.kx)*dt; P.z += (-iy*spd + P.kz)*dt;
+  P.kx *= Math.pow(.02, dt); P.kz *= Math.pow(.02, dt);
+  P.x = clamp(P.x, -RUN_W/2+.8, RUN_W/2-.8); P.z = clamp(P.z, RUN_END+2, 14);
+  if (jumpQueued && P.grounded){ P.vy = 11; P.grounded = false; }
+  jumpQueued = false;
+  P.vy -= 28*dt; P.y += P.vy*dt;
+  if (P.y <= 0){ if (!P.grounded && P.vy < -6) P.squash = .28; P.y = 0; P.vy = 0; P.grounded = true; }
+
+  // facing: move direction, or turn to camera after standing still
+  if (moving){ P.idle = 0; P.yaw = angLerp(P.yaw, Math.atan2(ix, -iy), 1 - Math.pow(.0005, dt)); }
+  else { P.idle += dt; if (P.idle > .6) P.yaw = angLerp(P.yaw, 0, 1 - Math.pow(.02, dt)); }
+
+  // animate avatar
+  const A = avatar; A.g.position.set(P.x, P.y, P.z); A.g.rotation.y = P.yaw;
+  P.phase += dt * (moving ? (sprint ? 15 : 11) : 0);
+  const amp = moving && P.grounded ? .75 : 0;
+  A.legs[0].rotation.x = Math.sin(P.phase)*amp; A.legs[1].rotation.x = -Math.sin(P.phase)*amp;
+  A.arms[0].rotation.x = -Math.sin(P.phase)*amp*.8; A.arms[1].rotation.x = Math.sin(P.phase)*amp*.8;
+  if (!P.grounded){ A.arms[0].rotation.z = -.9; A.arms[1].rotation.z = .9; A.legs[0].rotation.x = -.5; A.legs[1].rotation.x = .3; }
+  else { A.arms[0].rotation.z = A.arms[1].rotation.z = 0; }
+  P.squash *= Math.pow(.004, dt);
+  if (A.squashy){
+    const bob = moving && P.grounded ? Math.abs(Math.sin(P.phase))*.12 : Math.sin(T*2.2)*.03;
+    const wob = A.jelly ? Math.sin(P.phase*2)*.05*(moving?1:0) : 0;
+    const stretch = !P.grounded ? clamp(P.vy*.012, -.12, .14) : 0;
+    const sy = 1 - P.squash + wob + stretch, sxz = 1 + P.squash*.6 - wob*.5 - stretch*.5;
+    A.body.scale.set(sxz, sy, sxz); A.body.position.y = bob;
+  } else {
+    A.body.position.y = moving && P.grounded ? Math.abs(Math.sin(P.phase))*.08 : 0;
+  }
+  A.g.visible = P.inv <= 0 || Math.floor(T*14) % 2 === 0;
+  P.inv -= dt;
+
+  // coins
+  for (const c of coins){
+    c.rotation.y += dt*2.6; c.position.y = 1.1 + Math.sin(T*3 + c.position.z)*.12;
+    const dx = c.position.x - P.x, dz = c.position.z - P.z, dy = c.position.y - (P.y+1.3);
+    if (dx*dx + dz*dz < 1.6 && Math.abs(dy) < 1.6){ money += 1; placeCoin(c); }
+    else if (dz > 16) placeCoin(c);
+  }
+
+  // tsunami
+  waveTimer -= dt;
+  if (!wave && waveTimer <= 0){
+    wave = buildWave(); wave.position.set(0, 0, Math.max(RUN_END, P.z - 58)); scene.add(wave);
+    if (firstWave){ toast(isTouch ? '海嘯來了！按「跳」跳過去' : '海嘯來了！按空白鍵跳過去', 2.2); firstWave = false; }
+  }
+  if (wave){
+    wave.position.z += 9.5*dt;
+    wave.userData.foam.forEach((f,i) => { f.position.y += Math.sin(T*5 + i)*.004; f.scale.setScalar(1 + Math.sin(T*4 + i*1.3)*.06); });
+    const dz = wave.position.z - P.z;
+    if (Math.abs(dz) < 1.3 && P.y < 1.45 && P.inv <= 0){
+      P.kz = 16; P.vy = 7; P.grounded = false; P.inv = 1.4;
+      const lost = Math.ceil(money/2); money -= lost;
+      toast(lost ? `被浪打到！掉了 ${lost} 枚金幣` : '被浪打到！', 1.6);
+    }
+    if (dz > 22){ scene.remove(wave); disposeTree(wave); wave = null; waveTimer = 2.5 + Math.random()*3; }
+  }
+
+  // treasure
+  if (P.z < RUN_END + 4){ money += 100; toast('拿到大寶箱！+100', 2); P.z = START_Z; P.x = 0; }
+
+  // camera + sun follow
+  camPos.lerp(new THREE.Vector3(P.x*.55, 6.4 + P.y*.35, P.z + 10.5), 1 - Math.pow(.001, dt));
+  camera.position.copy(camPos);
+  look.set(P.x*.75, 1.6 + P.y*.4, P.z - 6); camera.lookAt(look);
+  sun.position.set(P.x + 8, 18, P.z + 6); sun.target.position.set(P.x, 0, P.z - 2);
+
+  coinsEl.textContent = money;
+  const curDist = Math.max(0, Math.round(START_Z - P.z));
+  distEl.textContent = curDist; P.best = Math.max(P.best, curDist);
+  renderCard(dt);
+  if (toastT > 0){ toastT -= dt; if (toastT <= 0) toastEl.classList.remove('show'); }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+
+// ---------- leaderboard + profile card (sample data) ----------
+const MY_LOOK = { shirt:0x7ec8ff, hair:0x6b4430 };
+const SAMPLE_PLAYERS = [
+  { name:'海嘯獵人', dist:1820, look:{ shirt:0xffc83d, pants:0x3a3a5a, hair:0x2a1c14, hat:'crown', back:'cape' } },
+  { name:'金幣王阿寶', dist:1544, look:{ shirt:0xf28aa0, pants:0x5a6bd0, hair:0xd9a35a, face:'shades', back:'wings' } },
+  { name:'衝浪貓', dist:1310, look:{ shirt:0x7ed7a6, pants:0x2f6f5a, hair:0x1d1d1d, hat:'party' } },
+  { name:'小鯨魚', dist:990, look:{ shirt:0x6fb4ff, pants:0x2d3a6b, skin:0xe8b48f, hair:0x3a2414, back:'wings' } },
+  { name:'跑跑豆', dist:860, look:{ shirt:0xb48cff, pants:0x4b3f7a, hair:0xff9f6b, face:'shades' } },
+  { name:'Leo', dist:740, look:{ shirt:0xff8a3d, pants:0x444444, skin:0xc98f6a, hair:0x111111, hat:'crown' } },
+  { name:'跳高高', dist:615, look:{ shirt:0xffffff, pants:0xd65a5a, hair:0x6b4430, hat:'party', back:'cape' } },
+  { name:'沙灘拖鞋', dist:480, look:{ shirt:0x9fd27f, pants:0x8a6a3a, hair:0xe8d27a } },
+  { name:'慢慢來', dist:352, look:{ shirt:0xd0d6de, pants:0x56606e, hair:0x7a5230, face:'shades' } },
+];
+const lbEl = document.getElementById('lb'), cardEl = document.getElementById('card'), stageEl = document.getElementById('cardStage');
+const tR = new THREE.WebGLRenderer({ antialias:true, alpha:true, preserveDrawingBuffer:true });
+tR.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const tScene = new THREE.Scene(), tCam = new THREE.PerspectiveCamera(30, 1, .1, 50);
+tScene.add(new THREE.HemisphereLight(0xffffff, 0xc8d8c0, 1.0));
+const tSun = new THREE.DirectionalLight(0xffffff, .6); tSun.position.set(2,4,5); tScene.add(tSun);
+let cardA = null, cardSpin = 0, cardDrag = null, thumbsStyle = '';
+const thumbCache = new Map();
+
+function headshot(look){
+  const A = makeAvatar(look), a = A.anc; tScene.add(A.g);
+  tR.setSize(128, 128, false); tCam.aspect = 1; tCam.updateProjectionMatrix();
+  const d = a.headR * 4.6 + 1;
+  tCam.position.set(d*.28, a.eyeY + .25, d); tCam.lookAt(0, a.eyeY - .05, 0);
+  tR.render(tScene, tCam);
+  const url = tR.domElement.toDataURL('image/png');
+  tScene.remove(A.g); disposeTree(A.g); return url;
+}
+function rowsData(){
+  const me = { name:'你', dist:P.best, look:MY_LOOK, me:true };
+  return SAMPLE_PLAYERS.concat([me]).sort((a,b) => b.dist - a.dist);
+}
+function openLeaderboard(){
+  if (thumbsStyle !== STYLE + VARIANT){ thumbCache.clear(); thumbsStyle = STYLE + VARIANT; }
+  const list = document.getElementById('lbList'); list.textContent = '';
+  rowsData().forEach((p, i) => {
+    const key = p.me ? 'me:' + JSON.stringify(MY_LOOK) : p.name;
+    if (!thumbCache.has(key)) thumbCache.set(key, headshot(p.look));
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.className = 'lb-row' + (p.me ? ' me' : ''); b.dataset.rank = String(i+1);
+    b.setAttribute('aria-label', `第 ${i+1} 名 ${p.name}，${p.dist} 公尺，看造型`);
+    b.innerHTML = `<span class="rk">${i+1}</span><img alt="" src="${thumbCache.get(key)}"><span class="nm"></span><span class="ds">${p.dist} m</span>`;
+    b.querySelector('.nm').textContent = p.name;
+    b.addEventListener('click', () => openCard(p, i+1));
+    li.appendChild(b); list.appendChild(li);
+  });
+  cardEl.hidden = true; lbEl.hidden = false;
+}
+function openCard(p, rank){
+  lbEl.hidden = true; cardEl.hidden = false;
+  if (cardA){ tScene.remove(cardA.g); disposeTree(cardA.g); }
+  cardA = makeAvatar(p.look); tScene.add(cardA.g); cardSpin = .5;
+  if (tR.domElement.parentNode !== stageEl) stageEl.appendChild(tR.domElement);
+  const r = stageEl.getBoundingClientRect();
+  tR.setSize(r.width, r.height, false); tCam.aspect = r.width / r.height; tCam.updateProjectionMatrix();
+  const a = cardA.anc, mid = a.top * .5 + .1, d = a.top * 1.55 + 2.2;
+  tCam.position.set(0, mid + .6, d); tCam.lookAt(0, mid, 0);
+  document.getElementById('cardName').textContent = `#${rank}　${p.name}`;
+  document.getElementById('cardDist').textContent = `最遠 ${p.dist} m`;
+  const chips = document.getElementById('cardChips'); chips.textContent = '';
+  const c = Object.assign({}, DEFAULT_LOOK, p.look), parts = [['帽子', COSMETICS.hat[c.hat]], ['臉', COSMETICS.face[c.face]], ['背後', COSMETICS.back[c.back]]];
+  let any = false;
+  for (const [slot, item] of parts){ if (!item) continue; any = true; const s = document.createElement('span'); s.className = 'chip'; s.textContent = `${slot}：${item}`; chips.appendChild(s); }
+  if (!any){ const s = document.createElement('span'); s.className = 'chip none'; s.textContent = '還沒買造型'; chips.appendChild(s); }
+}
+function closeSheets(){
+  lbEl.hidden = true; cardEl.hidden = true;
+  if (cardA){ tScene.remove(cardA.g); disposeTree(cardA.g); cardA = null; }
+}
+function renderCard(dt){
+  if (!cardA || cardEl.hidden) return;
+  if (!cardDrag) cardA.g.rotation.y += dt * .6;
+  cardA.body.position.y = Math.sin(T*2.4) * .05;
+  tR.render(tScene, tCam);
+}
+document.getElementById('lbBtn').addEventListener('click', openLeaderboard);
+document.getElementById('lbClose').addEventListener('click', closeSheets);
+document.getElementById('cardClose').addEventListener('click', closeSheets);
+document.getElementById('cardBack').addEventListener('click', () => { if (cardA){ tScene.remove(cardA.g); disposeTree(cardA.g); cardA = null; } openLeaderboard(); });
+for (const s of [lbEl, cardEl]) s.addEventListener('click', e => { if (e.target === s) closeSheets(); });
+addEventListener('keydown', e => { if (e.code === 'Escape') closeSheets(); });
+stageEl.addEventListener('pointerdown', e => { cardDrag = { x:e.clientX }; stageEl.setPointerCapture(e.pointerId); });
+stageEl.addEventListener('pointermove', e => { if (!cardDrag || !cardA) return; cardA.g.rotation.y += (e.clientX - cardDrag.x) * .012; cardDrag.x = e.clientX; });
+const dragEnd = () => { cardDrag = null; };
+stageEl.addEventListener('pointerup', dragEnd); stageEl.addEventListener('pointercancel', dragEnd);
+
+let start = 'chibi-orig';
+try { start = localStorage.getItem('ets-style') || start; } catch(e){}
+if (location.hash.length > 1) start = location.hash.slice(1);
+if (!setFromTag(start)) setStyle('chibi', 'orig');
+toast(STYLE === 'chibi' ? '第二排可以切換 Q 版的 4 種變化' : '上面可以切換風格', 2.6);
+requestAnimationFrame(tick);
+})();
+</script>
