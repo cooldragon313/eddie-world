@@ -894,9 +894,9 @@
   <kbd>Shift</kbd> 衝刺 · <kbd>F</kbd> 揮棒（敲木箱）·
   <kbd>B</kbd> 升級 / <kbd>C</kbd> 造型 / <kbd>P</kbd> 買地 / <kbd>H</kbd> 蓋屋 / <kbd>Enter</kbd> 聊天 ·
   <kbd>左鍵拖曳</kbd> 轉鏡頭 / <kbd>滾輪</kbd>/兩指捏合 縮放 / <kbd>R</kbd> 復位 ·
-  跳到坑裡躲海嘯 · 跳出來爬出去 · 跳高 Lv 不夠的坑會擋路、走不過去 ·
+  躲到石頭後面（地上藍色那塊）海嘯就捲不走你，只有黑色災難浪擋不住 ·
   <span style="color:#88ff66">綠 Lv3+</span> / <span style="color:#5588ff">藍標準 Lv6+</span> / <span style="color:#ff5050">紅快 Lv6+</span> /
-  <span style="color:#aa88ff">紫巨 Lv9+</span> / <span style="color:#cc99ff">黑災難 Lv15+</span> 跳得過去就免躲坑
+  <span style="color:#aa88ff">紫巨 Lv9+</span> / <span style="color:#cc99ff">黑災難 Lv15+</span> 跳得過去就不用躲
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1064,6 +1064,11 @@ function floorAt(x, z){
 // Whether the given world position is steppable. Inaccessible pits (jumpReq
 // not met) act as solid barriers so the player can't even walk onto them.
 function canStepOn(x, z){
+  for (let i = 0; i < shelters.length; i++){
+    const sh = shelters[i];
+    const dx = (x - sh.x) / (sh.r * 0.92), dz = (z - sh.z) / (sh.rz * 0.92);
+    if (dx*dx + dz*dz < 1) return false;
+  }
   for (let i = 0; i < pits.length; i++){
     const p = pits[i];
     const dx = (x - p.x) / p.rx;
@@ -2263,41 +2268,58 @@ if (!MP_ENABLED){
 }
 
 // ============================================================
-// PITS
+// SHELTER ROCKS (replaced the old pits)
+// Waves travel toward +z, so the safe pocket is the strip right behind a
+// rock on its +z side, marked by a pale blue patch on the ground. Rocks are
+// solid. Seeded so every player sees the same rocks. The black titan wave
+// still sweeps you out from behind a rock.
 // ============================================================
-const pits = [];
-// Zone-coloured rims hint at the jump-level required to enter each pit
-const PIT_RIM_COLORS = [
-  0x6a4a2a, 0x4a8a4a, 0x4a4aaa, 0x8a4aaa, 0xc04040,
-  0xff8800, 0xeed040, 0x40dddd, 0xff66bb, 0x111111
-];
-function spawnPits(){
-  let z = -50;
+const pits = [];                 // kept empty; old pit code paths become no-ops
+const shelters = [];
+const SHELTER_DEPTH = 3.4;       // how far behind the rock you are covered
+function spawnShelters(){
+  const rnd = makeSeededRng(20261015);
+  const rockMats = [new THREE.MeshLambertMaterial({ color: 0xbfae98 }), new THREE.MeshLambertMaterial({ color: 0xa99a86 })];
+  const mossMat = new THREE.MeshLambertMaterial({ color: 0x8fc472 });
+  const safeMat = new THREE.MeshBasicMaterial({ color: 0x8fd0f0, transparent: true, opacity: 0.45, depthWrite: false });
+  const rockGeo = new THREE.SphereGeometry(1, 20, 14);
+  let z = -40;
   while (z > -RUNWAY_LEN + 20){
-    const dist = -z;
-    const zone = Math.min(NUM_ZONES - 1, Math.floor(dist / ZONE_LEN));
+    const zone = Math.min(NUM_ZONES - 1, Math.floor(-z / ZONE_LEN));
     const baseSpacing = 22 + zone * 16;
-    const jitter = baseSpacing * 0.18;
-    const spacing = baseSpacing + (Math.random() - 0.5) * 2 * jitter;
-    // Zone 0 pits are visibly smaller (open to anyone)
-    const sizeMul = zone === 0 ? 0.65 : 1.0;
-    const x = (Math.random() * 2 - 1) * (RUNWAY_HALF_W - 5);
-    const rim  = mkPlane(8 * sizeMul, 6 * sizeMul, PIT_RIM_COLORS[zone]);
-    const hole = mkPlane(6.4 * sizeMul, 4.6 * sizeMul, 0x0a0604);
-    rim.position.set(x, 0.03, z);
-    hole.position.set(x, 0.04, z);
-    scene.add(rim); scene.add(hole);
-    pits.push({
-      x, z,
-      rx: 3.5 * sizeMul, rz: 2.5 * sizeMul,
-      zone,
-      jumpReq: zone,
-      depth: 1.5 + zone * 0.5,    // shallow pit in zone 0, deeper as you go
-    });
+    const spacing = baseSpacing * (0.82 + rnd() * 0.36);
+    const r = Math.max(1.7, 3.0 - zone * 0.14);          // rocks get smaller deeper in
+    const h = 2.6 + rnd() * 0.6;
+    const x = (rnd() * 2 - 1) * (RUNWAY_HALF_W - 5);
+    const g = new THREE.Group();
+    const rock = new THREE.Mesh(rockGeo, rockMats[rnd() < 0.5 ? 0 : 1]);
+    rock.scale.set(r, h, r * 0.8);
+    g.add(rock);
+    const moss = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.35), mossMat);
+    moss.scale.set(r * 1.03, h * 1.03, r * 0.83);
+    g.add(moss);
+    sbOutline(g, 0.07);
+    // Safe patch on the ground behind the rock
+    const safe = new THREE.Mesh(new THREE.PlaneGeometry(r * 1.7, SHELTER_DEPTH), safeMat);
+    safe.rotation.x = -Math.PI / 2;
+    safe.position.set(0, 0.035, r * 0.8 + SHELTER_DEPTH / 2 - 0.4);
+    g.add(safe);
+    g.position.set(x, 0, z);
+    g.rotation.y = 0;
+    scene.add(g);
+    shelters.push({ x, z, r, rz: r * 0.8, h, zone });
     z -= spacing;
   }
 }
-spawnPits();
+// Is (x, z) inside the covered pocket behind some rock?
+function shelterAt(x, z){
+  for (const sh of shelters){
+    const dz = z - sh.z;
+    if (dz > sh.rz - 0.6 && dz < sh.rz + SHELTER_DEPTH - 0.4 && Math.abs(x - sh.x) < sh.r * 0.85) return sh;
+  }
+  return null;
+}
+spawnShelters();
 
 // ============================================================
 // PLAYER (rebuildable from customization)
@@ -4008,6 +4030,8 @@ function update(now){
       if ((Math.abs(dz) < 2.4 || passed) && Math.abs(dx) < halfW){
         if (player.position.y > ts.waveType.height * ts.obj.group.scale.y + 0.3){
           // jumped clean over the wave (works for any type if jump high enough)
+        } else if (ts.waveType.id !== 'titan' && shelterAt(player.position.x, player.position.z)){
+          if (!ts.shelterToast){ ts.shelterToast = true; toast('躲在石頭後面，浪從頭上打過去！'); }
         } else {
           killPlayer();
         }
@@ -5230,9 +5254,9 @@ const PALETTES = {
 const TUTORIAL_STEPS = [
   '用 WASD（或左下搖桿）跑出基地，撿沿途的 R$ 銀幣。深區的更值錢。',
   '⚡ 按住 Shift（手機點「衝刺」）→ 跑得快但不會自動撿幣，讓你穿越低值區直奔深區。慢走才會自動撿。撿磁鐵道具時例外，磁鐵期間照常吸幣。',
-  '看到「海嘯警報」會顯示需要的跳高 Lv。跳得夠高就跳過去（綠浪 Lv3 / 藍紅 Lv6 / 紫巨 Lv9 / 黑災 Lv15）；不夠就躲坑。⚠ 窄浪現在 30% 機率變雙重夾擊（左右各一條），中間才是安全通道。',
-  '坑現在是真的洞 — 跳進去（按 Space）、海嘯過後再跳出來。坑緣顏色標記需要的跳高 Lv（棕 / 綠 / 藍 / 紫 / 紅 …）',
-  '跳高不夠的坑「走不過去」— 整個坑當成牆，得繞開或回基地升級跳高。',
+  '看到「海嘯警報」會顯示需要的跳高 Lv。跳得夠高就跳過去（綠浪 Lv3 / 藍紅 Lv6 / 紫巨 Lv9 / 黑災 Lv15）；不夠就躲到石頭後面。⚠ 窄浪現在 30% 機率變雙重夾擊（左右各一條），中間才是安全通道。',
+  '跑道上的大石頭可以當掩護：站在石頭「後面」地上那塊淡藍色的地方，海嘯會從頭上打過去。越深的區域石頭越小、越少。',
+  '⚠ 黑色災難浪連石頭都擋不住，只能跳過去或逃回基地！',
   '活著回到山頂（金色光柱）→ 自動把背包換成存款。按 B 開商店升級裝備。',
   '死了寶藏掉在原地變大金箱，所有玩家都能撿。背包滿時撿到剩餘的會灑在地上變散幣。',
   '右手拿著木棒！按 F（手機點「揍」按鈕）對前方 6 公尺內的玩家揮棒，被打中的會被擊飛、50% 機率暈眩 0.5 秒。冷卻 2 秒。商店裡升級「力量」可以打得更遠（甚至可以把人打進海嘯裡）。',
