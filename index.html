@@ -2295,7 +2295,7 @@ if (!MP_ENABLED){
 // ============================================================
 const pits = [];                 // kept empty; old pit code paths become no-ops
 const shelters = [];
-const SHELTER_DEPTH = 3.4;       // how far behind the rock you are covered
+const SHELTER_DEPTH = 4.2;       // how far behind the rock you are covered
 function spawnShelters(){
   const rnd = makeSeededRng(20261015);
   const rockMats = [new THREE.MeshLambertMaterial({ color: 0xbfae98 }), new THREE.MeshLambertMaterial({ color: 0xa99a86 })];
@@ -2319,7 +2319,7 @@ function spawnShelters(){
     g.add(moss);
     sbOutline(g, 0.07);
     // Safe patch on the ground behind the rock
-    const safe = new THREE.Mesh(new THREE.PlaneGeometry(r * 1.7, SHELTER_DEPTH), safeMat);
+    const safe = new THREE.Mesh(new THREE.PlaneGeometry(r * 2.0, SHELTER_DEPTH), safeMat);
     safe.rotation.x = -Math.PI / 2;
     safe.position.set(0, 0.035, r * 0.8 + SHELTER_DEPTH / 2 - 0.4);
     g.add(safe);
@@ -2334,7 +2334,7 @@ function spawnShelters(){
 function shelterAt(x, z){
   for (const sh of shelters){
     const dz = z - sh.z;
-    if (dz > sh.rz - 0.6 && dz < sh.rz + SHELTER_DEPTH - 0.4 && Math.abs(x - sh.x) < sh.r * 0.85) return sh;
+    if (dz > 0 && dz < sh.rz + SHELTER_DEPTH - 0.4 && Math.abs(x - sh.x) < sh.r * 1.05) return sh;
   }
   return null;
 }
@@ -4053,10 +4053,11 @@ function update(now){
           // jumped clean over the wave (works for any type if jump high enough)
         } else if (ts.surfed){
           // already riding (or rode) this one
+        } else if (ts.waveType.id !== 'titan' && shelterAt(player.position.x, player.position.z)){
+          // Hiding behind a rock always wins, even over surfing
+          if (!ts.shelterToast){ ts.shelterToast = true; toast('躲在石頭後面，浪從頭上打過去！'); }
         } else if (ts.waveType.id === 'surf' && typeof equippedBoard === 'function' && equippedBoard() && !state.surf){
           startSurf(ts);
-        } else if (ts.waveType.id !== 'titan' && shelterAt(player.position.x, player.position.z)){
-          if (!ts.shelterToast){ ts.shelterToast = true; toast('躲在石頭後面，浪從頭上打過去！'); }
         } else {
           killPlayer();
         }
