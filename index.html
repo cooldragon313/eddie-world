@@ -895,8 +895,12 @@ function sbOutline(root, t){
 // 'etfm.cooldragon313.partykit.dev'. For local dev: 'localhost:1999'.
 // Pages served from localhost talk to the local `npm run dev` server, so
 // testing never touches the live server or real accounts.
-const PARTYKIT_HOST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
-  ? 'localhost:1999'
+// Anywhere else (a claude.ai preview link, a file opened from disk, ?solo)
+// runs solo with no server so designs can be reviewed on a phone.
+const PREVIEW_SOLO = new URLSearchParams(location.search).has('solo') ||
+  !(/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /github\.io$/.test(location.hostname));
+const PARTYKIT_HOST = PREVIEW_SOLO ? ''
+  : /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'localhost:1999'
   : 'etfm.cooldragon313.partykit.dev';
 const MP_ROOM = 'global';
 const MP_ENABLED = !!PARTYKIT_HOST;
@@ -5165,6 +5169,7 @@ document.getElementById('title-continue').addEventListener('click', () => {
   getAudioCtx();
   startBgm();
   hide('title-screen');
+  if (PREVIEW_SOLO){ applyCustomToUI(); show('creator-screen'); return; }   // no accounts in preview
   if (!authToken){
     showAuthScreen();
     return;
