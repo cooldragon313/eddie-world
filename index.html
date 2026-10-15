@@ -591,6 +591,18 @@
     #chat-input { top: calc(8px + env(safe-area-inset-top, 0px)); bottom: auto; width: min(60vw, 420px); left: 50%; }
     #chat-input.show + #chat-mic { top: calc(6px + env(safe-area-inset-top, 0px)); bottom: auto; left: calc(50% + min(30vw, 210px) + 6px); }
   }
+  /* Close ✕ on every shop panel + jump from upgrades to the costume shop */
+  #shop, #build-shop, #cos-shop { position: fixed; }
+  .panel-close { position: absolute; top: 10px; right: 12px; width: 36px; height: 36px; border-radius: 50%;
+                 border: 2.5px solid var(--sb-ink); background: #fff; color: var(--sb-ink);
+                 font: 700 18px/1 var(--sb-font); cursor: pointer; box-shadow: 0 3px 0 rgba(91,58,41,0.3); }
+  #goto-cos { display: block; margin: 12px auto 0; padding: 9px 18px; border-radius: 999px;
+              border: 2.5px solid var(--sb-ink); background: #ffd6e8; color: var(--sb-ink);
+              font: 700 14px/1 var(--sb-font); cursor: pointer; box-shadow: 0 3px 0 rgba(91,58,41,0.3); }
+  #btn-cos { top: 132px; width: 64px; height: 64px; font-size: 14px; background: #ffd6e8; }
+  @media (max-width: 900px), (max-height: 520px) {
+    #btn-cos { top: calc(102px + env(safe-area-inset-top, 0px)); width: 52px; height: 52px; font-size: 12px; }
+  }
   /* Portrait phone: the game is played sideways, so ask for a turn */
   @media (orientation: portrait) and (max-width: 600px) {
     body.touch-mode::after {
@@ -840,13 +852,16 @@
 </div>
 
 <div id="shop">
+  <button class="panel-close" data-close="shop" aria-label="關閉">✕</button>
   <h3>★ 強 化 商 店 ★</h3>
   <div class="money-bar">持有金錢：$<span id="shop-money">0</span></div>
   <div id="shop-list"></div>
+  <button id="goto-cos" type="button">✨ 造型店：衝浪板 · 背包 · 帽子 →</button>
   <div class="hint">按 <kbd>B</kbd> 或 <kbd>Esc</kbd> 關閉</div>
 </div>
 
 <div id="build-shop">
+  <button class="panel-close" data-close="build" aria-label="關閉">✕</button>
   <h3>🏗 建 造 你 的 家 🏗</h3>
   <div class="money-bar">$<span id="b-money">0</span> · 🪵<span id="b-wood">0</span> · 🪨<span id="b-stone">0</span> · ⚙️<span id="b-iron">0</span></div>
   <div id="b-tabs">
@@ -861,6 +876,7 @@
 </div>
 
 <div id="cos-shop">
+  <button class="panel-close" data-close="cos" aria-label="關閉">✕</button>
   <h3>✨ 造 型 店 ✨</h3>
   <div class="money-bar">持有金錢：$<span id="cos-money">0</span></div>
   <div id="cos-tabs">
@@ -881,6 +897,7 @@
   <div id="btn-jump" class="touch-btn">跳</div>
   <div id="btn-punch" class="touch-btn">揍</div>
   <div id="btn-shop" class="touch-btn">商店</div>
+  <div id="btn-cos" class="touch-btn">造型</div>
   <div id="btn-zoom-out" class="touch-btn mini" aria-label="鏡頭拉遠">－</div>
   <div id="btn-zoom-in" class="touch-btn mini" aria-label="鏡頭拉近">＋</div>
   <div id="btn-chat" class="touch-btn mini" aria-label="聊天">💬</div>
@@ -6034,6 +6051,17 @@ update = (orig => function(now){
   try { surfTick(Math.min(0.05, (state._lastSurfNow ? (now - state._lastSurfNow) / 1000 : 0.016))); } catch(e){ console.error(e); state.surf = null; }
   state._lastSurfNow = now;
 })(update);
+
+// Shop close buttons, costume-shop shortcut, phone 造型 button
+document.querySelectorAll('.panel-close').forEach(b => b.addEventListener('click', e => {
+  e.stopPropagation();
+  const k = b.dataset.close;
+  if (k === 'shop' && shopOpen) toggleShop();
+  else if (k === 'cos' && cosShopOpen) toggleCosShop();
+  else if (k === 'build' && buildShopOpen) toggleBuildShop();
+}));
+document.getElementById('goto-cos').addEventListener('click', () => { if (shopOpen) toggleShop(); if (!cosShopOpen) toggleCosShop(); });
+bindTouchButton('btn-cos', () => { toggleCosShop(); });
 
 // Storybook ink lines: wrap every builder of things the player looks at
 // (characters, loot, power-ups, houses) so new spawns get outlines too.
