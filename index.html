@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Escape Tsunami — 3D 方塊版 MVP</title>
+<title>Escape Tsunami 海嘯撿錢</title>
 <style>
   body { margin:0; background:#000; color:#eee; font-family: monospace; overflow:hidden; }
   #stage { position: fixed; inset: 0; }
@@ -367,7 +367,157 @@
     25%  { transform: scale(1.6); color: #fff; text-shadow: 0 0 16px #ffd700, 0 0 4px #fff; }
     100% { transform: scale(1); color: #ffd700; }
   }
+
+  /* ============================================================
+     STORYBOOK THEME (Q 版 · 繪本) — overrides the original terminal look.
+     Cream paper panels, brown ink lines (same brown as the 3D outlines),
+     rounded type. Kept as one block so it can be reverted in one cut.
+     ============================================================ */
+  :root {
+    --sb-paper: #fff8ec;
+    --sb-paper-2: #f6ead2;
+    --sb-ink: #5b3a29;          /* matches 3D outline colour */
+    --sb-text: #4a3426;
+    --sb-muted: #9a7d5f;
+    --sb-line: #e2c9a0;
+    --sb-gold: #e8a317;
+    --sb-gold-soft: #ffcf5a;
+    --sb-mint: #7cc79a;
+    --sb-sky: #6fb3e0;
+    --sb-red: #e0584a;
+    --sb-font: "Fredoka", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  }
+  body, body button, body input, body .overlay, body #chat-input { font-family: var(--sb-font) !important; }
+  body { background: #cfe6f0; }
+  kbd { background: var(--sb-paper); color: var(--sb-ink); border: 1.5px solid var(--sb-ink);
+        border-bottom-width: 3px; border-radius: 6px; font-family: var(--sb-font); }
+  #color-grade { display: none; }
+
+  /* Floating HUD panels */
+  #hud, #zone-tag, #help, #leaderboard, #player-list, #resource-bar, #chat-hint, #toast {
+    background: rgba(255,248,236,0.92); color: var(--sb-text);
+    border: 2px solid var(--sb-ink); border-radius: 14px;
+    box-shadow: 0 3px 0 rgba(91,58,41,0.25);
+  }
+  #hud .label { color: var(--sb-muted); }
+  #hud .value { color: var(--sb-text); }
+  #hud .gold, #resource-bar .ico, #resource-bar #res-money,
+  #leaderboard .title, #player-list .title, #leaderboard .row .dist { color: var(--sb-gold); }
+  #leaderboard .row .name, #player-list .row { color: var(--sb-text); }
+  #leaderboard .row.me .name, #player-list .row.me { color: #c27a00; }
+  #leaderboard .row .rank, #leaderboard .empty, #chat-hint { color: var(--sb-muted); }
+  #sfx-toggle, #bgm-toggle { color: var(--sb-text); }
+  #help { color: var(--sb-muted); }
+  @keyframes moneyFlash {
+    0%   { transform: scale(1); color: var(--sb-gold); }
+    25%  { transform: scale(1.6); color: #ff9b2e; text-shadow: 0 0 10px #ffe08a; }
+    100% { transform: scale(1); color: var(--sb-gold); }
+  }
+
+  /* Prompts, warnings, death */
+  #hilltop-prompt, #plot-prompt {
+    background: var(--sb-gold-soft); color: var(--sb-ink);
+    border: 2.5px solid var(--sb-ink); border-radius: 999px;
+    box-shadow: 0 4px 0 rgba(91,58,41,0.3);
+  }
+  #warn { color: #ff5a3c; letter-spacing: 4px;
+          -webkit-text-stroke: 2px var(--sb-ink);
+          text-shadow: 0 4px 0 rgba(91,58,41,0.45); }
+  #death { background: rgba(91,58,41,0.55); }
+  #death > div:first-child { -webkit-text-stroke: 1.5px var(--sb-ink); }
+  #death .sub { color: #ffe9c9; }
+
+  /* Shops + menu cards share one paper card */
+  #shop, #build-shop, #cos-shop, .overlay-card {
+    background: var(--sb-paper); color: var(--sb-text);
+    border: 3px solid var(--sb-ink); border-radius: 22px;
+    box-shadow: 0 8px 0 rgba(91,58,41,0.25), 0 18px 40px rgba(0,0,0,0.25);
+  }
+  .overlay { background: rgba(70,48,32,0.55); color: var(--sb-text); }
+  #shop h3, #build-shop h3, #cos-shop h3, .overlay h1, .overlay h2 { color: var(--sb-ink); letter-spacing: 2px; }
+  .overlay h1 { font-size: 34px; color: #e9822c; -webkit-text-stroke: 1.5px var(--sb-ink); }
+  .overlay .subtitle { color: var(--sb-sky); letter-spacing: 6px; }
+  .overlay p, .overlay li { color: var(--sb-text) !important; }
+  .overlay .lore { color: var(--sb-text); background: var(--sb-paper-2);
+                   border-left: 4px solid var(--sb-gold); border-radius: 0 12px 12px 0; }
+  .money-bar, #shop .money-bar, #build-shop .money-bar, #cos-shop .money-bar { color: #c27a00 !important; font-weight: 700; }
+  #shop .hint, #build-shop .hint, #cos-shop .hint, .auth-hint, .auth-bottom,
+  #tutorial-pager, .creator-row > label, .auth-field label { color: var(--sb-muted) !important; }
+
+  /* Buttons: one chunky pill style everywhere */
+  .overlay button, #auth-submit, .upgrade button, .b-item button, .cos-item button,
+  #cos-redesign, .profile-row button {
+    background: var(--sb-gold-soft) !important; color: var(--sb-ink) !important;
+    border: 2.5px solid var(--sb-ink) !important; border-radius: 999px;
+    box-shadow: 0 4px 0 rgba(91,58,41,0.35); font-weight: 700; letter-spacing: 1px;
+  }
+  .overlay button:hover, #auth-submit:hover, .upgrade button:hover:not(:disabled),
+  .b-item button:hover:not(:disabled), .cos-item button:hover:not(:disabled) { filter: brightness(1.05); }
+  .overlay button:active, .upgrade button:active, .b-item button:active, .cos-item button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(91,58,41,0.35); }
+  .upgrade button:disabled, .b-item button:disabled, .cos-item button:disabled, #cos-redesign:disabled {
+    background: #efe4d2 !important; color: #b9a58a !important; border-color: #cdb999 !important; box-shadow: none;
+  }
+  #title-switch, #migrate-skip, #reset-btn { background: transparent !important; box-shadow: none !important;
+    border: 1.5px dashed var(--sb-muted) !important; color: var(--sb-muted) !important; }
+  #reset-step2, #reset-final-confirm, .profile-row button.danger { background: var(--sb-red) !important; color: #fff !important; }
+  #reset-cancel, #reset-final-cancel { background: #fff !important; }
+
+  /* Shop rows / items */
+  .upgrade { border-bottom: 1.5px dashed var(--sb-line); }
+  .upgrade .lv { color: var(--sb-sky); font-weight: 700; }
+  .upgrade .stat { color: var(--sb-muted); }
+  .b-item, .cos-item { background: #fff; border: 2px solid var(--sb-line); border-radius: 14px; }
+  .b-item .name, .cos-item .name { color: var(--sb-text); }
+  .b-item .cost, .cos-item .price { color: #c27a00; }
+  .b-item .cost .ok { color: #3f9a62; } .b-item .cost .bad { color: var(--sb-red); }
+  .b-item.equipped, .cos-item.equipped { border-color: var(--sb-ink); box-shadow: 0 0 0 3px var(--sb-gold-soft); }
+  .cos-item.owned { border-color: var(--sb-mint); }
+  #b-tabs button, #cos-tabs button, .auth-tab {
+    background: #fff; color: var(--sb-text); border: 2px solid var(--sb-line); border-radius: 999px;
+  }
+  #b-tabs button.active, #cos-tabs button.active, .auth-tab.active {
+    background: var(--sb-ink); color: #fff; border-color: var(--sb-ink);
+  }
+
+  /* Forms */
+  .creator-row input[type=text], .auth-field input {
+    background: #fff; color: var(--sb-text); border: 2px solid var(--sb-line); border-radius: 12px;
+  }
+  .creator-row input[type=text]:focus, .auth-field input:focus { border-color: var(--sb-ink); }
+  .swatch { border: 2px solid var(--sb-line); border-radius: 10px; }
+  .swatch.style { background: #fff; color: var(--sb-text); }
+  .swatch.selected { border-color: var(--sb-ink); box-shadow: 0 0 0 3px var(--sb-gold-soft); }
+  .auth-error { color: var(--sb-red); } .auth-status { color: #c27a00; }
+  .profile-row, .migrate-row { background: #fff; color: var(--sb-text); border: 2px solid var(--sb-line); border-radius: 12px; }
+  .profile-row .pname, .migrate-row .mname { color: var(--sb-text); }
+  .profile-row .pstats, .migrate-row .mstats { color: var(--sb-muted); }
+  #tutorial-text { color: var(--sb-text); background: var(--sb-paper-2); border-left: 4px solid var(--sb-sky); border-radius: 0 12px 12px 0; }
+  #reset-screen .overlay-card, #reset-final-screen .overlay-card { background: #fff1ec !important; border-color: var(--sb-red) !important; }
+  #reset-screen h2, #reset-final-screen h2 { color: var(--sb-red) !important; }
+
+  /* Chat */
+  #chat-log { background: rgba(255,248,236,0.55); border: 2px solid var(--sb-line); border-radius: 14px; }
+  #chat-log .msg { background: rgba(255,255,255,0.85); color: var(--sb-text); border-left: 3px solid var(--sb-gold); border-radius: 0 8px 8px 0; }
+  #chat-log .msg .name { color: #c27a00; } #chat-log .msg .ts { color: var(--sb-muted); }
+  #chat-input { background: var(--sb-paper); color: var(--sb-text); border: 2.5px solid var(--sb-ink); border-radius: 999px; }
+
+  /* Touch controls: cream buttons with brown ink */
+  #stick { background: rgba(255,248,236,0.35); border: 3px solid rgba(91,58,41,0.55); }
+  #stick-knob { background: rgba(255,248,236,0.95); border: 2.5px solid var(--sb-ink); box-shadow: 0 3px 0 rgba(91,58,41,0.3); }
+  .touch-btn { color: var(--sb-ink); border: 3px solid var(--sb-ink) !important; font-weight: 700;
+               box-shadow: 0 4px 0 rgba(91,58,41,0.35); }
+  #btn-jump { background: var(--sb-gold-soft); }
+  #btn-sprint { background: #ffe0c2; }
+  #btn-punch { background: #ffc4bb; }
+  #btn-shop { background: #d8f0e0; }
+  .touch-btn:active, .touch-btn.pressed { transform: translateY(3px); box-shadow: 0 1px 0 rgba(91,58,41,0.35); filter: brightness(0.95); }
+  #btn-jump:active, #btn-jump.pressed { background: #ffc23a; }
+  #btn-sprint:active, #btn-sprint.pressed { background: #ffcf9e; }
+  #btn-punch:active, #btn-punch.pressed { background: #ffab9e; }
+  #btn-shop:active, #btn-shop.pressed { background: #bfe6cc; }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
 </head>
 <body>
 <div id="stage"></div>
@@ -671,12 +821,66 @@
 <script src="https://unpkg.com/three@0.128.0/examples/js/shaders/FXAAShader.js"></script>
 <script>
 // ============================================================
+// STORYBOOK LOOK (Q 版 · 繪本) — spec in docs/PLAN-去像素化.md
+// Every MeshLambertMaterial in the game becomes a 4-step toon material with
+// slightly calmer colours, so all existing builders pick up the look without
+// being rewritten. Brown ink outlines are added separately by sbOutline().
+// ============================================================
+const SB_INK = 0x5b3a29;
+const SB_RAMP = (() => {
+  const steps = [115, 165, 210, 240], d = new Uint8Array(steps.length * 3);
+  steps.forEach((v, i) => d.fill(v, i * 3, i * 3 + 3));
+  const t = new THREE.DataTexture(d, steps.length, 1, THREE.RGBFormat);
+  t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true;
+  return t;
+})();
+function sbTint(c){ return new THREE.Color(c).offsetHSL(0, -0.10, -0.03); }
+(() => {
+  const Toon = THREE.MeshToonMaterial;
+  function StorybookLambert(p){
+    p = Object.assign({}, p || {});
+    if (p.color !== undefined) p.color = sbTint(p.color);
+    delete p.reflectivity; delete p.combine; delete p.envMap;
+    return new Toon(Object.assign({ gradientMap: SB_RAMP }, p));
+  }
+  StorybookLambert.prototype = Toon.prototype;
+  THREE.MeshLambertMaterial = StorybookLambert;
+})();
+const SB_LINE_MAT = new THREE.MeshBasicMaterial({ color: SB_INK, side: THREE.BackSide });
+const _sbSize = new THREE.Vector3();
+// Inverted-hull outline: a slightly larger back-face copy in ink colour.
+// Per-axis scale keeps the line the same thickness on long thin boxes.
+function sbOutline(root, t){
+  t = t || 0.04;
+  root.traverse(o => {
+    if (!o.isMesh || o.userData.sbLine || o.userData.sbHasLine) return;
+    const m = o.material, g = o.geometry;
+    if (!m || !m.isMeshToonMaterial || m.transparent || !g || g.type === 'PlaneGeometry') return;
+    if (!g.boundingBox) g.computeBoundingBox();
+    g.boundingBox.getSize(_sbSize);
+    if (Math.max(_sbSize.x, _sbSize.y, _sbSize.z) < 0.2) return;   // eyes, mouths, tiny trims
+    const k = v => Math.min(1.35, 1 + 2 * t / Math.max(v, 0.05));
+    const hull = new THREE.Mesh(g, SB_LINE_MAT);
+    hull.userData.sbLine = true;
+    hull.scale.set(k(_sbSize.x), k(_sbSize.y), k(_sbSize.z));
+    hull.raycast = () => {};
+    o.add(hull);
+    o.userData.sbHasLine = true;
+  });
+  return root;
+}
+
+// ============================================================
 // CONFIG
 // ============================================================
 // Multiplayer (PartyKit). Leave empty to play solo. After running
 // `npx partykit deploy`, copy the host (no protocol, no path) here, e.g.
 // 'etfm.cooldragon313.partykit.dev'. For local dev: 'localhost:1999'.
-const PARTYKIT_HOST = 'etfm.cooldragon313.partykit.dev';
+// Pages served from localhost talk to the local `npm run dev` server, so
+// testing never touches the live server or real accounts.
+const PARTYKIT_HOST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+  ? 'localhost:1999'
+  : 'etfm.cooldragon313.partykit.dev';
 const MP_ROOM = 'global';
 const MP_ENABLED = !!PARTYKIT_HOST;
 
@@ -849,9 +1053,9 @@ function ensureComposer(){
 // flat scene.background colour set elsewhere.
 // ============================================================
 const skyUniforms = {
-  topColor:    { value: new THREE.Color(0x4a9be0) },
-  midColor:    { value: new THREE.Color(0xa0d8f0) },
-  bottomColor: { value: new THREE.Color(0xfff0d0) },
+  topColor:    { value: new THREE.Color(0x8cc4ea) },
+  midColor:    { value: new THREE.Color(0xd8ecf2) },
+  bottomColor: { value: new THREE.Color(0xf6ead2) },
   offset:      { value: 80 },
   exponent:    { value: 0.7 },
 };
@@ -919,31 +1123,20 @@ function applyGraphicsPreset(n){
   localStorage.setItem('etfm-gfx', String(state.gfx));
 
   // --- Renderer-level toggles ---
-  if (state.gfx === 0){
-    renderer.toneMapping = THREE.NoToneMapping;
-    renderer.toneMappingExposure = 1.0;
-    renderer.outputEncoding = THREE.LinearEncoding;
-  } else {
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
-    renderer.outputEncoding = THREE.sRGBEncoding;
-  }
+  // Storybook palette is authored in linear output with no tone mapping;
+  // ACES would wash the toon bands out, so every preset uses the same curve.
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.outputEncoding = THREE.LinearEncoding;
 
-  // --- Lighting ---
-  if (state.gfx === 0){
-    ambientLight.intensity = 0.7;
-    hemiLight.intensity = 0;
-    dirLight.color.setHex(0xffffff);
-    dirLight.intensity = 0.7;
-    dirLight.position.set(20, 30, 10);
-  } else {
-    // Drop flat ambient; let hemisphere give sky/ground colour bounce + warm sun
-    ambientLight.intensity = 0.15;
-    hemiLight.intensity = 0.55;
-    dirLight.color.setHex(0xfff4d0);
-    dirLight.intensity = 1.05;
-    dirLight.position.set(60, 110, 40);
-  }
+  // --- Lighting: same warm storybook rig on every preset ---
+  ambientLight.intensity = 0;
+  hemiLight.color.setHex(0xfff2dc);
+  hemiLight.groundColor.setHex(0xb9d99c);
+  hemiLight.intensity = 0.78;
+  dirLight.color.setHex(0xffeccc);
+  dirLight.intensity = 0.55;
+  dirLight.position.set(60, 110, 40);
 
   // --- Shadows ---
   if (state.gfx >= 2){
@@ -960,16 +1153,18 @@ function applyGraphicsPreset(n){
   skyDome.visible = state.gfx >= 2;
   if (state.gfx >= 2){
     scene.background = null;
-    if (scene.fog) scene.fog.color.setHex(state.storm ? 0x4a3030 : 0xa0d8f0);
+    if (scene.fog) scene.fog.color.setHex(state.storm ? 0x6a4a5a : 0xeee4d0);
   } else {
-    scene.background = new THREE.Color(state.storm ? 0x4a3030 : 0x87ceeb);
-    if (scene.fog) scene.fog.color.setHex(state.storm ? 0x4a3030 : 0x87ceeb);
+    scene.background = new THREE.Color(state.storm ? 0x6a4a5a : 0xcfe6f0);
+    if (scene.fog) scene.fog.color.setHex(state.storm ? 0x6a4a5a : 0xcfe6f0);
   }
 
   // --- Post-processing (Cinema only) ---
+  // Brown ink lines are real geometry now, so the black OutlinePass is off;
+  // Cinema only adds bloom on top.
   if (state.gfx >= 3){
     ensureComposer();
-    if (outlinePass) refreshOutlineSelection();
+    if (outlinePass) outlinePass.enabled = false;
   }
 
   // --- Emissive boost on shiny objects ---
@@ -1002,7 +1197,7 @@ let showGfxLabel = () => {};
 // ============================================================
 const mk = (w,h,d,c) => new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshLambertMaterial({color:c}));
 const mkPlane = (w,h,c) => {
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({color:c}));
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({color:sbTint(c)}));
   m.rotation.x = -Math.PI/2;
   return m;
 };
@@ -1010,12 +1205,12 @@ const mkPlane = (w,h,c) => {
 // ============================================================
 // WORLD: ground, grass, mountains
 // ============================================================
-const ground = mkPlane(RUNWAY_HALF_W*2, RUNWAY_LEN + 40, 0xc9a96a);
+const ground = mkPlane(RUNWAY_HALF_W*2, RUNWAY_LEN + 40, 0xe6c896);
 ground.position.set(0, 0, -RUNWAY_LEN/2 + 5);
 scene.add(ground);
 
 [-1, 1].forEach(side => {
-  const grass = mkPlane(100, RUNWAY_LEN + 40, 0x3a7d3a);
+  const grass = mkPlane(100, RUNWAY_LEN + 40, 0xa2d184);
   grass.position.set(side * 70, -0.05, -RUNWAY_LEN/2 + 5);
   scene.add(grass);
 });
@@ -1024,23 +1219,33 @@ scene.add(ground);
 // has something physical to bump into instead of an invisible wall at ±20.
 // Mountain depth (X) is 22, so center at RUNWAY_HALF_W + 11 = 31 puts its inner
 // face at RUNWAY_HALF_W (= 20).
+// Storybook: the box mountains became rounded hills (half-buried ellipsoids
+// with the same footprint and height), alternating two greens.
+const hillGeo = new THREE.SphereGeometry(1, 22, 12);
+const hillMats = [new THREE.MeshLambertMaterial({ color: 0x8fc472 }), new THREE.MeshLambertMaterial({ color: 0x7fb866 })];
+let hillN = 0;
 for (let z = -16; z > -RUNWAY_LEN; z -= 26){
   const hL = 8 + Math.random() * 8;
   const hR = 8 + Math.random() * 8;
-  const ml = mk(22, hL, 24, 0x6B4423);
-  const mr = mk(22, hR, 24, 0x6B4423);
-  ml.position.set(-(RUNWAY_HALF_W + 11) - Math.random() * 2, hL/2, z);
-  mr.position.set( (RUNWAY_HALF_W + 11) + Math.random() * 2, hR/2, z);
+  const ml = new THREE.Mesh(hillGeo, hillMats[hillN++ % 2]);
+  const mr = new THREE.Mesh(hillGeo, hillMats[hillN % 2]);
+  ml.scale.set(13, hL, 15); mr.scale.set(13, hR, 15);
+  ml.position.set(-(RUNWAY_HALF_W + 11) - Math.random() * 2, 0, z);
+  mr.position.set( (RUNWAY_HALF_W + 11) + Math.random() * 2, 0, z);
   scene.add(ml); scene.add(mr);
 }
-// Additional shorter ridge of darker stone bricks hugging the runway lip
-// fills the small gaps when the main mountain chunks have spacing
+// Rounded pebbles hugging the runway lip fill the gaps between hills
+const rockGeo = new THREE.SphereGeometry(1, 12, 8);
+const rockMats = [new THREE.MeshLambertMaterial({ color: 0xc8b8a2 }), new THREE.MeshLambertMaterial({ color: 0xb3a28c })];
 for (let z = -16; z > -RUNWAY_LEN; z -= 6){
-  const bl = mk(2.5, 2.5 + Math.random() * 1.5, 5, 0x4d3018);
-  const br = mk(2.5, 2.5 + Math.random() * 1.5, 5, 0x4d3018);
-  bl.position.set(-(RUNWAY_HALF_W + 1.1), bl.geometry.parameters.height/2, z);
-  br.position.set( (RUNWAY_HALF_W + 1.1), br.geometry.parameters.height/2, z);
-  scene.add(bl); scene.add(br);
+  for (const side of [-1, 1]){
+    const h = 2.5 + Math.random() * 1.5;
+    const r = new THREE.Mesh(rockGeo, rockMats[Math.random() < 0.5 ? 0 : 1]);
+    r.scale.set(1.5, h * 0.75, 3.1);
+    r.position.set(side * (RUNWAY_HALF_W + 1.1), h * 0.25, z);
+    r.rotation.y = (Math.random() - 0.5) * 0.6;
+    scene.add(r);
+  }
 }
 
 // Difficulty zone stripes (colored bands across runway)
@@ -1056,7 +1261,7 @@ for (let i = 0; i < NUM_ZONES; i++){
 
 // Speed-feel grid lines
 for (let z = 0; z > -RUNWAY_LEN; z -= 8){
-  const line = mkPlane(0.4, 1.6, 0xa8884a);
+  const line = mkPlane(0.4, 1.6, 0xd2b07c);
   line.position.set(0, 0.03, z);
   scene.add(line);
 }
@@ -1071,18 +1276,18 @@ const PLAZA_HALF_W = 50;
 const PLAZA_Z_START = 4;
 const PLAZA_Z_END   = 24;
 const PLAZA_CENTER_Z = (PLAZA_Z_START + PLAZA_Z_END) / 2;
-const plaza = mkPlane(PLAZA_HALF_W * 2, PLAZA_Z_END - PLAZA_Z_START, 0x8B5A2B);
+const plaza = mkPlane(PLAZA_HALF_W * 2, PLAZA_Z_END - PLAZA_Z_START, 0xd6a874);
 plaza.position.set(0, 0.008, PLAZA_CENTER_Z);
 scene.add(plaza);
 // Plank lines for texture
 for (let z = PLAZA_Z_START + 0.6; z < PLAZA_Z_END; z += 1.6){
-  const plank = mkPlane(PLAZA_HALF_W * 2, 0.10, 0x5a3a1a);
+  const plank = mkPlane(PLAZA_HALF_W * 2, 0.10, 0xa8784c);
   plank.position.set(0, 0.013, z);
   scene.add(plank);
 }
 // Side trim
 [-1, 1].forEach(side => {
-  const trim = mkPlane(0.6, PLAZA_Z_END - PLAZA_Z_START, 0x3a2a1a);
+  const trim = mkPlane(0.6, PLAZA_Z_END - PLAZA_Z_START, SB_INK);
   trim.position.set(side * PLAZA_HALF_W, 0.014, PLAZA_CENTER_Z);
   scene.add(trim);
 });
@@ -5079,6 +5284,7 @@ refreshShadowAssignments = function(on){
   scene.traverse(o => {
     if (!o.isMesh) return;
     if (o === skyDome) return;
+    if (o.userData.sbLine){ o.castShadow = o.receiveShadow = false; return; }
     o.castShadow = on;
     o.receiveShadow = on;
   });
@@ -5121,6 +5327,19 @@ window.addEventListener('keydown', e => {
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   applyGraphicsPreset((state.gfx + 1) % GFX_PRESETS.length);
 });
+
+// Storybook ink lines: wrap every builder of things the player looks at
+// (characters, loot, power-ups, houses) so new spawns get outlines too.
+// Scenery (hills, rocks, props) stays line-free on purpose — it reads as the
+// painted background and keeps the draw-call count phone-friendly.
+buildAvatar = (orig => function(custom){ const r = orig(custom); sbOutline(r.group, 0.035); return r; })(buildAvatar);
+makeCoinMesh = (orig => function(v){ return sbOutline(orig(v), 0.03); })(makeCoinMesh);
+makeChestMesh = (orig => function(){ return sbOutline(orig(), 0.05); })(makeChestMesh);
+makeMaterialMesh = (orig => function(t){ return sbOutline(orig(t), 0.03); })(makeMaterialMesh);
+refreshPlotVisual = (orig => function(plot){ const r = orig(plot); if (plot && plot.buildGroup) sbOutline(plot.buildGroup, 0.05); return r; })(refreshPlotVisual);
+if (player) sbOutline(player, 0.035);
+for (const c of coins) if (c.mesh) sbOutline(c.mesh, 0.03);
+for (const o of [pole, flag, shopPole, shopSign, beacon]) sbOutline(o, 0.05);
 
 // Apply the saved preset (or the default `2 = Polished`) now that every
 // system referenced by the refresh functions has been constructed.
