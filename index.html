@@ -48,6 +48,15 @@
           opacity: 0; pointer-events: none;
           letter-spacing: 6px; }
   #warn.show { opacity: 1; animation: pulse 0.45s infinite; }
+  #wave-radar { position: fixed; top: 52px; left: 50%; transform: translateX(-50%);
+                background: rgba(255,248,236,0.94); border: 2.5px solid #5b3a29; border-radius: 999px;
+                color: #5b3a29; padding: 4px 14px; font-size: 14px; font-weight: bold; white-space: nowrap;
+                display: none; align-items: center; gap: 8px; pointer-events: none; z-index: 35; }
+  #wave-radar.show { display: flex; }
+  #wave-radar.danger { border-color: #d62828; background: #ffd2c8; color: #a01010;
+                       animation: radarBlink 0.3s infinite alternate; }
+  #wave-radar .dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #5b3a29; }
+  @keyframes radarBlink { from { opacity: 1 } to { opacity: 0.65 } }
   @keyframes pulse {
     0%,100%{transform:translate(-50%,-50%) scale(1)}
     50%{transform:translate(-50%,-50%) scale(1.12)}
@@ -242,6 +251,7 @@
   body.menu-mode #zone-tag,
   body.menu-mode #hilltop-prompt,
   body.menu-mode #warn,
+  body.menu-mode #wave-radar,
   body.menu-mode #toast,
   body.menu-mode #player-list,
   body.menu-mode #leaderboard,
@@ -591,7 +601,7 @@
     #chat-input { top: calc(8px + env(safe-area-inset-top, 0px)); bottom: auto; width: min(60vw, 420px); left: 50%; }
     #chat-input.show + #chat-mic { top: calc(6px + env(safe-area-inset-top, 0px)); bottom: auto; left: calc(50% + min(30vw, 210px) + 6px); }
   }
-  /* Close ✕ on every shop panel + jump from upgrades to the costume shop */
+  /* Shop close button + jump from upgrades to the costume shop */
   #shop, #build-shop, #cos-shop { position: fixed; z-index: 1500; }
   body.panel-open #touch-controls, body.panel-open #chat-mic { display: none !important; }
   .panel-close-bottom { display: block; margin: 14px auto 0; padding: 10px 34px; border-radius: 999px;
@@ -599,9 +609,11 @@
                         font: 700 16px/1 var(--sb-font); cursor: pointer; box-shadow: 0 3px 0 rgba(91,58,41,0.3); }
   #panel-backdrop { display: none; position: fixed; inset: 0; z-index: 1400; background: rgba(70,48,32,0.25); }
   body.panel-open #panel-backdrop { display: block; }
-  .panel-close { position: absolute; top: 10px; right: 12px; width: 36px; height: 36px; border-radius: 50%;
-                 border: 2.5px solid var(--sb-ink); background: #fff; color: var(--sb-ink);
-                 font: 700 18px/1 var(--sb-font); cursor: pointer; box-shadow: 0 3px 0 rgba(91,58,41,0.3); }
+  @media (max-width: 900px), (max-height: 520px) {
+    #wave-radar { top: calc(8px + env(safe-area-inset-top, 0px)); font-size: 12px; padding: 3px 12px; }
+  }
+  /* Keep 關閉 reachable without scrolling on a short landscape phone */
+  .panel-close-bottom { position: sticky; bottom: 0; z-index: 2; }
   #goto-cos { display: block; margin: 12px auto 0; padding: 9px 18px; border-radius: 999px;
               border: 2.5px solid var(--sb-ink); background: #ffd6e8; color: var(--sb-ink);
               font: 700 14px/1 var(--sb-font); cursor: pointer; box-shadow: 0 3px 0 rgba(91,58,41,0.3); }
@@ -623,11 +635,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
 </head>
 <body>
+
 <div id="stage"></div>
 <div id="color-grade"></div>
 
 <div id="resource-bar">
-  <span class="res"><span class="ico">R$</span><span id="res-money">0</span></span>
+  <span class="res"><span class="ico">$</span><span id="res-money">0</span></span>
   <span class="res"><span class="ico">🪵</span><span id="res-wood">0</span></span>
   <span class="res"><span class="ico">🪨</span><span id="res-stone">0</span></span>
   <span class="res"><span class="ico">⚙️</span><span id="res-iron">0</span></span>
@@ -843,6 +856,7 @@
 </div>
 
 <div id="warn">海 嘯 警 報</div>
+<div id="wave-radar"></div>
 <div id="toast"></div>
 <div id="hilltop-prompt"></div>
 <div id="plot-prompt"></div>
@@ -858,7 +872,6 @@
 </div>
 
 <div id="shop">
-  <button class="panel-close" data-close="shop" aria-label="關閉">✕</button>
   <h3>★ 強 化 商 店 ★</h3>
   <div class="money-bar">持有金錢：$<span id="shop-money">0</span></div>
   <div id="shop-list"></div>
@@ -868,7 +881,6 @@
 </div>
 
 <div id="build-shop">
-  <button class="panel-close" data-close="build" aria-label="關閉">✕</button>
   <h3>🏗 建 造 你 的 家 🏗</h3>
   <div class="money-bar">$<span id="b-money">0</span> · 🪵<span id="b-wood">0</span> · 🪨<span id="b-stone">0</span> · ⚙️<span id="b-iron">0</span></div>
   <div id="b-tabs">
@@ -884,7 +896,6 @@
 </div>
 
 <div id="cos-shop">
-  <button class="panel-close" data-close="cos" aria-label="關閉">✕</button>
   <h3>✨ 造 型 店 ✨</h3>
   <div class="money-bar">持有金錢：$<span id="cos-money">0</span></div>
   <div id="cos-tabs">
@@ -1040,7 +1051,7 @@ const WAVE_TYPES = [
   // Titan (h=50, needs Lv 15) stays as the rare uncrossable wave.
   { id:'green',  name:'矮浪',  color:0x44dd44, height:8,  width:14, speedMul:1.0, weight:22, lethal:'jumpable',   storm:false },
   { id:'blue',   name:'標準',  color:0x1565c0, height:18, width:18, speedMul:1.0, weight:30, lethal:'normal',     storm:false },
-  { id:'red',    name:'快浪',  color:0xc62828, height:18, width:14, speedMul:1.8, weight:18, lethal:'normal',     storm:false },
+  { id:'red',    name:'快浪',  color:0xc62828, height:18, width:14, speedMul:1.4, weight:18, lethal:'normal',     storm:false },
   { id:'wide',   name:'寬浪',  color:0x1976d2, height:18, width:32, speedMul:0.85,weight:14, lethal:'normal',     storm:false },
   { id:'purple', name:'巨浪',  color:0x6a1b9a, height:28, width:RUNWAY_HALF_W*2 + 12, speedMul:0.7, weight:4,  lethal:'fullscreen', storm:true },
   { id:'titan',  name:'災難',  color:0x4a148c, height:50, width:RUNWAY_HALF_W*2 + 12, speedMul:0.5, weight:1,  lethal:'fullscreen', storm:true },
@@ -1072,8 +1083,19 @@ const HILL_STEP_LEN  = HILL_LEN / HILL_STEPS;
 const HILL_STEP_RISE = HILL_PEAK / HILL_STEPS;
 const BASE_TOP_Z     = HILL_END_Z - HILL_STEP_LEN;  // top step boundary; deposit/shop here
 const TSUNAMI_STOP_Z = HILL_START_Z;
-const WAVE_APPROACH_SEC = 10;
-const WAVE_MIN_SPEED = 0.30;
+// Waves used to cross the whole 2 km runway in ~10 s (≈190 m/s vs the
+// player's ~11 m/s) — impossible to react to. Now they run at a fixed,
+// readable speed and spawn WAVE_WARN_SEC ahead of the deepest player.
+// Keep in sync with party/server.js.
+const WAVE_WARN_SEC   = 6;
+const WAVE_BASE_SPEED = 0.30;   // units per 60fps-frame ≈ 18 m/s
+const WAVE_DEPTH_GAIN = 0.12;   // +up to ~7 m/s in the deepest zone
+function waveSpeedFor(wt, depthFactor){
+  return (WAVE_BASE_SPEED + WAVE_DEPTH_GAIN * depthFactor) * wt.speedMul;
+}
+function waveSpawnZ(targetZ, speed){
+  return Math.max(-RUNWAY_LEN + 5, targetZ - speed * 60 * WAVE_WARN_SEC);
+}
 
 // Hill removed — base is now a flat plaza you can walk through directly
 function groundY(z){ return 0; }
@@ -1819,7 +1841,7 @@ function emitCoinSparkle(x, z){
       vy: 0.7 + Math.random() * 0.5,
       life: 0.9,
       size: 0.18 + Math.random() * 0.08,
-      color: 0xeaf4ff,    // silver-white to match Robux
+      color: 0xffee88,
       shrink: true,
     });
   }
@@ -2030,86 +2052,62 @@ const showPlotSign = refreshPlotVisual;
 // ============================================================
 // COINS — disc / stack / money-bag visual based on value
 // ============================================================
-// Coin geometry — Robux-style "dark hex + white R". The variable names
-// stay as `coinGoldMat` / `coinEdgeMat` because refreshEmissive and other
-// systems already reference them.
-const coinDiscGeo  = new THREE.CylinderGeometry(0.42, 0.42, 0.10, 6);
-const coinGoldMat  = new THREE.MeshLambertMaterial({ color: 0x2a2f37 });   // dark Robux charcoal
-const coinEdgeMat  = new THREE.MeshLambertMaterial({ color: 0x16181d });   // near-black rim
-// Pure-white R, slightly self-illuminated so it pops even when the hex
-// face is in shadow.
-const robuxRMat    = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x666666 });
-
-// The Robux icon's centre is a tilted white square (a diamond), framing
-// a smaller dark inner square so it reads as the Roblox-logo "R bowl"
-// from a distance. Voxel-blocky, no letter drawing.
-function makeRobuxR(){
-  const g = new THREE.Group();
-  const t = 0.05;                         // total raised height above the disc
-  // Outer white diamond
-  const outer = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, t, 0.34),
-    robuxRMat
-  );
-  outer.position.y = t / 2;
-  outer.rotation.y = Math.PI / 4;         // rotate 45° → diamond
-  g.add(outer);
-  // Inner darker square (the "hole") — uses the disc material so it visually
-  // cuts through, matching the official Robux icon's inset square.
-  const inner = new THREE.Mesh(
-    new THREE.BoxGeometry(0.14, t * 1.05, 0.14),
-    coinGoldMat
-  );
-  inner.position.y = t * 0.55;
-  inner.rotation.y = Math.PI / 4;
-  g.add(inner);
-  return g;
-}
+// Coin geometry — classic gold coin with a stamped "$" on the face.
+// `coinGoldMat` / `coinEdgeMat` are referenced by refreshEmissive.
+const coinDiscGeo  = new THREE.CylinderGeometry(0.40, 0.40, 0.10, 24);
+const coinGoldMat  = new THREE.MeshLambertMaterial({ color: 0xffc81e });
+const coinEdgeMat  = new THREE.MeshLambertMaterial({ color: 0xc8901a });
+// Face texture: gold disc, raised rim ring, dark-gold "$"
+const coinFaceTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = '#ffd23a'; x.fillRect(0, 0, 128, 128);
+  x.strokeStyle = '#d99a14'; x.lineWidth = 10;
+  x.beginPath(); x.arc(64, 64, 52, 0, Math.PI * 2); x.stroke();
+  x.fillStyle = '#b7770c';
+  x.font = 'bold 84px Arial, sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('$', 64, 68);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  return tex;
+})();
+const coinFaceMat = new THREE.MeshLambertMaterial({ map: coinFaceTex });
+// Cylinder material slots: [side, top, bottom]
+const coinTopMats  = [coinEdgeMat, coinFaceMat, coinGoldMat];
 
 function makeCoinMesh(value){
   const v = Math.max(1, value || 1);
   const g = new THREE.Group();
   if (v >= 10){
-    // "Robux loot bag" — keep brown sack silhouette so high-value loot
-    // still looks distinct, but swap the $ for a silver R disc on the front.
+    // Money pouch (value 10+) with a big gold coin on the front
     const bag = new THREE.Mesh(
       new THREE.SphereGeometry(0.55, 14, 10),
-      new THREE.MeshLambertMaterial({color: 0x6a3a1a})
+      new THREE.MeshLambertMaterial({color: 0x8B4513})
     );
     bag.scale.y = 0.85;
     bag.position.y = 0.45;
     g.add(bag);
     const tie = new THREE.Mesh(
       new THREE.CylinderGeometry(0.16, 0.22, 0.22, 8),
-      new THREE.MeshLambertMaterial({color: 0x4d2810})
+      new THREE.MeshLambertMaterial({color: 0x6a3a1a})
     );
     tie.position.y = 0.95;
     g.add(tie);
-    // Big dark hex Robux on the front face, R facing toward the base
-    const front = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.42, 0.42, 0.10, 6),
-      coinGoldMat
-    );
-    front.rotation.x = Math.PI / 2;        // flat face → forward (toward base)
+    const front = new THREE.Mesh(coinDiscGeo, coinTopMats);
+    front.rotation.x = Math.PI / 2;        // top face → +Z (toward base)
+    front.scale.set(0.8, 1, 0.8);
     front.position.set(0, 0.5, 0.5);
     g.add(front);
-    const r = makeRobuxR();
-    r.rotation.x = -Math.PI / 2;           // align block letter to face out
-    r.position.set(0, 0.5, 0.58);
-    g.add(r);
   } else {
-    // Stack of silver hexagonal Robux discs; one R sits on the top one.
+    // Stack of gold coins; height ≈ value, "$" face on the top one
     const n = Math.min(v, 9);
     for (let i = 0; i < n; i++){
-      const disc = new THREE.Mesh(coinDiscGeo, coinGoldMat);
+      const disc = new THREE.Mesh(coinDiscGeo, i === n - 1 ? coinTopMats : coinGoldMat);
       disc.position.y = 0.05 + i * 0.10;
-      // Alternate hex orientation slightly so stacks don't look like one solid block
-      disc.rotation.y = (i % 2) * (Math.PI / 6);
       g.add(disc);
     }
-    const r = makeRobuxR();
-    r.position.y = 0.05 + (n - 1) * 0.10 + 0.045;
-    g.add(r);
   }
   return g;
 }
@@ -2897,6 +2895,8 @@ const touchInput = { jx: 0, jy: 0, jump: false, sprint: false };
 function enableTouchUI(){
   if (!document.body.classList.contains('touch-mode')){
     document.body.classList.add('touch-mode');
+    // Lazy-detected touch: switch to the phone camera (state may not exist yet at boot)
+    try { applyCameraDefaults(); } catch(e){}
   }
 }
 const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
@@ -2909,7 +2909,10 @@ window.addEventListener('pointerdown', e => {
 }, { passive: true });
 // Manual toggle for debugging / desktop testing
 window.addEventListener('keydown', e => {
-  if (e.code === 'KeyT' && !shopOpen) document.body.classList.toggle('touch-mode');
+  if (e.code === 'KeyT' && !shopOpen){
+    document.body.classList.toggle('touch-mode');
+    applyCameraDefaults();
+  }
 });
 
 const STICK_RADIUS = 55;
@@ -3021,11 +3024,44 @@ window.addEventListener('pointercancel', endCamDrag);
 // R = reset camera angle
 window.addEventListener('keydown', e => {
   if (e.code === 'KeyR' && !shopOpen){
-    state.cameraYaw = 0;
-    state.cameraPitch = 0.55;
-    state.cameraDist = 9.5;
+    applyCameraDefaults();
   }
 });
+
+// Camera profile. Phones get a higher, farther camera that looks well past
+// the player, so the big Q-head no longer hides the wave and waves are
+// visible seconds before they arrive.
+let CAM_LOOKAHEAD = 0.6;
+function applyCameraDefaults(){
+  const mobile = document.body.classList.contains('touch-mode');
+  state.cameraYaw   = 0;
+  state.cameraPitch = mobile ? 0.8 : 0.55;
+  state.cameraDist  = mobile ? 15 : 9.5;
+  CAM_LOOKAHEAD     = mobile ? 0.8 : 0.6;
+}
+
+// Wave radar — top-centre readout of the nearest incoming wave so it never
+// arrives as a surprise, even when it's off-screen.
+const waveRadarEl = document.getElementById('wave-radar');
+function updateWaveRadar(){
+  if (!waveRadarEl) return;
+  if (state.gamePhase !== 'playing' || !state.alive || state.surf || player.position.z >= SAFETY_LINE_Z){
+    waveRadarEl.classList.remove('show'); return;
+  }
+  let best = null, bestDist = Infinity;
+  for (const ts of tsunamis){
+    const d = player.position.z - ts.obj.group.position.z;   // >0 = still ahead of us
+    if (d <= -2.4 || d >= bestDist) continue;
+    best = ts; bestDist = d;
+  }
+  if (!best || bestDist > 260){ waveRadarEl.classList.remove('show'); return; }
+  const secs = Math.max(0, bestDist / (best.speed * 60));
+  waveRadarEl.innerHTML =
+    `<span class="dot" style="background:#${best.waveType.color.toString(16).padStart(6,'0')}"></span>` +
+    `${best.waveType.name} ${Math.max(0, Math.round(bestDist))}m · ${secs.toFixed(1)}s`;
+  waveRadarEl.classList.toggle('danger', secs < 2);
+  waveRadarEl.classList.add('show');
+}
 
 // Mouse wheel zoom
 stageEl.addEventListener('wheel', e => {
@@ -3088,8 +3124,8 @@ const state = {
   tutorialStep: 0,
   activeProfile: '',           // currently-loaded profile name (= state.custom.name)
   cameraYaw: 0,                 // orbit angle around player (0 = behind)
-  cameraPitch: 0.55,            // elevation angle
-  cameraDist: (('ontouchstart' in window) || navigator.maxTouchPoints > 0) ? 13 : 9.5,   // zoom distance (4 = close-up, 25 = far)
+  cameraPitch: 0.55,            // elevation angle — phones overridden by applyCameraDefaults()
+  cameraDist: 9.5,              // zoom distance (4 = close-up, 25 = far)
   buffSpeedUntil: 0,            // local-time seconds; speed boost active while t < this
   buffJumpUntil: 0,
   buffMagnetUntil: 0,
@@ -3109,6 +3145,7 @@ const state = {
   stormBonusMultiplier: 1,
   gfx: parseInt(localStorage.getItem('etfm-gfx') || '2', 10),   // 0..3, see GFX_PRESETS
 };
+applyCameraDefaults();
 
 // Material 3D models — distinct shape & colour per type
 function makeMaterialMesh(type){
@@ -3993,10 +4030,8 @@ function update(now){
       }
       if (player.position.z < SAFETY_LINE_Z){
         const wt = pickWaveType(state.storm);
-        const fromZ = -RUNWAY_LEN + 5;
-        const dist = player.position.z - fromZ;
-        const approach = (WAVE_APPROACH_SEC - depthFactor * 4) / wt.speedMul;
-        const speed = Math.max(WAVE_MIN_SPEED * wt.speedMul, dist / approach / 60);
+        const speed = waveSpeedFor(wt, depthFactor);
+        const fromZ = waveSpawnZ(player.position.z, speed);
         spawnTsunami({ fromZ, speed, waveType: wt });
       }
     }
@@ -4192,7 +4227,15 @@ function update(now){
   camera.position.x += (camTargetX - camera.position.x) * 0.1;
   camera.position.y += (camTargetY - camera.position.y) * 0.1;
   camera.position.z += (camTargetZ - camera.position.z) * 0.1;
-  camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
+  // Look past the player toward where the camera faces, so the player sits
+  // low on screen and incoming waves get most of the frame.
+  const lookAhead = camRadius * CAM_LOOKAHEAD;
+  camera.lookAt(
+    player.position.x - Math.sin(state.cameraYaw) * lookAhead,
+    player.position.y + 1.5,
+    player.position.z - Math.cos(state.cameraYaw) * lookAhead
+  );
+  updateWaveRadar();
 
   // Multiplayer (interpolate others + send our state)
   tickMultiplayer(dt);
@@ -5294,7 +5337,7 @@ const PALETTES = {
   shoes:     [0x111111, 0x4a3a1a, 0xc04040, 0xeeeeee, 0xddaa44, 0x4080d0],
 };
 const TUTORIAL_STEPS = [
-  '用 WASD（或左下搖桿）跑出基地，撿沿途的 R$ 銀幣。深區的更值錢。',
+  '用 WASD（或左下搖桿）跑出基地，撿沿途的金幣。深區的更值錢。',
   '⚡ 按住 Shift（手機點「衝刺」）→ 跑得快但不會自動撿幣，讓你穿越低值區直奔深區。慢走才會自動撿。撿磁鐵道具時例外，磁鐵期間照常吸幣。',
   '看到「海嘯警報」會顯示需要的跳高 Lv。跳得夠高就跳過去（綠浪 Lv3 / 藍紅 Lv6 / 紫巨 Lv9 / 黑災 Lv15）；不夠就躲到石頭後面。⚠ 窄浪現在 30% 機率變雙重夾擊（左右各一條），中間才是安全通道。',
   '跑道上的大石頭可以當掩護：站在石頭「後面」地上那塊淡藍色的地方，海嘯會從頭上打過去。越深的區域石頭越小、越少。',
@@ -5647,15 +5690,15 @@ refreshOutlineSelection = function(){
   outlinePass.selectedObjects = sel;
 };
 refreshEmissive = function(){
-  // The dark Robux hex stays dark; the white R (its own emissive) does the
-  // bloom work. A very subtle cool glow on the hex keeps it from going
-  // pitch-black in shadow.
+  // Mutate the shared coin gold materials so every coin instance lights up.
   if (state.gfx >= 1){
-    coinGoldMat.emissive.setHex(0x141820);
-    coinEdgeMat.emissive.setHex(0x080a0e);
+    coinGoldMat.emissive.setHex(0x553300);
+    coinEdgeMat.emissive.setHex(0x3a2200);
+    coinFaceMat.emissive.setHex(0x442800);
   } else {
     coinGoldMat.emissive.setHex(0x000000);
     coinEdgeMat.emissive.setHex(0x000000);
+    coinFaceMat.emissive.setHex(0x000000);
   }
 };
 refreshWaveMaterials = function(){
@@ -6066,7 +6109,7 @@ update = (orig => function(now){
 // Shop close buttons, costume-shop shortcut, phone 造型 button
 // Hide the phone controls while any shop is open so nothing sits on top of it
 setInterval(() => document.body.classList.toggle('panel-open', !!(shopOpen || cosShopOpen || buildShopOpen)), 150);
-// Close on ✕, the bottom 關閉 button, or a tap outside. Bound to pointerup as
+// Close on the bottom 關閉 button or a tap outside. Bound to pointerup as
 // well as click because some phone web views drop the click.
 let _lastPanelClose = 0;
 function closePanels(which){
@@ -6077,7 +6120,7 @@ function closePanels(which){
   if ((which === 'build' || which === 'any') && buildShopOpen) toggleBuildShop();
   document.body.classList.toggle('panel-open', !!(shopOpen || cosShopOpen || buildShopOpen));
 }
-document.querySelectorAll('.panel-close, .panel-close-bottom, #panel-backdrop').forEach(b => {
+document.querySelectorAll('.panel-close-bottom, #panel-backdrop').forEach(b => {
   const go = e => { e.preventDefault(); e.stopPropagation(); closePanels(b.dataset.close); };
   b.addEventListener('pointerup', go);
   b.addEventListener('click', go);

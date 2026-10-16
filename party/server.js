@@ -31,7 +31,7 @@ const WAVE_TYPES = [
   // Titan (h=50, needs Lv 15) stays as the rare uncrossable wave.
   { id:'green',  height:8,  width:14, speedMul:1.0,  weight:22, storm:false },
   { id:'blue',   height:18, width:18, speedMul:1.0,  weight:30, storm:false },
-  { id:'red',    height:18, width:14, speedMul:1.8,  weight:18, storm:false },
+  { id:'red',    height:18, width:14, speedMul:1.4,  weight:18, storm:false },
   { id:'wide',   height:18, width:32, speedMul:0.85, weight:14, storm:false },
   { id:'purple', height:28, width:RUNWAY_HALF_W*2 + 12, speedMul:0.7, weight:4, storm:true },
   { id:'titan',  height:50, width:RUNWAY_HALF_W*2 + 12, speedMul:0.5, weight:1, storm:true },
@@ -588,11 +588,11 @@ export default class WorldServer {
         // Only actually spawn if at least one player has crossed safety line
         if (minZ < 5){
           const wt = pickWaveType(this.storm);
-          const fromZ = -RUNWAY_LEN + 5;
-          const dist = minZ - fromZ;
+          // Fixed, readable wave speed; spawn ~6 s ahead of the deepest player.
+          // Keep in sync with WAVE_WARN_SEC / waveSpeedFor in index.html.
           const depthFactor = Math.min(1, Math.max(0, -minZ) / RUNWAY_LEN);
-          const approach = (10 - depthFactor * 4) / wt.speedMul;
-          const speed = Math.max(0.30 * wt.speedMul, dist / approach / 60);
+          const speed = (0.30 + 0.12 * depthFactor) * wt.speedMul;
+          const fromZ = Math.max(-RUNWAY_LEN + 5, minZ - speed * 60 * 6);
 
           const partial = wt.width < RUNWAY_HALF_W * 1.7;
           // Boosted lateral sweep on narrow waves: amp ×3 vs the old 4-10 range
