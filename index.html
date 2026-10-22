@@ -3248,6 +3248,73 @@ function rollMaterialDrop(coinValue, x, z){
 }
 
 // ===== PvP =====
+// ============================================================
+// BAT SWING — two-handed horizontal baseball swing.
+// Arms use Euler order YXZ: X lifts the arm to horizontal-forward, then Y
+// sweeps it around the body. Right-handed: wind up to the right/back,
+// whip across to the left, then relax.
+// ============================================================
+const SWING_DUR = 0.45;
+const _easeOut = k => 1 - Math.pow(1 - k, 3);
+function poseBatSwing(armR, armL, phase){
+  armR.rotation.order = armL.rotation.order = 'YXZ';
+  const LIFT = 1.45;                       // arm ~horizontal, pointing forward
+  let lift, yawR;
+  if (phase < 0.3){                        // wind-up: bat cocked back over the right shoulder
+    const k = _easeOut(phase / 0.3);
+    lift = LIFT * k; yawR = -1.9 * k;
+  } else if (phase < 0.55){                // strike: fast whip across the body
+    const k = _easeOut((phase - 0.3) / 0.25);
+    lift = LIFT; yawR = -1.9 + 3.9 * k;    // -1.9 → +2.0 rad
+  } else {                                 // follow-through, then relax
+    const k = (phase - 0.55) / 0.45;
+    lift = LIFT * (1 - k * k); yawR = 2.0 * (1 - k * k);
+  }
+  armR.rotation.x = lift; armR.rotation.y = yawR; armR.rotation.z = 0;
+  // left hand rides along to "grip" the bat
+  armL.rotation.x = lift * 0.95; armL.rotation.y = yawR + 0.55; armL.rotation.z = 0;
+}
+
+// White arc trail behind the bat, centred on the swinger, fades in ~0.25 s
+const _swooshGeo = new THREE.RingGeometry(1.0, 2.6, 28, 1, 0, Math.PI);   // right → front → left
+function emitBatSwoosh(owner){
+  if (!owner) return;
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75,
+    side: THREE.DoubleSide, depthWrite: false, fog: false, toneMapped: false });
+  const m = new THREE.Mesh(_swooshGeo, mat);
+  m.rotation.order = 'YXZ';
+  m.rotation.x = -Math.PI / 2;                       // lie flat
+  m.rotation.y = owner.rotation.y;
+  m.position.set(owner.position.x, owner.position.y + 1.3, owner.position.z);
+  m.scale.setScalar(owner.scale ? owner.scale.x : 1);
+  m.userData.sbHasLine = true;                       // no ink outline on effects
+  scene.add(m);
+  const t0 = performance.now();
+  (function fade(){
+    const k = (performance.now() - t0) / 250;
+    if (k >= 1){ scene.remove(m); mat.dispose(); return; }
+    mat.opacity = 0.75 * (1 - k);
+    m.scale.setScalar((owner.scale ? owner.scale.x : 1) * (1 + 0.15 * k));
+    requestAnimationFrame(fade);
+  })();
+}
+
+// Hit: star burst at the target + a short camera shake
+function batImpact(target){
+  state.shakeUntil = t + 0.18;
+  if (!target || !target.position) return;
+  const p = target.position;
+  for (let i = 0; i < 14; i++){
+    const a = Math.random() * Math.PI * 2;
+    spawnParticle({
+      x: p.x, y: p.y + 1.4, z: p.z,
+      vx: Math.cos(a) * (3 + Math.random() * 3), vy: 2 + Math.random() * 3, vz: Math.sin(a) * (3 + Math.random() * 3),
+      gravity: 9, life: 0.45 + Math.random() * 0.2, size: 0.22 + Math.random() * 0.12,
+      color: i % 3 ? 0xffe066 : 0xffffff, shrink: true,
+    });
+  }
+}
+
 function attemptPunch(){
   if (!state.alive) return;
   if (shopOpen || cosShopOpen || buildShopOpen) return;
@@ -3267,7 +3334,7 @@ function attemptPunch(){
     if (dist < bestDist){ bestDist = dist; best = id; }
   }
   state.punchUntil = t + 2.0;          // local cooldown (server also enforces)
-  state.punchAnimUntil = t + 0.4;      // longer swing
+  state.punchAnimUntil = t + SWING_DUR;
   sfx.punch();
   if (best && mpSocket && mpSocket.readyState === WebSocket.OPEN){
     mpSocket.send(JSON.stringify({
@@ -4173,14 +4240,13 @@ function update(now){
     armL.rotation.x *= 0.85;
     armR.rotation.x *= 0.85;
   }
-  // Bat swing: right arm sweeps from over-shoulder back (+1.4) through forward (-2.0)
-  // Overshoots vertical and goes past forward — looks like a real golf/baseball swing
   if (t < state.punchAnimUntil){
-    const swingDur = 0.4;
-    const phase = 1 - Math.max(0, state.punchAnimUntil - t) / swingDur;
-    // ease: slow wind-up, fast impact, follow-through
-    const eased = phase * phase * (3 - 2 * phase);   // smoothstep
-    armR.rotation.x = 1.4 - eased * 3.4;             // 1.4 → -2.0 rad
+    const phase = 1 - Math.max(0, state.punchAnimUntil - t) / SWING_DUR;
+    poseBatSwing(armR, armL, phase);
+    if (phase >= 0.3 && !state._swooshed){ state._swooshed = true; emitBatSwoosh(player); }
+  } else {
+    state._swooshed = false;
+    armR.rotation.y *= 0.7; armL.rotation.y *= 0.7;
   }
   // Hair flow on the local player. Spikes pivot at top and point upward, so a
   // positive rotation.x correctly tips them toward +Z (behind the running
@@ -4264,6 +4330,11 @@ function update(now){
   camera.position.z += (camTargetZ - camera.position.z) * 0.1;
   // Look past the player toward where the camera faces, so the player sits
   // low on screen and incoming waves get most of the frame.
+  if (t < (state.shakeUntil || 0)){
+    const s = 0.25 * (state.shakeUntil - t) / 0.18;
+    camera.position.x += (Math.random() - 0.5) * s;
+    camera.position.y += (Math.random() - 0.5) * s;
+  }
   const lookAhead = camRadius * CAM_LOOKAHEAD;
   camera.lookAt(
     player.position.x - Math.sin(state.cameraYaw) * lookAhead,
@@ -5193,12 +5264,12 @@ function mpHandleMessage(raw){
     renderLeaderboard();
   } else if (msg.type === 'punch_hit'){
     // Animate attacker's right arm
-    if (msg.attackerId === mpMyId){
-      state.punchAnimUntil = t + 0.4;
-    } else {
+    // (own swing already started locally — don't restart it on the server echo)
+    if (msg.attackerId !== mpMyId){
       const a = otherPlayers.get(msg.attackerId);
-      if (a) a.punchAnimUntil = t + 0.4;
+      if (a && !(a.punchAnimUntil && t < a.punchAnimUntil)) a.punchAnimUntil = t + SWING_DUR;
     }
+    batImpact(msg.targetId === mpMyId ? player : (otherPlayers.get(msg.targetId) || {}).group);
     // Apply effect to target
     if (msg.targetId === mpMyId){
       state.knockVx = (msg.dirX || 0) * (msg.magnitude || 8);
@@ -5336,11 +5407,14 @@ function tickMultiplayer(dt){
       o.armL.rotation.x *= 0.85;
       o.armR.rotation.x *= 0.85;
     }
-    // Bat swing override (matches local player's animation)
+    // Bat swing override (same two-handed swing as the local player)
     if (o.punchAnimUntil && t < o.punchAnimUntil){
-      const phase = 1 - Math.max(0, o.punchAnimUntil - t) / 0.4;
-      const eased = phase * phase * (3 - 2 * phase);
-      o.armR.rotation.x = 1.4 - eased * 3.4;
+      const phase = 1 - Math.max(0, o.punchAnimUntil - t) / SWING_DUR;
+      poseBatSwing(o.armR, o.armL, phase);
+      if (phase >= 0.3 && !o._swooshed){ o._swooshed = true; emitBatSwoosh(o.group); }
+    } else {
+      o._swooshed = false;
+      o.armR.rotation.y *= 0.7; o.armL.rotation.y *= 0.7;
     }
     // Animate hair on the other player (strands flip negative — see local code)
     if (o.hairParts){
@@ -5897,9 +5971,10 @@ attemptPunch = (orig => function(){
     }
     if (best){
       state.punchUntil = t + 0.6;
-      state.punchAnimUntil = t + 0.4;
+      state.punchAnimUntil = t + SWING_DUR;
       sfx.punch();
-      smashCrate(best);
+      // let the bat actually arrive before the crate breaks
+      setTimeout(() => { smashCrate(best); batImpact(best.mesh); }, SWING_DUR * 0.45 * 1000);
       return;
     }
   }
