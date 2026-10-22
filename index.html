@@ -1200,12 +1200,23 @@ renderer.shadowMap.enabled = false;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById('stage').appendChild(renderer.domElement);
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+// Keep the canvas matched to the stage. A page loaded while its frame is
+// hidden or collapsed (e.g. the claude.ai side panel) starts at 0×0 and
+// never gets a window 'resize' — the game then renders into nothing and
+// shows black. So watch the stage itself, and re-check once a second.
+function fitRenderer(){
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  const c = renderer.domElement;
+  if (c.clientWidth === w && c.clientHeight === h && c.width > 0) return;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  if (composer) composer.setSize(window.innerWidth, window.innerHeight);
-});
+  renderer.setSize(w, h);
+  try { if (composer) composer.setSize(w, h); } catch(e){}   // composer is declared further down
+}
+window.addEventListener('resize', fitRenderer);
+if (window.ResizeObserver) new ResizeObserver(fitRenderer).observe(document.getElementById('stage'));
+setInterval(fitRenderer, 1000);
 
 // --- Lighting rig ---
 // Three lights live in the scene at all times; their intensities are tweaked
@@ -4303,7 +4314,7 @@ function update(now){
     armL.rotation.x *= 0.85;
     armR.rotation.x *= 0.85;
   }
-  if (t < state.punchAnimUntil){
+  if (state.punchAnimUntil && t < state.punchAnimUntil){
     const phase = 1 - Math.max(0, state.punchAnimUntil - t) / SWING_DUR;
     poseBatSwing(armR, armL, phase);
     if (phase >= 0.3 && !state._swooshed){ state._swooshed = true; emitBatSwoosh(player); }
@@ -4391,13 +4402,24 @@ function update(now){
   camera.position.x += (camTargetX - camera.position.x) * 0.1;
   camera.position.y += (camTargetY - camera.position.y) * 0.1;
   camera.position.z += (camTargetZ - camera.position.z) * 0.1;
-  // Look past the player toward where the camera faces, so the player sits
-  // low on screen and incoming waves get most of the frame.
-  if (t < (state.shakeUntil || 0)){
+  // Hit shake — only after a real hit set shakeUntil. (`t` can be slightly
+  // negative on the first frame, so "t < (undefined || 0)" used to fire with
+  // a NaN strength, poisoning the camera position for good → black screen.)
+  if (state.shakeUntil && t < state.shakeUntil){
     const s = 0.25 * (state.shakeUntil - t) / 0.18;
     camera.position.x += (Math.random() - 0.5) * s;
     camera.position.y += (Math.random() - 0.5) * s;
   }
+  // Safety net: the follow above blends from the previous position, so one
+  // bad value would stick forever. Snap back behind the player instead.
+  if (!Number.isFinite(camera.position.x + camera.position.y + camera.position.z)){
+    camera.position.set(
+      Number.isFinite(camTargetX) ? camTargetX : 0,
+      Number.isFinite(camTargetY) ? camTargetY : 6,
+      Number.isFinite(camTargetZ) ? camTargetZ : BASE_Z + 2);
+  }
+  // Look past the player toward where the camera faces, so the player sits
+  // low on screen and incoming waves get most of the frame.
   const lookAhead = camRadius * CAM_LOOKAHEAD;
   camera.lookAt(
     player.position.x - Math.sin(state.cameraYaw) * lookAhead,
