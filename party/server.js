@@ -47,6 +47,17 @@ function pickWaveType(stormBoost){
   }
   return WAVE_TYPES[1];
 }
+// Seconds until the next wave. Waves now live 1–2 min on the runway (they
+// used to vanish in ~10 s), so the old 1.2–4 s cadence stacked into a wall.
+// One wave per ~10 s gives warn → dodge → breathe → collect. Keep in sync
+// with nextWaveGap in index.html.
+function nextWaveGap(storm){
+  if (storm) return 4 + Math.random() * 2;          // storm: 4–6 s
+  return Math.random() < 0.15
+    ? 15 + Math.random() * 10                       // calm spell: 15–25 s
+    : 7 + Math.random() * 6;                        // usual: 7–13 s
+}
+const TWIN_CHANCE = 0.15, TWIN_CHANCE_STORM = 0.25;
 
 // ============================================================
 // AUTH HELPERS
@@ -571,15 +582,7 @@ export default class WorldServer {
       this.spawnAccum += dt;
       if (this.spawnAccum > this.nextSpawnIn){
         this.spawnAccum = 0;
-        if (this.storm){
-          this.nextSpawnIn = 0.8 + Math.random() * 1.6;
-        } else {
-          const r = Math.random();
-          if (r < 0.6)       this.nextSpawnIn = 3 + Math.random() * 3;
-          else if (r < 0.85) this.nextSpawnIn = 1.5 + Math.random();
-          else               this.nextSpawnIn = 8 + Math.random() * 8;
-        }
-        this.nextSpawnIn *= 0.81;  // +10% over previous +10% (cumulative ×0.81)
+        this.nextSpawnIn = nextWaveGap(this.storm);
 
         // Use the deepest authed player to set difficulty
         let minZ = 8;
@@ -603,7 +606,7 @@ export default class WorldServer {
           // Twin-narrow waves: when a partial wave rolls, 30% chance to spawn
           // mirrored pair on opposite sides of the runway so the middle is the
           // only safe corridor. Storm boosts to 45%.
-          const twinChance = this.storm ? 0.45 : 0.30;
+          const twinChance = this.storm ? TWIN_CHANCE_STORM : TWIN_CHANCE;
           const isTwin = partial && Math.random() < twinChance;
 
           const spawnOne = (xOffset, phaseOffset) => {

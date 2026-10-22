@@ -1112,6 +1112,11 @@ const WAVE_DEPTH_GAIN = 0.12;   // +up to ~7 m/s in the deepest zone
 function waveSpeedFor(wt, depthFactor){
   return (WAVE_BASE_SPEED + WAVE_DEPTH_GAIN * depthFactor) * wt.speedMul;
 }
+// Seconds until the next wave — one per ~10 s (see party/server.js).
+function nextWaveGap(storm){
+  if (storm) return 4 + Math.random() * 2;
+  return Math.random() < 0.15 ? 15 + Math.random() * 10 : 7 + Math.random() * 6;
+}
 function waveSpawnZ(targetZ, speed){
   return Math.max(-RUNWAY_LEN + 5, targetZ - speed * 60 * WAVE_WARN_SEC);
 }
@@ -2869,19 +2874,14 @@ function spawnTsunami(opts={}){
 // ============================================================
 const keys = {};
 // Stuck-key guard. A held key is only released by its keyup, and that keyup
-// gets lost when the page loses focus (the claude.ai preview iframe, alt-tab),
-// when chat grabs focus mid-press, or when a Chinese IME swallows it — the
-// player then runs forever. So: drop everything on blur, and release any key
-// whose OS auto-repeat has gone quiet (repeat fires every ~30 ms while held;
-// Windows' longest initial delay is 1 s).
-const keyLastSeen = {};
+// gets lost when the page loses focus (the claude.ai preview iframe, alt-tab)
+// or when chat grabs focus mid-press — the player then runs forever. So drop
+// everything on blur / hidden / chat open. (No auto-repeat timeout: the OS
+// only repeats the LAST key pressed, so holding W then tapping A would wrongly
+// release W.)
 function releaseAllKeys(){ for (const k in keys) keys[k] = false; }
 window.addEventListener('blur', releaseAllKeys);
 document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAllKeys(); });
-setInterval(() => {
-  const now = performance.now();
-  for (const k in keys) if (keys[k] && now - (keyLastSeen[k] || 0) > 1200) keys[k] = false;
-}, 200);
 window.addEventListener('keydown', e => {
   // Chat input focused → don't pollute keys[] (and don't trigger game keybinds)
   if (document.activeElement === chatInputEl) return;
@@ -2899,7 +2899,6 @@ window.addEventListener('keydown', e => {
     e.preventDefault();
     ae.blur();
   }
-  keyLastSeen[e.code] = performance.now();
   if (e.repeat) { keys[e.code] = true; return; }   // held key: refresh only, don't re-fire B/C/H/F toggles
   keys[e.code] = true;
   if (e.code === 'KeyB') toggleShop();
@@ -4063,14 +4062,7 @@ function update(now){
     state.spawnAccum += dt;
     if (state.alive && !shopOpen && state.spawnAccum > state.nextSpawnIn){
       state.spawnAccum = 0;
-      if (state.storm){
-        state.nextSpawnIn = 0.8 + Math.random() * 1.6;
-      } else {
-        const r = Math.random();
-        if (r < 0.6) state.nextSpawnIn = 3 + Math.random() * 3;
-        else if (r < 0.85) state.nextSpawnIn = 1.5 + Math.random();
-        else state.nextSpawnIn = 8 + Math.random() * 8;
-      }
+      state.nextSpawnIn = nextWaveGap(state.storm);
       if (player.position.z < SAFETY_LINE_Z){
         const wt = pickWaveType(state.storm);
         const speed = waveSpeedFor(wt, depthFactor);
