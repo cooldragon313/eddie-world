@@ -5,9 +5,11 @@
   "description": "Escape Tsunami For Money — multiplayer voxel runner",
   "scripts": {
     "dev": "partykit dev",
-    "deploy": "partykit deploy"
+    "deploy": "cd cloudflare && wrangler deploy",
+    "dev:cf": "cd cloudflare && wrangler dev --port 1999 --ip 127.0.0.1"
   },
   "devDependencies": {
-    "partykit": "*"
+    "partykit": "*",
+    "wrangler": "^4.151.3"
   }
 }

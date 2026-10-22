@@ -1027,11 +1027,30 @@ function sbOutline(root, t){
 // runs solo with no server so designs can be reviewed on a phone.
 const PREVIEW_SOLO = new URLSearchParams(location.search).has('solo') ||
   !(/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /github\.io$/.test(location.hostname));
+// Live server: Cloudflare Worker on Bernie's account (PartyKit hosting shut
+// down Oct 2026). Same /parties/main/<room> URL shape — see cloudflare/.
+const LIVE_SERVER_HOST = 'etfm.cooldragon313.partykit.dev';
 const PARTYKIT_HOST = PREVIEW_SOLO ? ''
   : /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'localhost:1999'
-  : 'etfm.cooldragon313.partykit.dev';
+  : LIVE_SERVER_HOST;
 const MP_ROOM = 'global';
 const MP_ENABLED = !!PARTYKIT_HOST;
+// Server unreachable (network error / 5xx / no answer in 6 s) → reload in
+// solo mode so the game still plays instead of hanging on the login screen.
+const SERVER_DOWN = new URLSearchParams(location.search).get('solo') === 'offline';
+if (MP_ENABLED){
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 6000);
+  const proto = /^localhost|^127\./.test(PARTYKIT_HOST) ? 'http' : 'https';
+  fetch(`${proto}://${PARTYKIT_HOST}/parties/main/${MP_ROOM}/ping`, { signal: ctl.signal })
+    .then(r => { if (r.status >= 500) throw new Error('down'); })
+    .catch(() => {
+      const u = new URL(location.href);
+      u.searchParams.set('solo', 'offline');
+      location.replace(u.toString());
+    })
+    .finally(() => clearTimeout(timer));
+}
 
 const RUNWAY_LEN     = 2000;
 const RUNWAY_HALF_W  = 20;          // 40 person-widths total
@@ -5442,8 +5461,12 @@ function updateTitleAccountInfo(){
   const el = document.getElementById('title-account-info');
   if (!el) return;
   el.textContent = myDisplayName ? `已登入：${myDisplayName}` : '尚未登入';
+  if (SERVER_DOWN){
+    el.textContent = '⚠ 伺服器暫時連不上，先用單人模式玩（進度存在這台裝置）';
+    el.style.color = '#c0502a';
+  }
   const btn = document.getElementById('title-continue');
-  if (btn) btn.textContent = authToken ? '開始冒險 →' : '登入 / 註冊 →';
+  if (btn) btn.textContent = (authToken || PREVIEW_SOLO) ? '開始冒險 →' : '登入 / 註冊 →';
   const sw = document.getElementById('title-switch');
   if (sw) sw.textContent = authToken ? '登出 / 切換帳號' : '已有帳號？登入';
 }
@@ -5458,8 +5481,16 @@ document.getElementById('title-continue').addEventListener('click', () => {
     // first visit gets pocket money so the shops (boards, bags) can be tried.
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(PREVIEW_SAVE_KEY) || 'null'); } catch(e){}
+    // Server down on the live site: start from this device's cached account
+    // progress, so the kid doesn't begin from zero.
+    if (!saved && SERVER_DOWN){
+      try {
+        const k = Object.keys(localStorage).find(k => k.startsWith('etfm-cache-'));
+        if (k) saved = JSON.parse(localStorage.getItem(k) || 'null');
+      } catch(e){}
+    }
     if (saved) applyProfileToState(saved);
-    state.money = Math.max(state.money, 777);   // preview: always enough pocket money to try the shops
+    if (!SERVER_DOWN) state.money = Math.max(state.money, 777);   // preview: always enough pocket money to try the shops
     savePreviewProgress();
     updateHUD();
     if (!window._previewAutosave){

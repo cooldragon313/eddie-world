@@ -1,0 +1,16 @@
+# Escape Tsunami world server on Cloudflare (replaces PartyKit hosting).
+# Deploy:  cd cloudflare && npx wrangler deploy
+# Secret:  npx wrangler secret put AUTH_SECRET   (and optionally ADMIN_PASSWORD)
+# Local:   npx wrangler dev  (reads cloudflare/.dev.vars)
+name = "etfm"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[[durable_objects.bindings]]
+name = "WORLD"
+class_name = "World"
+
+# SQLite-backed Durable Objects are available on the free plan.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["World"]
