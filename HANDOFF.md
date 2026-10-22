@@ -1,7 +1,7 @@
 # HANDOFF — Escape Tsunami 繪本版改版
 
-> 最後更新：2026-10-16（公司 PC）
-> 分支：**`restyle-storybook`**（還沒合併 `main`，正式版沒動）
+> 最後更新：2026-10-22（家裡 PC）
+> 分支：**`restyle-storybook`** — 2026-10-22 已合併進 `main` 上線（繪本版＝正式版）
 > 最後 commit：見 `git log -1`（交接時以 GitHub 上這個分支的最新 commit 為準）
 
 ---
@@ -9,7 +9,12 @@
 ## 🧭 這是什麼專案
 給 12 歲兒子玩的多人跑酷撿錢遊戲（靈感來自 Roblox《Escape Tsunami For Brainrots》）。
 - 正式版：https://cooldragon313.github.io/escapetsunamiformoney/ （GitHub Pages，`main` 一推就上線 → **改動一律先走分支**）
-- 伺服器：PartyKit（`party/server.js`），正式網址 `etfm.cooldragon313.partykit.dev`
+- 伺服器：**Cloudflare Worker**（Bernie 自己的帳號 cooldragon313@gmail.com），正式網址 `etfm.cooldragon313.workers.dev`
+  - 遊戲邏輯仍在 `party/server.js`（沒改）；`cloudflare/worker.js` 是轉接殼，把它包成 Durable Object
+  - 部署：`cd cloudflare && npx wrangler deploy`（需 `npx wrangler login`）；密鑰 `AUTH_SECRET` 已設，換掉會讓所有人重新登入
+  - ⚠️ Claude 的沙箱連不到 Cloudflare API，部署要在沙箱外跑
+  - PartyKit 託管 2026-10-16 停止部署、10-23 刪除專案 → 舊帳號／存款／排行榜**沒搬過來**，大家要重新註冊
+- 連不上伺服器時：遊戲 6 秒內自動切單人模式（`?solo=offline`），用這台裝置快取的進度玩
 - 開發模式：Bernie 當製作人，Claude 負責企劃、程式、測試；Bernie 和兒子用手機玩、給意見
 
 ## 📱 手機試玩連結（最新）
@@ -48,6 +53,11 @@
 - **正式版還沒上**：`npx partykit deploy` 和推 `main` 需要 Bernie 自己執行（被安全機制擋）
 - 🔔 **規矩：不管哪台電腦，收工前一定要 commit＋push，只發布試玩連結不算**
 
+## 🆕 2026-10-22
+- 鍵盤卡住修正（失焦／聊天／注音輸入法吃掉放開訊號 → 自動放開）
+- 伺服器搬到 Cloudflare、正式版上線繪本版（`main` 已合併並推送）
+- 本機測多人：`npm run dev:cf`（wrangler，port 1999）＋ 開 `localhost` 的 index.html
+
 ## ⚠️ 已知問題／待確認
 1. **手機上商店能不能關**：已加 ✕、底部「關閉」、點外面關閉三種方式，還沒在真手機確認
 2. Bernie 說過「手機版壞了」，細節不明 → 下次先問清楚或實機走一輪
@@ -61,7 +71,7 @@
 修完 bug、發布試玩版，再請 Bernie 驗收。
 
 ## 🔒 規矩
-- **不要推 `main`**，合併前一定先問 Bernie
+- `main` 一推就上線；大改動先走分支，推 `main` 前跟 Bernie 說一聲（小修正不用每步都問，Bernie 2026-10-22：「不要每個步驟都問我」）
 - 本機測試只連本機伺服器（`localhost` 會自動連 `localhost:1999`），不要在正式伺服器建帳號
 - 回覆要短；小改動一兩句＋連結就好
 

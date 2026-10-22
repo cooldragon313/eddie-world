@@ -1029,7 +1029,7 @@ const PREVIEW_SOLO = new URLSearchParams(location.search).has('solo') ||
   !(/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /github\.io$/.test(location.hostname));
 // Live server: Cloudflare Worker on Bernie's account (PartyKit hosting shut
 // down Oct 2026). Same /parties/main/<room> URL shape — see cloudflare/.
-const LIVE_SERVER_HOST = 'etfm.cooldragon313.partykit.dev';
+const LIVE_SERVER_HOST = 'etfm.cooldragon313.workers.dev';
 const PARTYKIT_HOST = PREVIEW_SOLO ? ''
   : /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'localhost:1999'
   : LIVE_SERVER_HOST;
