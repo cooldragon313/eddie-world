@@ -3185,7 +3185,12 @@ const state = {
   stormUntil: 0,
   stormCooldownUntil: 25,      // earliest time (in t-seconds) for first storm
   stormBonusMultiplier: 1,
-  gfx: parseInt(localStorage.getItem('etfm-gfx') || '2', 10),   // 0..3, see GFX_PRESETS
+  // 0..3, see GFX_PRESETS. One-time reset (v2 key): many saved presets were
+  // accidental G presses from before Shift+G was required.
+  gfx: (() => { try {
+    if (!localStorage.getItem('etfm-gfx-v2')){ localStorage.setItem('etfm-gfx-v2', '1'); localStorage.removeItem('etfm-gfx'); }
+    return parseInt(localStorage.getItem('etfm-gfx') || '2', 10);
+  } catch(e){ return 2; } })(),
 };
 applyCameraDefaults();
 
@@ -5827,13 +5832,15 @@ refreshWaveMaterials = function(){
   // the deep-blue walls nicely. A full water shader can ship later.
 };
 showGfxLabel = function(){
-  toast(`畫質：${state.gfx} - ${GFX_PRESETS[state.gfx]}`);
+  toast(`畫質：${state.gfx} - ${GFX_PRESETS[state.gfx]}（Shift+G 切換）`);
 };
 
 // Cycle through presets with G (only while playing — don't steal key input
 // from menus or the chat box).
 window.addEventListener('keydown', e => {
-  if (e.code !== 'KeyG' || e.repeat) return;
+  // Shift+G only: plain G sits right next to the bat key (F) and kept
+  // flipping players into the very bright Cinema preset by accident.
+  if (e.code !== 'KeyG' || !e.shiftKey || e.repeat) return;
   if (state.gamePhase !== 'playing') return;
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   applyGraphicsPreset((state.gfx + 1) % GFX_PRESETS.length);
