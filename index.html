@@ -2111,6 +2111,18 @@ const coinFaceMat = new THREE.MeshLambertMaterial({ map: coinFaceTex });
 // Cylinder material slots: [side, top, bottom]
 const coinTopMats  = [coinEdgeMat, coinFaceMat, coinGoldMat];
 
+// Release GPU buffers of a one-off mesh tree, skipping anything shared by
+// every coin (or by the ink outlines) — those must stay alive.
+function freeMesh(root){
+  if (!root) return;
+  const keep = new Set([coinDiscGeo, coinGoldMat, coinEdgeMat, coinFaceMat, SB_LINE_MAT]);
+  root.traverse(o => {
+    if (o.geometry && !keep.has(o.geometry)) o.geometry.dispose();
+    const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+    for (const m of mats) if (!keep.has(m)) m.dispose();
+  });
+}
+
 function makeCoinMesh(value){
   const v = Math.max(1, value || 1);
   const g = new THREE.Group();
@@ -3971,6 +3983,7 @@ function update(now){
             state.bagValue += c.value;
             c.collected = true;
             scene.remove(c.mesh);
+            freeMesh(c.mesh);   // crate/spill loot is one-off: release its GPU buffers
             if (c.dropped){ toast(`撿回背包 +$${c.value}（帶回山頂存款）`); sfx.bigCoin(); }
             else sfx.coin();
           }
@@ -6317,6 +6330,39 @@ for (const o of [pole, flag, shopPole, shopSign, beacon]) sbOutline(o, 0.05);
 // Apply the saved preset (or the default `2 = Polished`) now that every
 // system referenced by the refresh functions has been constructed.
 applyGraphicsPreset(state.gfx);
+
+// ============================================================
+// CRASH NOTICE — instead of a silent black screen, say what broke and offer
+// a reload (progress is saved first). Shows the error text so the player can
+// screenshot it for us.
+// ============================================================
+function showCrashNotice(title, detail){
+  if (document.getElementById('crash-notice')) return;
+  try { saveProgress(); } catch(e){}
+  const d = document.createElement('div');
+  d.id = 'crash-notice';
+  d.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(70,48,32,0.75);font-family:var(--sb-font,sans-serif)';
+  d.innerHTML = `<div style="background:#fff8ec;border:3px solid #5b3a29;border-radius:18px;padding:18px 22px;max-width:520px;color:#4a3426;text-align:center">
+      <div style="font-size:20px;font-weight:700;margin-bottom:8px">${title}</div>
+      <div style="font-size:13px;margin-bottom:10px">進度已經存好。截這個畫面給大黑，再按下面重新載入。</div>
+      <pre style="font-size:11px;white-space:pre-wrap;text-align:left;background:#f6ead2;padding:8px;border-radius:8px;max-height:140px;overflow:auto"></pre>
+      <button style="margin-top:10px;padding:10px 26px;border-radius:999px;border:2.5px solid #5b3a29;background:#ffcf5a;font-weight:700;font-size:16px;cursor:pointer">重新載入</button>
+    </div>`;
+  d.querySelector('pre').textContent = String(detail || '').slice(0, 600) + `\n[gfx ${state.gfx} · ${navigator.userAgent.slice(0, 80)}]`;
+  d.querySelector('button').onclick = () => location.reload();
+  document.body.appendChild(d);
+}
+renderer.domElement.addEventListener('webglcontextlost', e => {
+  e.preventDefault();
+  showCrashNotice('畫面當掉了（顯示卡重置）', 'WebGL context lost');
+});
+let _crashShown = false;
+window.addEventListener('error', e => {
+  if (_crashShown || state.gamePhase !== 'playing') return;
+  _crashShown = true;
+  showCrashNotice('遊戲出錯了', `${e.message}\n${(e.error && e.error.stack) || ''}`);
+});
+window.addEventListener('unhandledrejection', e => console.warn('unhandled', e.reason));
 
 requestAnimationFrame(update);
 </script>
