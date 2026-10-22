@@ -71,7 +71,9 @@
 修完 bug、發布試玩版，再請 Bernie 驗收。
 
 ## 🔒 規矩
-- `main` 一推就上線；大改動先走分支，推 `main` 前跟 Bernie 說一聲（小修正不用每步都問，Bernie 2026-10-22：「不要每個步驟都問我」）
+- 🔴 **上架規則（Bernie 2026-10-22）**：`main` 一推就上線。**任何改動都不准直接推 `main` 或 `wrangler deploy`**：先發布到試玩連結，Bernie 或兒子實際玩過、說 OK，才上架。開發過程不用每一步都問。
+  - 原因：10-22 連推揮棒、Shift+G、二段跳三版後，Bernie 回報黑畫面、不能玩，正式版已退回 `15230de` 的內容（main commit `2f8e53f`）
+  - 之後上架做法：在 main 上執行 `git checkout restyle-storybook -- .`，再 commit（main 有一筆退版 commit，不能直接 fast-forward）
 - 本機測試只連本機伺服器（`localhost` 會自動連 `localhost:1999`），不要在正式伺服器建帳號
 - 回覆要短；小改動一兩句＋連結就好
 
