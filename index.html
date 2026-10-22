@@ -612,12 +612,6 @@
   @media (max-width: 900px), (max-height: 520px) {
     #wave-radar { top: calc(8px + env(safe-area-inset-top, 0px)); font-size: 12px; padding: 3px 12px; }
   }
-  /* Chat log: hidden when empty (an empty box drew a stray line across the
-     help bar), and on desktop it sits above the help bar instead of on it. */
-  #chat-log:empty { display: none !important; }
-  @media (min-width: 901px) and (min-height: 521px) {
-    #chat-log { bottom: 120px; max-height: 220px; }
-  }
   /* Keep 關閉 reachable without scrolling on a short landscape phone */
   .panel-close-bottom { position: sticky; bottom: 0; z-index: 2; }
   #goto-cos { display: block; margin: 12px auto 0; padding: 9px 18px; border-radius: 999px;
@@ -934,10 +928,10 @@
   <kbd>W</kbd>/<kbd>↑</kbd> 前進 ·
   <kbd>S</kbd>/<kbd>↓</kbd> 後退 ·
   <kbd>A</kbd><kbd>D</kbd>/<kbd>←</kbd><kbd>→</kbd> 左右 ·
-  <kbd>Space</kbd> 跳躍（空中再按＝二段跳，商店解鎖）·
+  <kbd>Space</kbd> 跳躍 ·
   <kbd>Shift</kbd> 衝刺 · <kbd>F</kbd> 揮棒（敲木箱）·
   <kbd>B</kbd> 升級 / <kbd>C</kbd> 造型 / <kbd>P</kbd> 買地 / <kbd>H</kbd> 蓋屋 / <kbd>Enter</kbd> 聊天 ·
-  <kbd>左鍵拖曳</kbd> 轉鏡頭 / <kbd>滾輪</kbd>/兩指捏合 縮放 / <kbd>R</kbd> 復位 / <kbd>Shift</kbd>+<kbd>G</kbd> 畫質 ·
+  <kbd>左鍵拖曳</kbd> 轉鏡頭 / <kbd>滾輪</kbd>/兩指捏合 縮放 / <kbd>R</kbd> 復位 ·
   躲到石頭後面（地上藍色那塊）海嘯就捲不走你 ·
   <span style="color:#88ff66">綠 Lv3+</span> / <span style="color:#5588ff">藍標準 Lv6+</span> / <span style="color:#ff5050">紅快 Lv6+</span> /
   <span style="color:#aa88ff">紫巨 Lv9+</span> / <span style="color:#cc99ff">黑災難 Lv15+</span> 跳得過去就不用躲
@@ -1174,11 +1168,7 @@ const UPGRADE_DEF = [
   { key:'pickupRadius',  name:'撿取範圍', unit:'格',   step:0.4,  baseCost: 25 },
   { key:'carryMax',      name:'負重',     unit:'個',   step:5,    baseCost: 40 },
   { key:'strength',      name:'力量',     unit:'擊飛', step:1,    baseCost: 35 },
-  // Lv1 unlocks a mid-air second jump; each level adds power (60% → 100% of a normal jump)
-  { key:'doubleJump',    name:'二段跳',   unit:'',     step:0,    baseCost: 120, max: 5,
-    label: lv => `${lv ? doubleJumpPct(lv) + '%' : '未解鎖'} → ${doubleJumpPct(lv + 1)}%力道` },
 ];
-function doubleJumpPct(lv){ return lv <= 0 ? 0 : Math.min(100, 60 + 10 * (lv - 1)); }
 
 // ============================================================
 // THREE SETUP
@@ -3165,7 +3155,7 @@ const state = {
   diveTimeStat: STATS_BASE.diveTime,
   pickupRadius: STATS_BASE.pickupRadius,
   carryMax: STATS_BASE.carryMax,
-  upgrades: { speed:0, jump:0, diveTime:0, pickupRadius:0, carryMax:0, strength:0, doubleJump:0 },
+  upgrades: { speed:0, jump:0, diveTime:0, pickupRadius:0, carryMax:0, strength:0 },
   wood: 0, stone: 0, iron: 0,    // crafting materials (private to player)
   cosmeticsOwned: [],            // ids the player has bought
   alive: true,
@@ -3195,12 +3185,7 @@ const state = {
   stormUntil: 0,
   stormCooldownUntil: 25,      // earliest time (in t-seconds) for first storm
   stormBonusMultiplier: 1,
-  // 0..3, see GFX_PRESETS. One-time reset (v2 key): many saved presets were
-  // accidental G presses from before Shift+G was required.
-  gfx: (() => { try {
-    if (!localStorage.getItem('etfm-gfx-v2')){ localStorage.setItem('etfm-gfx-v2', '1'); localStorage.removeItem('etfm-gfx'); }
-    return parseInt(localStorage.getItem('etfm-gfx') || '2', 10);
-  } catch(e){ return 2; } })(),
+  gfx: parseInt(localStorage.getItem('etfm-gfx') || '2', 10),   // 0..3, see GFX_PRESETS
 };
 applyCameraDefaults();
 
@@ -3263,85 +3248,6 @@ function rollMaterialDrop(coinValue, x, z){
 }
 
 // ===== PvP =====
-// ============================================================
-// BAT SWING — two-handed horizontal baseball swing.
-// Arms use Euler order YXZ: X lifts the arm to horizontal-forward, then Y
-// sweeps it around the body. Right-handed: wind up to the right/back,
-// whip across to the left, then relax.
-// ============================================================
-const SWING_DUR = 0.45;
-const _easeOut = k => 1 - Math.pow(1 - k, 3);
-function poseBatSwing(armR, armL, phase){
-  armR.rotation.order = armL.rotation.order = 'YXZ';
-  const LIFT = 1.45;                       // arm ~horizontal, pointing forward
-  let lift, yawR;
-  if (phase < 0.3){                        // wind-up: bat cocked back over the right shoulder
-    const k = _easeOut(phase / 0.3);
-    lift = LIFT * k; yawR = -1.9 * k;
-  } else if (phase < 0.55){                // strike: fast whip across the body
-    const k = _easeOut((phase - 0.3) / 0.25);
-    lift = LIFT; yawR = -1.9 + 3.9 * k;    // -1.9 → +2.0 rad
-  } else {                                 // follow-through, then relax
-    const k = (phase - 0.55) / 0.45;
-    lift = LIFT * (1 - k * k); yawR = 2.0 * (1 - k * k);
-  }
-  armR.rotation.x = lift; armR.rotation.y = yawR; armR.rotation.z = 0;
-  // left hand rides along to "grip" the bat
-  armL.rotation.x = lift * 0.95; armL.rotation.y = yawR + 0.55; armL.rotation.z = 0;
-}
-
-// White arc trail behind the bat, centred on the swinger, fades in ~0.25 s
-const _swooshGeo = new THREE.RingGeometry(1.0, 2.6, 28, 1, 0, Math.PI);   // right → front → left
-function emitBatSwoosh(owner){
-  if (!owner) return;
-  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75,
-    side: THREE.DoubleSide, depthWrite: false, fog: false, toneMapped: false });
-  const m = new THREE.Mesh(_swooshGeo, mat);
-  m.rotation.order = 'YXZ';
-  m.rotation.x = -Math.PI / 2;                       // lie flat
-  m.rotation.y = owner.rotation.y;
-  m.position.set(owner.position.x, owner.position.y + 1.3, owner.position.z);
-  m.scale.setScalar(owner.scale ? owner.scale.x : 1);
-  m.userData.sbHasLine = true;                       // no ink outline on effects
-  scene.add(m);
-  const t0 = performance.now();
-  (function fade(){
-    const k = (performance.now() - t0) / 250;
-    if (k >= 1){ scene.remove(m); mat.dispose(); return; }
-    mat.opacity = 0.75 * (1 - k);
-    m.scale.setScalar((owner.scale ? owner.scale.x : 1) * (1 + 0.15 * k));
-    requestAnimationFrame(fade);
-  })();
-}
-
-// Double jump: a flat white ring bursting out under the feet
-function emitDoubleJumpRing(x, y, z){
-  for (let i = 0; i < 16; i++){
-    const a = (i / 16) * Math.PI * 2;
-    spawnParticle({
-      x: x + Math.cos(a) * 0.3, y: y + 0.2, z: z + Math.sin(a) * 0.3,
-      vx: Math.cos(a) * 5, vy: -0.5, vz: Math.sin(a) * 5,
-      gravity: 0, life: 0.35, size: 0.28, color: 0xffffff, shrink: true,
-    });
-  }
-}
-
-// Hit: star burst at the target + a short camera shake
-function batImpact(target){
-  state.shakeUntil = t + 0.18;
-  if (!target || !target.position) return;
-  const p = target.position;
-  for (let i = 0; i < 14; i++){
-    const a = Math.random() * Math.PI * 2;
-    spawnParticle({
-      x: p.x, y: p.y + 1.4, z: p.z,
-      vx: Math.cos(a) * (3 + Math.random() * 3), vy: 2 + Math.random() * 3, vz: Math.sin(a) * (3 + Math.random() * 3),
-      gravity: 9, life: 0.45 + Math.random() * 0.2, size: 0.22 + Math.random() * 0.12,
-      color: i % 3 ? 0xffe066 : 0xffffff, shrink: true,
-    });
-  }
-}
-
 function attemptPunch(){
   if (!state.alive) return;
   if (shopOpen || cosShopOpen || buildShopOpen) return;
@@ -3361,7 +3267,7 @@ function attemptPunch(){
     if (dist < bestDist){ bestDist = dist; best = id; }
   }
   state.punchUntil = t + 2.0;          // local cooldown (server also enforces)
-  state.punchAnimUntil = t + SWING_DUR;
+  state.punchAnimUntil = t + 0.4;      // longer swing
   sfx.punch();
   if (best && mpSocket && mpSocket.readyState === WebSocket.OPEN){
     mpSocket.send(JSON.stringify({
@@ -3490,33 +3396,28 @@ function renderShop(){
   hud.shopList.innerHTML = '';
   UPGRADE_DEF.forEach(def => {
     if (def.hidden) return;
-    const lv = state.upgrades[def.key] || 0;
+    const lv = state.upgrades[def.key];
     const cost = upgradeCost(def, lv);
-    const maxed = def.max !== undefined && lv >= def.max;
+    const cur = STATS_BASE[def.key] + def.step * lv;
+    const next = STATS_BASE[def.key] + def.step * (lv + 1);
     const fmt = (v) => Number.isInteger(v) ? v : (+v).toFixed(2);
-    const stat = maxed ? '已滿級'
-      : def.label ? def.label(lv)
-      : `${fmt(STATS_BASE[def.key] + def.step * lv)} → ${fmt(STATS_BASE[def.key] + def.step * (lv + 1))} ${def.unit}`;
     const row = document.createElement('div');
     row.className = 'upgrade';
     row.innerHTML = `
       <span class="name">${def.name}</span>
       <span class="lv">Lv.${lv}</span>
-      <span class="stat">${stat}</span>
-      <button data-key="${def.key}" ${(maxed || state.money < cost) ? 'disabled' : ''}>${maxed ? '滿級' : (lv === 0 && def.max ? '解鎖' : '升級') + ' $' + cost}</button>
+      <span class="stat">${fmt(cur)} → ${fmt(next)} ${def.unit}</span>
+      <button data-key="${def.key}" ${state.money < cost ? 'disabled' : ''}>升級 $${cost}</button>
     `;
     hud.shopList.appendChild(row);
   });
   hud.shopList.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
       const def = UPGRADE_DEF.find(d => d.key === btn.dataset.key);
-      const lv = state.upgrades[def.key] || 0;
-      if (def.max !== undefined && lv >= def.max) return;
-      const cost = upgradeCost(def, lv);
+      const cost = upgradeCost(def, state.upgrades[def.key]);
       if (state.money >= cost){
         state.money -= cost;
-        state.upgrades[def.key] = lv + 1;
-        if (def.key === 'doubleJump' && lv === 0) toast('🦘 解鎖二段跳！在空中再按一次「跳」');
+        state.upgrades[def.key]++;
         applyStats();
         renderShop();
         updateHUD();
@@ -3903,21 +3804,10 @@ function update(now){
     // jump (jump-buff multiplies the impulse) — only on input, gravity itself runs always below
     const floorForJump = floorAt(player.position.x, player.position.z);
     const jumpBuffMul = (t < state.buffJumpUntil) ? 1.5 : 1.0;
-    const onGround = Math.abs(player.position.y - floorForJump) < 0.05;
-    const jumpPressed = keys['Space'] && !state._jumpHeldPrev;   // fresh press, not a held key
-    if (onGround) state.airJumpsUsed = 0;
-    if (keys['Space'] && onGround){
+    if (keys['Space'] && Math.abs(player.position.y - floorForJump) < 0.05){
       state.vy = state.jump * jumpBuffMul;
       sfx.jump();
-    } else if (jumpPressed && !onGround && (state.upgrades.doubleJump || 0) > 0 && !state.airJumpsUsed){
-      // Second jump: resets the fall and kicks upward, with a flip + ring burst
-      state.airJumpsUsed = 1;
-      state.vy = state.jump * jumpBuffMul * doubleJumpPct(state.upgrades.doubleJump) / 100;
-      state.flipStart = t;
-      sfx.jump();
-      emitDoubleJumpRing(player.position.x, player.position.y, player.position.z);
     }
-    state._jumpHeldPrev = !!keys['Space'];
   }
 
   // ----- Vertical physics + clamp (runs even while stunned so victims fall normally) -----
@@ -4262,13 +4152,6 @@ function update(now){
 
   } // end if gamePhase === 'playing'
 
-  // ----- Double-jump front flip (local pitch, so the facing yaw is untouched) -----
-  if (state.flipStart !== undefined){
-    const k = (t - state.flipStart) / 0.38;
-    player.rotation.order = 'YXZ';
-    if (k >= 1 || !state.alive){ player.rotation.x = 0; state.flipStart = undefined; }
-    else player.rotation.x = -Math.PI * 2 * (1 - Math.pow(1 - k, 2));
-  }
   // ----- Player animation -----
   const moving = state.alive && !state.inPit && (
     keys['KeyW']||keys['KeyS']||keys['KeyA']||keys['KeyD']||
@@ -4290,13 +4173,14 @@ function update(now){
     armL.rotation.x *= 0.85;
     armR.rotation.x *= 0.85;
   }
+  // Bat swing: right arm sweeps from over-shoulder back (+1.4) through forward (-2.0)
+  // Overshoots vertical and goes past forward — looks like a real golf/baseball swing
   if (t < state.punchAnimUntil){
-    const phase = 1 - Math.max(0, state.punchAnimUntil - t) / SWING_DUR;
-    poseBatSwing(armR, armL, phase);
-    if (phase >= 0.3 && !state._swooshed){ state._swooshed = true; emitBatSwoosh(player); }
-  } else {
-    state._swooshed = false;
-    armR.rotation.y *= 0.7; armL.rotation.y *= 0.7;
+    const swingDur = 0.4;
+    const phase = 1 - Math.max(0, state.punchAnimUntil - t) / swingDur;
+    // ease: slow wind-up, fast impact, follow-through
+    const eased = phase * phase * (3 - 2 * phase);   // smoothstep
+    armR.rotation.x = 1.4 - eased * 3.4;             // 1.4 → -2.0 rad
   }
   // Hair flow on the local player. Spikes pivot at top and point upward, so a
   // positive rotation.x correctly tips them toward +Z (behind the running
@@ -4380,11 +4264,6 @@ function update(now){
   camera.position.z += (camTargetZ - camera.position.z) * 0.1;
   // Look past the player toward where the camera faces, so the player sits
   // low on screen and incoming waves get most of the frame.
-  if (t < (state.shakeUntil || 0)){
-    const s = 0.25 * (state.shakeUntil - t) / 0.18;
-    camera.position.x += (Math.random() - 0.5) * s;
-    camera.position.y += (Math.random() - 0.5) * s;
-  }
   const lookAhead = camRadius * CAM_LOOKAHEAD;
   camera.lookAt(
     player.position.x - Math.sin(state.cameraYaw) * lookAhead,
@@ -5314,12 +5193,12 @@ function mpHandleMessage(raw){
     renderLeaderboard();
   } else if (msg.type === 'punch_hit'){
     // Animate attacker's right arm
-    // (own swing already started locally — don't restart it on the server echo)
-    if (msg.attackerId !== mpMyId){
+    if (msg.attackerId === mpMyId){
+      state.punchAnimUntil = t + 0.4;
+    } else {
       const a = otherPlayers.get(msg.attackerId);
-      if (a && !(a.punchAnimUntil && t < a.punchAnimUntil)) a.punchAnimUntil = t + SWING_DUR;
+      if (a) a.punchAnimUntil = t + 0.4;
     }
-    batImpact(msg.targetId === mpMyId ? player : (otherPlayers.get(msg.targetId) || {}).group);
     // Apply effect to target
     if (msg.targetId === mpMyId){
       state.knockVx = (msg.dirX || 0) * (msg.magnitude || 8);
@@ -5457,14 +5336,11 @@ function tickMultiplayer(dt){
       o.armL.rotation.x *= 0.85;
       o.armR.rotation.x *= 0.85;
     }
-    // Bat swing override (same two-handed swing as the local player)
+    // Bat swing override (matches local player's animation)
     if (o.punchAnimUntil && t < o.punchAnimUntil){
-      const phase = 1 - Math.max(0, o.punchAnimUntil - t) / SWING_DUR;
-      poseBatSwing(o.armR, o.armL, phase);
-      if (phase >= 0.3 && !o._swooshed){ o._swooshed = true; emitBatSwoosh(o.group); }
-    } else {
-      o._swooshed = false;
-      o.armR.rotation.y *= 0.7; o.armL.rotation.y *= 0.7;
+      const phase = 1 - Math.max(0, o.punchAnimUntil - t) / 0.4;
+      const eased = phase * phase * (3 - 2 * phase);
+      o.armR.rotation.x = 1.4 - eased * 3.4;
     }
     // Animate hair on the other player (strands flip negative — see local code)
     if (o.hairParts){
@@ -5877,15 +5753,13 @@ refreshWaveMaterials = function(){
   // the deep-blue walls nicely. A full water shader can ship later.
 };
 showGfxLabel = function(){
-  toast(`畫質：${state.gfx} - ${GFX_PRESETS[state.gfx]}（Shift+G 切換）`);
+  toast(`畫質：${state.gfx} - ${GFX_PRESETS[state.gfx]}`);
 };
 
 // Cycle through presets with G (only while playing — don't steal key input
 // from menus or the chat box).
 window.addEventListener('keydown', e => {
-  // Shift+G only: plain G sits right next to the bat key (F) and kept
-  // flipping players into the very bright Cinema preset by accident.
-  if (e.code !== 'KeyG' || !e.shiftKey || e.repeat) return;
+  if (e.code !== 'KeyG' || e.repeat) return;
   if (state.gamePhase !== 'playing') return;
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   applyGraphicsPreset((state.gfx + 1) % GFX_PRESETS.length);
@@ -6023,10 +5897,9 @@ attemptPunch = (orig => function(){
     }
     if (best){
       state.punchUntil = t + 0.6;
-      state.punchAnimUntil = t + SWING_DUR;
+      state.punchAnimUntil = t + 0.4;
       sfx.punch();
-      // let the bat actually arrive before the crate breaks
-      setTimeout(() => { smashCrate(best); batImpact(best.mesh); }, SWING_DUR * 0.45 * 1000);
+      smashCrate(best);
       return;
     }
   }
