@@ -2849,15 +2849,39 @@ function spawnTsunami(opts={}){
 // INPUT
 // ============================================================
 const keys = {};
+// Stuck-key guard. A held key is only released by its keyup, and that keyup
+// gets lost when the page loses focus (the claude.ai preview iframe, alt-tab),
+// when chat grabs focus mid-press, or when a Chinese IME swallows it — the
+// player then runs forever. So: drop everything on blur, and release any key
+// whose OS auto-repeat has gone quiet (repeat fires every ~30 ms while held;
+// Windows' longest initial delay is 1 s).
+const keyLastSeen = {};
+function releaseAllKeys(){ for (const k in keys) keys[k] = false; }
+window.addEventListener('blur', releaseAllKeys);
+document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAllKeys(); });
+setInterval(() => {
+  const now = performance.now();
+  for (const k in keys) if (keys[k] && now - (keyLastSeen[k] || 0) > 1200) keys[k] = false;
+}, 200);
 window.addEventListener('keydown', e => {
   // Chat input focused → don't pollute keys[] (and don't trigger game keybinds)
   if (document.activeElement === chatInputEl) return;
   // Enter (when game is running) opens chat
   if (e.code === 'Enter' && state.gamePhase === 'playing' && !shopOpen && !cosShopOpen && !buildShopOpen){
     e.preventDefault();
+    releaseAllKeys();
     openChat();
     return;
   }
+  // A clicked on-screen button keeps keyboard focus, so Space would "press" it
+  // again (toggle sound, buy an upgrade) instead of jumping.
+  const ae = document.activeElement;
+  if (ae && ae.tagName === 'BUTTON' && (e.code === 'Space' || e.code === 'Enter') && state.gamePhase === 'playing'){
+    e.preventDefault();
+    ae.blur();
+  }
+  keyLastSeen[e.code] = performance.now();
+  if (e.repeat) { keys[e.code] = true; return; }   // held key: refresh only, don't re-fire B/C/H/F toggles
   keys[e.code] = true;
   if (e.code === 'KeyB') toggleShop();
   if (e.code === 'KeyC') toggleCosShop();
