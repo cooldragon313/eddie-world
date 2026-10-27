@@ -23,6 +23,10 @@ const BIG_TREASURE_Z = -1000;             // boundary of old map / start of new 
 const TOKEN_EXPIRY_MS = 90 * 24 * 60 * 60 * 1000;   // 90 days
 const PRE_AUTH_TIMEOUT_MS = 15_000;                  // drop connections that don't auth quickly
 const PBKDF2_ITERATIONS = 100_000;   // Cloudflare Workers caps PBKDF2 at 100k
+// Spike-wall race rewards (race.html → POST /race_reward)
+const RACE_MAX_REWARD = 120;         // coins per finished run, at most
+const RACE_MIN_GAP_MS = 30_000;      // a run takes ~50 s+, so 30 s between claims is generous
+const RACE_MIN_TIME_S = 25;          // faster than this isn't a real run (best-time sanity)
 
 // Heights kept in sync with the client; server only uses speedMul / width
 // for spawn calculations.
@@ -339,6 +343,38 @@ export default class WorldServer {
         ok: true, username: user.username, displayName: user.displayName,
         profile: user.profile || null,
       });
+    }
+
+    // POST /race_reward — spike-wall race finished: ADD coins to the saved
+    // money (never overwrite the whole profile, which the island may be
+    // saving at the same time). Clamped and rate-limited so it can't be farmed.
+    if (last === 'race_reward' && req.method === 'POST'){
+      const auth = req.headers.get('authorization') || '';
+      const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+      const userId = await verifyToken(token, secret);
+      if (!userId) return jsonResponse({ error:'bad_token' }, 401);
+      let body; try { body = await req.json(); } catch(e){ return jsonResponse({ error:'bad_json' }, 400); }
+      const user = await this.room.storage.get('user:' + userId);
+      if (!user) return jsonResponse({ error:'no_user' }, 404);
+      const now = Date.now();
+      if (user.lastRaceAt && now - user.lastRaceAt < RACE_MIN_GAP_MS)
+        return jsonResponse({ error:'too_soon', message:'跑太快了，休息一下再領' }, 429);
+      const coins = Math.max(0, Math.min(RACE_MAX_REWARD, Math.floor(Number(body.coins) || 0)));
+      const time = Number(body.time);
+      user.profile = user.profile || { custom: null, progress: null };
+      const progress = user.profile.progress || {};
+      progress.money = (progress.money || 0) + coins;
+      if (Number.isFinite(time) && time >= RACE_MIN_TIME_S && (!progress.raceBest || time < progress.raceBest)) progress.raceBest = +time.toFixed(1);
+      user.profile.progress = progress;
+      user.lastRaceAt = now;
+      await this.room.storage.put('user:' + userId, user);
+      // Tell an open island session (same account) so its next save keeps the coins
+      for (const [cid, p] of this.players){
+        if (p.userId !== userId) continue;
+        const conns = this.room.getConnections ? Array.from(this.room.getConnections()) : [];
+        for (const c of conns) if (c.id === cid){ try { c.send(JSON.stringify({ type: 'race_reward', coins, money: progress.money })); } catch(e){} }
+      }
+      return jsonResponse({ ok: true, coins, money: progress.money, raceBest: progress.raceBest || null });
     }
 
     // ============================================================
@@ -820,9 +856,13 @@ export default class WorldServer {
       try {
         const user = await this.room.storage.get('user:' + player.userId);
         if (!user) return;
+        // The island doesn't know about race-only fields; keep them across its saves.
+        const prev = (user.profile && user.profile.progress) || {};
+        const progress = msg.progress || null;
+        if (progress && prev.raceBest && !progress.raceBest) progress.raceBest = prev.raceBest;
         user.profile = {
           custom: msg.custom || (user.profile && user.profile.custom) || null,
-          progress: msg.progress || null,
+          progress,
         };
         await this.room.storage.put('user:' + player.userId, user);
       } catch(e){}
