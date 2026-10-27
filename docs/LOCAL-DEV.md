@@ -5,7 +5,7 @@
 ## 啟動
 1. `npm install`（第一次）
 2. `npm run dev` → 遊戲伺服器在 http://localhost:1999
-3. 另開靜態伺服器：`python -m http.server 8765` → 打開 http://localhost:8765/index.html
+3. 另開靜態伺服器：`python -m http.server 8765` → 打開 http://localhost:8765/index.html（刺牆賽跑）或 island.html（海嘯島）
 4. 從 localhost 開的頁面會自動連本機伺服器（`PARTYKIT_HOST` 依網址判斷）
 
 ## 本機測試帳號

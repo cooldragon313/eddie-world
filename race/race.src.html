@@ -7,8 +7,8 @@
 <!--
   SOURCE TEMPLATE — edit this file, then run:  python tools/build_race.py
   The build pastes the island's storybook look, avatar/cosmetics and bat
-  swing (copied out of index.html) into the @@INCLUDE markers and writes
-  race.html. Never edit race.html by hand.
+  swing (copied out of island.html) into the @@INCLUDE markers and writes
+  index.html (the site's home page). Never edit index.html by hand.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
@@ -95,7 +95,7 @@
     手機：自動往前跑，用按鈕閃、跳、揮棒
   </p>
   <button class="btn" id="startBtn" type="button">開跑！</button>
-  <br><a class="btn ghost" id="islandLink" href="index.html">← 回海嘯島</a>
+  <br><a class="btn ghost" id="islandLink" href="island.html">🏝 回海嘯島：商店、換造型</a>
 </div></div>
 
 <div class="card" id="endCard" hidden><div>
@@ -110,7 +110,7 @@
   <p id="rTitle" style="font-weight:900;font-size:18px"></p>
   <p class="reward" id="rReward"></p>
   <button class="btn" id="againBtn" type="button">再跑一次</button>
-  <br><a class="btn ghost" href="index.html">← 回海嘯島</a>
+  <br><a class="btn ghost" href="island.html">🏝 回海嘯島花錢</a>
 </div></div>
 
 <div id="touch">
@@ -356,7 +356,7 @@ async function claimReward(coins, time){
 (async () => {
   const who = $('who');
   if (!API){ who.textContent = '試玩版：用預設角色'; return; }
-  if (!authToken){ who.innerHTML = '還沒登入：用預設角色。<a href="index.html">去海嘯島登入</a>就能用自己的角色、存獎金。'; return; }
+  if (!authToken){ who.innerHTML = '還沒登入：用預設角色。<a href="island.html">去海嘯島登入</a>就能用自己的角色、存獎金。'; return; }
   try {
     const r = await fetch(API + '/me', { headers: { Authorization: 'Bearer ' + authToken } });
     const j = await r.json();

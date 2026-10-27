@@ -9,6 +9,9 @@
 ## 🧭 這是什麼專案
 給 12 歲兒子玩的多人跑酷撿錢遊戲（靈感來自 Roblox《Escape Tsunami For Brainrots》）。
 - 正式版：https://cooldragon313.github.io/escapetsunamiformoney/ （GitHub Pages，`main` 一推就上線 → **改動一律先走分支**）
+- 🗺 **檔案結構（2026-10-27 起，分支上，還沒上架）**：網址一打開＝**刺牆賽跑** `index.html`（主玩法）；**海嘯島** = `island.html`（商店、造型、蓋房子，海嘯撿錢當副玩法）
+  - `index.html` 是**產生出來的**：改 `race/race.src.html` 後跑 `python tools/build_race.py`。角色／造型／繪本畫風／揮棒自動從 `island.html` 抄過去，不要手改 `index.html`
+  - 賽跑跑完的金幣走伺服器 `POST /race_reward`（**加錢不覆蓋**，上限 120、30 秒一次）；島上開著會收到 `race_reward` 訊息同步
 - 伺服器：**Cloudflare Worker**（Bernie 自己的帳號 cooldragon313@gmail.com），正式網址 `etfm.cooldragon313.workers.dev`
   - 遊戲邏輯仍在 `party/server.js`（沒改）；`cloudflare/worker.js` 是轉接殼，把它包成 Durable Object
   - 部署：`cd cloudflare && npx wrangler deploy`（需 `npx wrangler login`）；密鑰 `AUTH_SECRET` 已設，換掉會讓所有人重新登入
@@ -20,7 +23,7 @@
 ## 📱 手機試玩連結（最新）
 **https://claude.ai/artifact/KQxdw7JqrC6D7sKLJcfgXV**
 - 單人模式、不連伺服器、不用登入；進度存在手機瀏覽器；每次開場至少 $777
-- 更新方式：把 `index.html` 去掉 `<html>/<head>/<body>` 外殼後發布到同一個 artifact（上一個 session 用 scratchpad 的 `storybook-preview.html`）
+- 更新方式：把 `island.html` 去掉 `<html>/<head>/<body>` 外殼後發布到同一個 artifact（上一個 session 用 scratchpad 的 `storybook-preview.html`）
 - ⚠️ `…JzZMRGcv…` 是舊的「風格比較頁」，不要跟試玩版搞混
 
 ## 📚 先讀這些
@@ -28,10 +31,10 @@
 2. `docs/PLAN-去像素化.md` — 定案規格、點子池、**決策紀錄**（最下面那張表就是時間軸）
 3. `docs/LOCAL-DEV.md` — 本機跑伺服器＋測試帳號
 4. `README.md` — 原本的遊戲說明（部分內容已過時，例如「坑」已改成石頭）
-5. `index.html`（約 6000 行，**不要整份讀**，用搜尋找下面列的區塊）
+5. `island.html`（海嘯島，約 6000 行，**不要整份讀**，用搜尋找下面列的區塊）；刺牆賽跑看 `race/race.src.html`
 
 ## ✅ 這個分支做完的事
-| 項目 | 重點 | 在 index.html 搜尋 |
+| 項目 | 重點 | 在 island.html 搜尋 |
 |---|---|---|
 | 繪本風介面 | 奶油紙面板、咖啡色框、圓體字 | `STORYBOOK THEME` |
 | 卡通著色 | 所有 Lambert 材質自動變 4 階 toon；咖啡色描邊 | `STORYBOOK LOOK`、`sbOutline` |
@@ -56,7 +59,7 @@
 ## 🆕 2026-10-22
 - 鍵盤卡住修正（失焦／聊天／注音輸入法吃掉放開訊號 → 自動放開）
 - 伺服器搬到 Cloudflare、正式版上線繪本版（`main` 已合併並推送）
-- 本機測多人：`npm run dev:cf`（wrangler，port 1999）＋ 開 `localhost` 的 index.html
+- 本機測多人：`npm run dev:cf`（wrangler，port 1999）＋ 開 `localhost` 的 index.html（賽跑）或 island.html（海嘯島）
 - 揮棒（雙手橫掃＋殘影）、二段跳（商店升級）、畫質改 Shift+G、當機提示畫面 → 已上線
 - 🐛 **黑畫面根因（已修，main `9954644`）**：遊戲時鐘 `t` 在第一幀可能是**負數**（rAF 時間戳早於起始時間）。
   `t < (state.shakeUntil || 0)` 在 shakeUntil 未設時成立 → 以 NaN 強度震鏡頭 → 鏡頭位置變 NaN、之後永遠 NaN → 全黑，看載入時運氣。
@@ -89,6 +92,6 @@
 1. HANDOFF.md ← 目前進度與下一步
 2. docs/PLAN-去像素化.md（看「定案規格」和最下面的決策紀錄）
 3. docs/LOCAL-DEV.md
-index.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡的關鍵字搜尋。
+island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡的關鍵字搜尋。
 讀完跟我說「跟上進度了」。
 ```

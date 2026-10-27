@@ -23,7 +23,7 @@ const BIG_TREASURE_Z = -1000;             // boundary of old map / start of new 
 const TOKEN_EXPIRY_MS = 90 * 24 * 60 * 60 * 1000;   // 90 days
 const PRE_AUTH_TIMEOUT_MS = 15_000;                  // drop connections that don't auth quickly
 const PBKDF2_ITERATIONS = 100_000;   // Cloudflare Workers caps PBKDF2 at 100k
-// Spike-wall race rewards (race.html → POST /race_reward)
+// Spike-wall race rewards (index.html, the race → POST /race_reward)
 const RACE_MAX_REWARD = 120;         // coins per finished run, at most
 const RACE_MIN_GAP_MS = 30_000;      // a run takes ~50 s+, so 30 s between claims is generous
 const RACE_MIN_TIME_S = 25;          // faster than this isn't a real run (best-time sanity)
@@ -54,7 +54,7 @@ function pickWaveType(stormBoost){
 // Seconds until the next wave. Waves now live 1–2 min on the runway (they
 // used to vanish in ~10 s), so the old 1.2–4 s cadence stacked into a wall.
 // One wave per ~10 s gives warn → dodge → breathe → collect. Keep in sync
-// with nextWaveGap in index.html.
+// with nextWaveGap in island.html.
 function nextWaveGap(storm){
   if (storm) return 4 + Math.random() * 2;          // storm: 4–6 s
   return Math.random() < 0.15
@@ -628,7 +628,7 @@ export default class WorldServer {
         if (minZ < 5){
           const wt = pickWaveType(this.storm);
           // Fixed, readable wave speed; spawn ~6 s ahead of the deepest player.
-          // Keep in sync with WAVE_WARN_SEC / waveSpeedFor in index.html.
+          // Keep in sync with WAVE_WARN_SEC / waveSpeedFor in island.html.
           const depthFactor = Math.min(1, Math.max(0, -minZ) / RUNWAY_LEN);
           const speed = (0.30 + 0.12 * depthFactor) * wt.speedMul;
           const fromZ = Math.max(-RUNWAY_LEN + 5, minZ - speed * 60 * 6);
