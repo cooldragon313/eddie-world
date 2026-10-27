@@ -1,0 +1,483 @@
+<meta charset="utf-8">
+<title>刺牆大逃亡試玩</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+/* Layout: full-screen game canvas, HUD pinned to the corners, one centred card for countdown / results. Single look on purpose (a game screen). */
+:root{
+  --sky:#bfe3f5; --ink:#3d2a1e; --paper:#fff8ec; --line:#5b3a29; --danger:#e0584a; --wall:#8a3fa0; --go:#2e9b62; --gold:#ffcf5a;
+  --display:"Baloo 2","Noto Sans TC",system-ui,sans-serif; --body:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%}
+body{margin:0;overflow:hidden;background:var(--sky);color:var(--ink);font-family:var(--body);user-select:none;-webkit-user-select:none;touch-action:none}
+#stage{position:fixed;inset:0}
+.hud{position:fixed;z-index:5;display:flex;gap:8px;align-items:center;pointer-events:none}
+.tl{top:calc(10px + env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));flex-direction:column;align-items:flex-start}
+.tr{top:calc(10px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));flex-direction:column;align-items:flex-end}
+.chip{background:var(--paper);border:2px solid var(--line);border-radius:999px;padding:3px 12px;font-weight:700;font-size:14px;box-shadow:0 3px 0 rgba(91,58,41,.25);font-variant-numeric:tabular-nums}
+.chip b{font-family:var(--display);font-size:17px}
+.sec{background:var(--line);color:var(--paper)}
+.meter{width:min(46vw,260px);height:14px;border:2px solid var(--line);border-radius:999px;background:var(--paper);overflow:hidden;position:relative}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--go);width:100%;transition:background .2s}
+.meter.warn i{background:var(--gold)} .meter.danger i{background:var(--danger)}
+.meter.stam{height:10px} .meter.stam i{background:#5aa9e6} .meter.stam.tired i{background:#b9a58a}
+.lbl{font-size:12px;font-weight:700;background:var(--paper);border-radius:6px;padding:0 6px}
+.card{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(70,48,32,.35);padding:16px}
+.card[hidden]{display:none!important}
+.card>div{background:var(--paper);border:3px solid var(--line);border-radius:20px;padding:20px 24px;max-width:440px;width:100%;text-align:center;box-shadow:0 8px 0 rgba(91,58,41,.25)}
+.card h1{font-family:var(--display);font-size:36px;margin:0;line-height:1.1}
+.card p{margin:8px 0;font-size:15px}
+.keys{font-size:13px;color:#7a5a43;line-height:1.8}
+kbd{background:#fff;border:1.5px solid var(--line);border-bottom-width:3px;border-radius:6px;padding:0 6px;font-family:var(--body);font-size:12px}
+button{font:800 18px var(--display);background:var(--gold);color:var(--line);border:2.5px solid var(--line);border-radius:999px;padding:8px 28px;cursor:pointer;box-shadow:0 4px 0 rgba(91,58,41,.35);margin-top:8px}
+button:focus-visible{outline:3px solid var(--danger);outline-offset:2px}
+.big{font-family:var(--display);font-size:96px;font-weight:800;color:var(--paper);-webkit-text-stroke:3px var(--line);position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9;pointer-events:none}
+.flash{position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:8;font-weight:900;font-size:22px;color:var(--paper);-webkit-text-stroke:1.5px var(--line);pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
+.flash.on{opacity:1}
+.results{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;text-align:left;margin:12px 0;font-variant-numeric:tabular-nums}
+.results b{font-family:var(--display);font-size:20px}
+/* touch controls */
+#touch{display:none}
+body.touch #touch{display:block}
+.tb{position:fixed;z-index:6;width:68px;height:68px;border-radius:50%;border:3px solid var(--line);background:var(--paper);font:800 16px var(--body);color:var(--line);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 rgba(91,58,41,.35)}
+.tb.on{transform:translateY(3px);box-shadow:0 1px 0 rgba(91,58,41,.35);filter:brightness(.92)}
+#tLeft{left:max(16px,env(safe-area-inset-left,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+#tRight{left:calc(max(16px,env(safe-area-inset-left,0px)) + 80px);bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+#tJump{right:max(16px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:84px;height:84px;background:var(--gold)}
+#tBat{right:calc(max(16px,env(safe-area-inset-right,0px)) + 96px);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:#ffc4bb}
+#tDash{right:max(16px,env(safe-area-inset-right,0px));bottom:calc(116px + env(safe-area-inset-bottom,0px));background:#ffe0c2}
+/* red glow from the bottom edge as the spike wall closes in (opacity set from JS) */
+#danger{position:fixed;inset:auto 0 0 0;height:38vh;z-index:4;pointer-events:none;opacity:0;
+  background:linear-gradient(to top,rgba(200,30,40,.75),rgba(200,30,40,0))}
+@media (prefers-reduced-motion: reduce){.flash{transition:none}}
+</style>
+
+<div id="stage"></div>
+<div class="hud tl">
+  <span class="chip sec" id="hSec">起跑區</span>
+  <span class="chip">⏱ <b id="hTime">0.0</b> 秒</span>
+  <span class="chip">📍 <b id="hDist">0</b> / 530 m</span>
+</div>
+<div class="hud tr">
+  <span class="lbl">刺牆距離</span>
+  <div class="meter" id="meter"><i id="meterBar"></i></div>
+  <span class="lbl">衝刺體力</span>
+  <div class="meter stam" id="stam"><i id="stamBar"></i></div>
+  <span class="chip">被追到 <b id="hCaught">0</b> 次</span>
+</div>
+<div id="danger"></div>
+<div class="flash" id="flash"></div>
+<div class="big" id="count" hidden></div>
+
+<div class="card" id="startCard"><div>
+  <h1>刺牆大逃亡</h1>
+  <p>刺牆從背後追上來，一路衝到終點！</p>
+  <p class="keys">
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向鍵 移動 · <kbd>空白鍵</kbd> 跳（空中再按一次＝二段跳）<br>
+    <kbd>Shift</kbd> 衝刺 · <kbd>F</kbd> 揮棒（可以把子彈打回去）<br>
+    手機：自動往前跑，按鈕左右閃、跳、揮棒
+  </p>
+  <button id="startBtn" type="button">開跑！</button>
+</div></div>
+
+<div class="card" id="endCard" hidden><div>
+  <h1 id="endTitle">通關！</h1>
+  <div class="results">
+    <span>時間</span><b id="rTime">0</b>
+    <span>被刺牆追到</span><b id="rCaught">0</b>
+    <span>掉坑</span><b id="rPit">0</b>
+    <span>中彈</span><b id="rShot">0</b>
+  </div>
+  <p id="rTitle" style="font-weight:900;font-size:18px"></p>
+  <button id="againBtn" type="button">再跑一次</button>
+</div></div>
+
+<div id="touch">
+  <div class="tb" id="tLeft">◀</div><div class="tb" id="tRight">▶</div>
+  <div class="tb" id="tJump">跳</div><div class="tb" id="tBat">揮棒</div><div class="tb" id="tDash">衝刺</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+// 刺牆大逃亡 — playable greybox of level 1-1 (荊棘峽谷).
+// Course runs along -Z; "m" = metres from the start line (z = -m).
+// ============================================================
+const LANE = 8;                 // half width (lane is 16 m wide)
+const FINISH = 530, END = 560;
+const CHECKPOINTS = [0, 30, 130, 230, 330, 430];
+const SECTIONS = [
+  // Wall runs almost as fast as you (10.8): every stumble costs ground, and
+  // the last stretch is faster than a plain run — save sprint for it.
+  { from: 0,   to: 30,  name: '起跑區',   wall: 9    },
+  { from: 30,  to: 130, name: '① 地坑道', wall: 9    },
+  { from: 130, to: 230, name: '② 荊棘地', wall: 9.5  },
+  { from: 230, to: 330, name: '③ 落石谷', wall: 10   },
+  { from: 330, to: 430, name: '④ 機關牆', wall: 10.5 },
+  { from: 430, to: 560, name: '⑤ 砲台大道', wall: 11 },
+];
+const WALL_START_GAP = 12;   // metres behind you at GO
+// Sprint is a resource: ~2.5 s of sprint, refills in ~4 s. Unlimited sprint
+// (16.2 m/s) simply outran the wall and killed all the pressure.
+const STAMINA_DRAIN = 1 / 2.5, STAMINA_FILL = 1 / 4;
+const RUN = 10.8, SPRINT = 16.2, JUMP_V = 10.5, GRAV = 30, DJ_V = 8.5;
+
+// Pits: [fromM, toM, xMin, xMax]
+const PITS = [
+  [44, 48, -LANE, LANE], [60, 64, -LANE, 0], [70, 74, 0, LANE],
+  [88, 93, -LANE, LANE], [104, 108, -LANE, LANE], [118, 122, -LANE, 2],
+];
+// Thorn strips: [fromM, toM, xMin, xMax] — zig-zag path between them
+const THORNS = [
+  [140, 143, -LANE, 3], [155, 158, -3, LANE], [168, 171, -LANE, 3],
+  [182, 185, -3, LANE], [196, 199, -LANE, 1], [212, 215, -1, LANE],
+];
+// Moving walls: gap 4.5 m wide slides left/right
+const WALLS = [ { m: 345, ph: 0 }, { m: 370, ph: 1.7 }, { m: 395, ph: 3.1 }, { m: 420, ph: 4.6 } ];
+const GAP = 4.5, WALL_SWING = 5.2, WALL_SPEED = 1.1;
+// Cover blocks in the turret run: [m, x]
+const COVERS = [[452, -3], [466, 3.5], [480, -4], [494, 2], [508, -2.5], [520, 3]];
+const TURRETS = [ { m: 545, x: -3.5 }, { m: 545, x: 3.5 } ];
+
+// ---------- three.js setup ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+document.getElementById('stage').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xbfe3f5);
+scene.fog = new THREE.Fog(0xbfe3f5, 60, 170);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 400);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a6f52, 0.8));
+const sun = new THREE.DirectionalLight(0xffffff, 0.55); sun.position.set(6, 14, 8); scene.add(sun);
+function fit(){
+  const w = innerWidth, h = innerHeight; if (!w || !h) return;
+  renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', fit); if (window.ResizeObserver) new ResizeObserver(fit).observe(document.getElementById('stage'));
+fit(); setInterval(fit, 1000);
+
+const M = c => new THREE.MeshLambertMaterial({ color: c });
+const mats = {
+  ground: M(0xcf9f63), groundAlt: M(0xc39257), edge: M(0x9b7b55), pit: M(0x3d2a1e),
+  thorn: M(0x5e8f3a), spike: M(0xe0584a), rock: M(0x8d8076), shadow: new THREE.MeshBasicMaterial({ color: 0x3d2a1e, transparent: true, opacity: 0.35 }),
+  wall: M(0x8d7a6a), cover: M(0x9aa7b4), turret: M(0xe0584a), bullet: new THREE.MeshBasicMaterial({ color: 0xff5a3c }),
+  bulletBack: new THREE.MeshBasicMaterial({ color: 0x2e9b62 }), spikeWall: new THREE.MeshLambertMaterial({ color: 0x8a3fa0, transparent: true, opacity: 1 }), flag: M(0x2e9b62), finish: M(0xffffff), finish2: M(0x3d2a1e), gold: M(0xffcf5a),
+};
+const box = (w, h, d, mat, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); o.position.set(x, y, z); scene.add(o); return o; };
+
+// Ground: built in 2 m slices so pits are real holes
+function inPit(m, x){ for (const p of PITS) if (m >= p[0] && m <= p[1] && x >= p[2] && x <= p[3]) return p; return null; }
+for (let m = -40; m < END; m += 2){
+  // split each slice laterally where a pit only covers part of it
+  const cuts = [-LANE];
+  for (const p of PITS) if (m + 1 >= p[0] && m + 1 <= p[1]) { cuts.push(p[2], p[3]); }
+  cuts.push(LANE); cuts.sort((a, b) => a - b);
+  for (let i = 0; i < cuts.length - 1; i++){
+    const x0 = Math.max(-LANE, cuts[i]), x1 = Math.min(LANE, cuts[i + 1]);
+    if (x1 - x0 < 0.01) continue;
+    if (inPit(m + 1, (x0 + x1) / 2)) continue;
+    box(x1 - x0, 1, 2.02, (Math.floor(m / 10) % 2) ? mats.ground : mats.groundAlt, (x0 + x1) / 2, -0.5, -(m + 1));
+  }
+}
+box(1, 1.2, END + 40, mats.edge, -LANE - 0.5, 0.1, -(END - 40) / 2);
+box(1, 1.2, END + 40, mats.edge,  LANE + 0.5, 0.1, -(END - 40) / 2);
+// pit bottoms (visual depth)
+for (const p of PITS) box(p[3] - p[2], 0.2, p[1] - p[0], mats.pit, (p[2] + p[3]) / 2, -6, -(p[0] + p[1]) / 2);
+
+// Thorns: low green strips with red spikes
+for (const t of THORNS){
+  const w = t[3] - t[2], d = t[1] - t[0];
+  box(w, 0.3, d, mats.thorn, (t[2] + t[3]) / 2, 0.15, -(t[0] + t[1]) / 2);
+  for (let x = t[2] + 0.6; x < t[3]; x += 1.2) for (let m = t[0] + 0.6; m < t[1]; m += 1.2){
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.9, 6), mats.spike); c.position.set(x, 0.75, -m); scene.add(c);
+  }
+}
+
+// Checkpoint flags + finish line + podium
+for (const cp of CHECKPOINTS.slice(1)){
+  box(0.15, 3, 0.15, mats.edge, -LANE + 0.4, 1.5, -cp);
+  const f = box(1.4, 0.8, 0.08, mats.flag, -LANE + 1.15, 2.6, -cp);
+}
+for (let i = 0; i < 16; i++) box(1, 0.05, 1, i % 2 ? mats.finish : mats.finish2, -LANE + 0.5 + i, 0.03, -FINISH);
+box(0.3, 4, 0.3, mats.edge, -LANE + 0.3, 2, -FINISH); box(0.3, 4, 0.3, mats.edge, LANE - 0.3, 2, -FINISH);
+box(16, 0.6, 0.3, mats.gold, 0, 4.2, -FINISH);
+box(3, 2, 3, mats.gold, 0, 1, -(FINISH + 18)); box(3, 1.3, 3, mats.gold, -3, 0.65, -(FINISH + 18)); box(3, 0.8, 3, mats.gold, 3, 0.4, -(FINISH + 18));
+
+// Moving walls (two boxes leaving a sliding gap)
+const walls = WALLS.map(w => {
+  const a = box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m), b = box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m);   // taller than a double jump
+  return { ...w, a, b, gapX: 0 };
+});
+function layoutWalls(time){
+  for (const w of walls){
+    w.gapX = Math.sin(time * WALL_SPEED + w.ph) * WALL_SWING;
+    const l0 = -LANE, l1 = w.gapX - GAP / 2, r0 = w.gapX + GAP / 2, r1 = LANE;
+    w.a.scale.x = Math.max(0.01, l1 - l0); w.a.position.x = (l0 + l1) / 2;
+    w.b.scale.x = Math.max(0.01, r1 - r0); w.b.position.x = (r0 + r1) / 2;
+  }
+}
+layoutWalls(0);
+// Covers + turrets
+const covers = COVERS.map(([m, x]) => ({ m, x, mesh: box(2.6, 2, 1.6, mats.cover, x, 1, -m) }));
+const turrets = TURRETS.map((t, i) => {
+  const body = box(1.6, 1.6, 1.6, mats.turret, t.x, 0.8, -t.m);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.6, 10), mats.edge);
+  barrel.rotation.x = Math.PI / 2; barrel.position.set(t.x, 1.1, -t.m + 1.2); scene.add(barrel);
+  return { ...t, body, next: 1 + i * 0.6 };
+});
+
+// Spike wall (chaser)
+const chaser = new THREE.Group();
+// 4 m tall: shorter than the camera's line of sight down to you
+const slab = new THREE.Mesh(new THREE.BoxGeometry(LANE * 2 + 2, 4, 1.2), mats.spikeWall); slab.position.y = 2; chaser.add(slab);
+const wallSpikeMat = new THREE.MeshLambertMaterial({ color: 0xe0584a, transparent: true, opacity: 1 });
+for (let x = -LANE; x <= LANE; x += 1.3) for (let y = 0.6; y < 4; y += 1.3){
+  const c = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.4, 6), wallSpikeMat);
+  c.rotation.x = -Math.PI / 2; c.position.set(x, y, -1.2); chaser.add(c);
+}
+scene.add(chaser);
+
+// Player (Q-style blob)
+const player = new THREE.Group();
+const bodyM = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 12), M(0xd04040)); bodyM.position.y = 0.75; bodyM.scale.y = 1.15; player.add(bodyM);
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.48, 16, 12), M(0xfdd4a8)); head.position.y = 1.6; player.add(head);
+const hair = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), M(0x3a2a1a)); hair.position.y = 1.65; player.add(hair);
+const batPivot = new THREE.Group(); batPivot.position.set(0.45, 1.0, 0); player.add(batPivot);
+const bat = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.06, 1.3, 8), M(0xc08a4a)); bat.position.set(0, 0, -0.65); bat.rotation.x = Math.PI / 2; batPivot.add(bat);
+scene.add(player);
+
+// Rocks + bullets (pooled lists)
+const rocks = [];   // { x, m, t, shadow, mesh }
+const bullets = []; // { x, m, vm, mesh, back }
+
+// ---------- state ----------
+const S = {
+  phase: 'menu', x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false,
+  knockV: 0, slowUntil: 0, downUntil: 0, swingUntil: 0, swingCd: 0,
+  wallM: -WALL_START_GAP, cp: 0, time: 0, startAt: 0, caught: 0, pits: 0, shot: 0, rockNext: 0, stamina: 1, tired: false,
+};
+const keys = {};
+addEventListener('keydown', e => { if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault(); keys[e.code] = true; });
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+// touch
+const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+if (isTouch) document.body.classList.add('touch');
+const tbind = (id, code) => {
+  const el = document.getElementById(id);
+  const on = e => { e.preventDefault(); keys[code] = true; el.classList.add('on'); };
+  const off = e => { e.preventDefault(); keys[code] = false; el.classList.remove('on'); };
+  el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
+};
+tbind('tLeft', 'ArrowLeft'); tbind('tRight', 'ArrowRight'); tbind('tJump', 'Space'); tbind('tBat', 'KeyF'); tbind('tDash', 'ShiftLeft');
+
+// ---------- UI ----------
+const $ = id => document.getElementById(id);
+let flashTimer = 0;
+function flash(text){ const f = $('flash'); f.textContent = text; f.classList.add('on'); clearTimeout(flashTimer); flashTimer = setTimeout(() => f.classList.remove('on'), 1100); }
+function sectionAt(m){ for (let i = SECTIONS.length - 1; i >= 0; i--) if (m >= SECTIONS[i].from) return SECTIONS[i]; return SECTIONS[0]; }
+
+function reset(){
+  Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, knockV: 0, slowUntil: 0, downUntil: 0, swingUntil: 0,
+    swingCd: 0, wallM: -WALL_START_GAP, cp: 0, time: 0, caught: 0, pits: 0, shot: 0, rockNext: 0, stamina: 1, tired: false });
+  for (const r of rocks){ scene.remove(r.mesh); scene.remove(r.shadow); } rocks.length = 0;
+  for (const b of bullets) scene.remove(b.mesh); bullets.length = 0;
+}
+function startRun(){
+  reset(); $('startCard').hidden = true; $('endCard').hidden = true;
+  S.phase = 'count'; S.startAt = performance.now();
+}
+$('startBtn').onclick = startRun; $('againBtn').onclick = startRun;
+
+function respawn(reason){
+  S.m = S.cp + 2; S.x = 0; S.y = 0; S.vy = 0; S.knockV = 0; S.slowUntil = 0; S.downUntil = S.time + 0.6;
+  S.wallM = Math.min(S.wallM, S.cp - 25);
+  flash(reason);
+}
+function finish(){
+  S.phase = 'done'; $('danger').style.opacity = 0;
+  $('rTime').textContent = S.time.toFixed(1) + ' 秒';
+  $('rCaught').textContent = S.caught + ' 次'; $('rPit').textContent = S.pits + ' 次'; $('rShot').textContent = S.shot + ' 次';
+  const t = S.caught === 0 && S.pits === 0 ? '🏆 刺牆碰不到我' : S.pits >= 3 ? '🕳 坑底常客' : S.caught >= 3 ? '🦔 刺牆的好朋友' : S.shot >= 3 ? '🎯 人肉標靶' : '🏃 穩穩跑完';
+  $('rTitle').textContent = '稱號：' + t;
+  $('endCard').hidden = false; $('againBtn').focus();
+}
+
+// ---------- update ----------
+let last = 0;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = last ? Math.min(0.05, Math.max(0, (now - last) / 1000)) : 0.016;
+  last = now;
+  if (S.phase === 'count'){
+    const left = 3 - (performance.now() - S.startAt) / 1000;
+    const c = $('count'); c.hidden = false; c.textContent = left > 0 ? Math.ceil(left) : 'GO!';
+    if (left <= -0.4){ c.hidden = true; S.phase = 'run'; }
+  }
+  if (S.phase === 'run') step(dt);
+  layoutWalls(S.phase === 'run' ? S.time : performance.now() / 1000);
+  render(dt);
+}
+
+function step(dt){
+  S.time += dt;
+  const sec = sectionAt(S.m);
+  const down = S.time < S.downUntil;
+  // input
+  let fwd = isTouch ? 1 : 0, side = 0;
+  if (keys.KeyW || keys.ArrowUp) fwd = 1;
+  if (keys.KeyS || keys.ArrowDown) fwd = -0.6;
+  if (keys.KeyA || keys.ArrowLeft) side -= 1;
+  if (keys.KeyD || keys.ArrowRight) side += 1;
+  const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && fwd > 0;
+  if (wantSprint && S.stamina > 0.02 && !S.tired){ S.stamina = Math.max(0, S.stamina - STAMINA_DRAIN * dt); if (S.stamina === 0) S.tired = true; }
+  else { S.stamina = Math.min(1, S.stamina + STAMINA_FILL * dt); if (S.stamina > 0.35) S.tired = false; }
+  const sprinting = wantSprint && !S.tired && S.stamina > 0.02;
+  let speed = sprinting ? SPRINT : RUN;
+  if (S.time < S.slowUntil) speed *= 0.45;
+  if (down) { fwd = 0; side = 0; }
+  const prevM = S.m, prevX = S.x;
+  S.m += (fwd * speed - S.knockV) * dt;
+  S.x += side * speed * 0.8 * dt;
+  S.knockV = Math.max(0, S.knockV - 25 * dt);
+  S.x = Math.max(-LANE + 0.5, Math.min(LANE - 0.5, S.x));
+  S.m = Math.max(-30, S.m);
+
+  // jump / double jump (fresh press only)
+  const jp = keys.Space && !S.jumpHeld; S.jumpHeld = !!keys.Space;
+  // Ground jump fires while held (like the main game: hold = hop on landing);
+  // the double jump needs a fresh press.
+  if (!down){
+    if (keys.Space && S.onGround){ S.vy = JUMP_V; S.onGround = false; }
+    else if (jp && !S.onGround && !S.djUsed){ S.vy = DJ_V; S.djUsed = true; flip = 0.0001; }
+  }
+  S.vy -= GRAV * dt; S.y += S.vy * dt;
+  const overPit = inPit(S.m, S.x);
+  if (!overPit && S.y <= 0 && S.y > -0.8){ S.y = 0; S.vy = 0; S.onGround = true; S.djUsed = false; }
+  else if (S.y < 0) S.onGround = false;
+  if (S.y < -5){ S.pits++; respawn('掉坑了！回檢查點'); return; }
+
+  // solid things: walls and covers (simple AABB push-out), only while low enough to hit them
+  const solids = [];
+  for (const w of walls){ solids.push({ m: w.m, half: 0.5, x0: -LANE, x1: w.gapX - GAP / 2, h: 4.5 }, { m: w.m, half: 0.5, x0: w.gapX + GAP / 2, x1: LANE, h: 4.5 }); }
+  for (const c of covers) solids.push({ m: c.m, half: 0.8, x0: c.x - 1.3, x1: c.x + 1.3, h: 2 });
+  for (const s of solids){
+    if (S.y > s.h) continue;
+    const inM = Math.abs(S.m - s.m) < s.half + 0.45, inX = S.x > s.x0 - 0.45 && S.x < s.x1 + 0.45;
+    if (inM && inX){
+      // came from behind → block forward; came from the side → block sideways
+      const wasM = Math.abs(prevM - s.m) < s.half + 0.45;
+      if (!wasM) S.m = prevM; else S.x = prevX;
+    }
+  }
+
+  // thorns
+  if (S.y < 0.6) for (const t of THORNS){
+    if (S.m >= t[0] && S.m <= t[1] && S.x >= t[2] - 0.3 && S.x <= t[3] + 0.3 && S.time > S.slowUntil){
+      S.knockV = 7; S.slowUntil = S.time + 1; S.vy = 5; S.y = 0.05; flash('🌵 被荊棘刺到！'); break;
+    }
+  }
+
+  // falling rocks in section 3 (shadow 1 s, then drop)
+  if (S.m > 225 && S.m < 330 && S.time > S.rockNext){
+    S.rockNext = S.time + 0.55;
+    // half the rocks land where you're about to be (Donkey Kong style), the rest scatter
+    const aimed = Math.random() < 0.5;
+    const m = Math.min(329, aimed ? S.m + RUN * 1.05 + (Math.random() - 0.5) * 3 : S.m + 6 + Math.random() * 16);
+    const x = aimed ? Math.max(-LANE + 1.2, Math.min(LANE - 1.2, S.x + (Math.random() - 0.5) * 2)) : (Math.random() * 2 - 1) * (LANE - 1.2);
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), mats.shadow); shadow.rotation.x = -Math.PI / 2; shadow.position.set(x, 0.02, -m); scene.add(shadow);
+    const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1), mats.rock); mesh.position.set(x, 18, -m); scene.add(mesh);
+    rocks.push({ x, m, t: 0, shadow, mesh, landed: false });
+  }
+  for (let i = rocks.length - 1; i >= 0; i--){
+    const r = rocks[i]; r.t += dt;
+    const k = Math.max(0, (r.t - 1.0) / 0.25);            // falls during 1.0–1.25 s
+    r.mesh.position.y = Math.max(1.1, 18 - 17 * k * k);
+    r.shadow.scale.setScalar(0.6 + Math.min(1, r.t) * 0.4);
+    if (!r.landed && k >= 1){
+      r.landed = true;
+      if (Math.hypot(S.x - r.x, S.m - r.m) < 1.7 && S.y < 2){ S.downUntil = S.time + 1; S.knockV = 3; flash('🪨 被石頭砸到！'); }
+    }
+    if (r.t > 2.2){ scene.remove(r.mesh); scene.remove(r.shadow); rocks.splice(i, 1); }
+  }
+
+  // turrets fire once you're in range
+  for (const tu of turrets){
+    if (S.m < 432 || S.m > tu.m - 2) continue;
+    tu.next -= dt;
+    if (tu.next <= 0){
+      tu.next = 1.0 + Math.random() * 0.4;
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), mats.bullet); scene.add(mesh);
+      // fired from the turret toward where you are now (sidestepping still works)
+      const aimX = Math.max(-LANE + 0.5, Math.min(LANE - 0.5, S.x + (Math.random() - 0.5) * 1.2));
+      const flight = Math.max(0.3, (tu.m - 1.5 - S.m) / 22);
+      bullets.push({ x: tu.x, vx: (aimX - tu.x) / flight, m: tu.m - 1.5, vm: -22, mesh, back: false });
+    }
+  }
+  // bat swing: reflects bullets in front
+  if (keys.KeyF && S.time > S.swingCd){ S.swingUntil = S.time + 0.3; S.swingCd = S.time + 0.45; }
+  const swinging = S.time < S.swingUntil;
+  for (let i = bullets.length - 1; i >= 0; i--){
+    const b = bullets[i];
+    b.m += b.vm * dt; b.x += (b.back ? -b.vx : b.vx) * dt;
+    if (swinging && !b.back && b.m > S.m && b.m - S.m < 2.6 && Math.abs(b.x - S.x) < 1.8){
+      b.back = true; b.vm = 28; b.mesh.material = mats.bulletBack; flash('⚾ 打回去！');
+    }
+    let gone = b.m < -30 || b.m > END + 20;
+    if (!b.back && Math.abs(b.m - S.m) < 0.6 && Math.abs(b.x - S.x) < 0.7 && S.y < 2){ S.knockV = 9; S.shot++; flash('💥 中彈！'); gone = true; }
+    for (const c of covers) if (Math.abs(b.m - c.m) < 0.8 && Math.abs(b.x - c.x) < 1.3) gone = true;
+    for (const tu of turrets) if (b.back && Math.abs(b.m - tu.m) < 1 && Math.abs(b.x - tu.x) < 1){ gone = true; tu.next = 2.5; flash('💥 砲台被打中，暫停！'); }
+    if (gone){ scene.remove(b.mesh); bullets.splice(i, 1); }
+  }
+
+  // checkpoints
+  for (const cp of CHECKPOINTS) if (S.m >= cp && cp > S.cp){ S.cp = cp; flash('🚩 檢查點'); }
+
+  // the chasing wall
+  // Speed follows YOUR section; if it drops more than 18 m back it rushes to
+  // catch up, so it's always right behind you and every stumble costs ground.
+  const gapNow = S.m - S.wallM;
+  const wallSpeed = gapNow > 18 ? 15 : sectionAt(S.m).wall;
+  S.wallM += wallSpeed * dt;
+  if (S.wallM >= S.m - 0.6){ S.caught++; respawn('🦔 被刺牆追到！回檢查點'); }
+
+  if (S.m >= FINISH) finish();
+
+  // HUD
+  $('hSec').textContent = sec.name;
+  $('hTime').textContent = S.time.toFixed(1);
+  $('hDist').textContent = Math.max(0, Math.floor(S.m));
+  const gap = S.m - S.wallM, meter = $('meter');
+  $('meterBar').style.width = Math.max(4, Math.min(100, gap / 40 * 100)) + '%';
+  meter.classList.toggle('warn', gap < 20); meter.classList.toggle('danger', gap < 9);
+  $('stamBar').style.width = Math.round(S.stamina * 100) + '%';
+  $('danger').style.opacity = Math.max(0, Math.min(1, (12 - gap) / 10)).toFixed(2);
+  $('stam').classList.toggle('tired', S.tired);
+}
+
+let flip = 0;
+function render(dt){
+  player.position.set(S.x, Math.max(-6, S.y), -S.m);
+  const down = S.phase === 'run' && S.time < S.downUntil;
+  player.rotation.z = down ? 1.2 : 0;
+  if (flip){ flip += dt / 0.35; player.rotation.x = -Math.PI * 2 * Math.min(1, flip); if (flip >= 1){ flip = 0; player.rotation.x = 0; } }
+  // bat: horizontal sweep while swinging, otherwise rest
+  const sw = S.phase === 'run' ? (S.swingUntil - S.time) / 0.3 : 0;
+  batPivot.rotation.y = sw > 0 ? -1.6 + 3.2 * (1 - sw) : 0.3;
+  chaser.position.set(0, 0, -S.wallM);
+  for (const b of bullets) b.mesh.position.set(b.x, 1.1, -b.m);
+  // camera: behind and above, looking down the course
+  const target = new THREE.Vector3(S.x * 0.6, 9, -S.m + 8);
+  if (!Number.isFinite(camera.position.x)) camera.position.copy(target);
+  camera.position.lerp(target, Math.min(1, dt * 6));
+  camera.lookAt(S.x * 0.4, 0.5, -S.m - 12);
+  // when the wall is between the camera and you, see through it
+  const near = (S.m - S.wallM) < 9;
+  mats.spikeWall.opacity = wallSpikeMat.opacity = near ? 0.35 : 1;
+  mats.spikeWall.depthWrite = wallSpikeMat.depthWrite = !near;
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+</script>

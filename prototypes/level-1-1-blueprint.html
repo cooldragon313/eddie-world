@@ -1,0 +1,272 @@
+<title>荊棘峽谷 1-1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: one long blueprint sheet — course map first (the thing to look at), pressure curve, then section cards and rules. */
+:root{
+  --paper:#eef4fb; --grid:#d3e2f2; --ink:#16324f; --ink-soft:#4b6884; --line:#9fbad6;
+  --danger:#d9483b; --wall:#7a2d8c; --go:#1f8a5b; --gold:#d99a14; --card:#ffffff;
+  --display:"Baloo 2","Noto Sans TC",system-ui,sans-serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0f2236; --grid:#183451; --ink:#dfeaf6; --ink-soft:#9db6cf; --line:#36587a;
+  --danger:#ff7a6b; --wall:#c98ae0; --go:#5fd39b; --gold:#ffc04d; --card:#13293f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0f2236; --grid:#183451; --ink:#dfeaf6; --ink-soft:#9db6cf; --line:#36587a;
+  --danger:#ff7a6b; --wall:#c98ae0; --go:#5fd39b; --gold:#ffc04d; --card:#13293f; color-scheme:dark}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);line-height:1.6;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px}
+.wrap{max-width:1080px;margin:0 auto;padding-block:28px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.stamp{font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:.12em;color:var(--ink-soft);text-transform:uppercase}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,6vw,46px);line-height:1.05;margin:2px 0 0;text-wrap:balance}
+h1 small{font-size:.5em;color:var(--danger);margin-left:.3em}
+.pitch{max-width:62ch;margin:6px 0 0;color:var(--ink-soft)}
+.facts{display:flex;gap:18px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.facts div{display:flex;flex-direction:column}
+.facts b{font-family:var(--display);font-size:24px;line-height:1}
+.facts span{font-size:12px;color:var(--ink-soft)}
+h2{font-family:var(--display);font-weight:800;font-size:20px;margin:0 0 10px}
+.panel{background:color-mix(in srgb,var(--card) 88%,transparent);border:1.5px solid var(--line);border-radius:10px;padding:16px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.map svg{display:block;min-width:900px;width:100%;height:auto}
+.hint{font-size:12px;color:var(--ink-soft);margin-top:6px}
+.chart svg{display:block;width:100%;height:auto;max-width:720px}
+.sections{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.sec{background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.sec .tag{font-family:var(--display);font-weight:800;font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.sec h3{margin:0;font-size:17px}
+.sec p{margin:0;font-size:14px}
+.sec .fail{font-size:13px;color:var(--danger)}
+.sec .wallspd{font-size:12px;color:var(--wall);font-weight:700}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+ul{margin:0;padding-left:1.2em}
+li{margin:2px 0}
+.ask{border:2px dashed var(--gold);border-radius:10px;padding:14px 16px}
+.ask h2{color:var(--gold)}
+.reuse b{color:var(--go)} .new b{color:var(--danger)}
+</style>
+
+<div class="wrap">
+<header>
+  <div>
+    <div class="stamp">關卡藍圖 · 草稿 v0 · 2026-10-27</div>
+    <h1>荊棘峽谷 <small>1-1</small></h1>
+    <p class="pitch">一面刺牆從背後追上來，只能一直往前衝。路上有地坑、荊棘、落石、機關牆，最後一段前面還有砲台開槍。同學一起跑，搶第一個衝過終點。</p>
+  </div>
+  <div class="facts">
+    <div><b>560 m</b><span>全長</span></div>
+    <div><b>~90 秒</b><span>一般人跑完</span></div>
+    <div><b>5 段</b><span>每段一種新陷阱</span></div>
+    <div><b>2–6 人</b><span>同時比賽</span></div>
+  </div>
+</header>
+
+<section class="panel map">
+  <h2>整條賽道（由左往右跑）</h2>
+  <div class="scroll">
+  <svg viewBox="0 0 1400 300" role="img" aria-label="關卡俯視圖：起跑區、地坑、荊棘、落石、機關牆、砲台、終點，背後有刺牆追趕">
+    <!-- scale: x = 40 + metres * 2.36 -->
+    <defs>
+      <pattern id="spikes" width="14" height="14" patternUnits="userSpaceOnUse">
+        <path d="M0 14 L7 0 L14 14 Z" style="fill:var(--wall)"
+      </pattern>
+    </defs>
+    <!-- lane -->
+    <rect x="40" y="90" width="1322" height="120" rx="6" stroke-width="2" style="fill:var(--card);stroke:var(--line)"
+    <!-- section bands + labels -->
+    <g font-size="15" font-weight="700" style="font-family:var(--body);fill:var(--ink)"
+      <text x="44" y="78">起跑</text>
+      <text x="115" y="78">① 地坑道</text>
+      <text x="351" y="78">② 荊棘地</text>
+      <text x="587" y="78">③ 落石谷</text>
+      <text x="823" y="78">④ 機關牆</text>
+      <text x="1059" y="78">⑤ 砲台大道</text>
+      <text x="1290" y="78">終點</text>
+    </g>
+    <g stroke-width="1.5" stroke-dasharray="4 4" style="stroke:var(--line)"
+      <line x1="111" y1="90" x2="111" y2="210"/><line x1="347" y1="90" x2="347" y2="210"/>
+      <line x1="583" y1="90" x2="583" y2="210"/><line x1="819" y1="90" x2="819" y2="210"/>
+      <line x1="1055" y1="90" x2="1055" y2="210"/><line x1="1291" y1="90" x2="1291" y2="210"/>
+    </g>
+    <!-- checkpoints (flags) -->
+    <g stroke-width="2" style="fill:var(--go);stroke:var(--go)"
+      <g transform="translate(111,212)"><line x1="0" y1="0" x2="0" y2="26"/><path d="M0 0 L14 5 L0 10 Z"/></g>
+      <g transform="translate(347,212)"><line x1="0" y1="0" x2="0" y2="26"/><path d="M0 0 L14 5 L0 10 Z"/></g>
+      <g transform="translate(583,212)"><line x1="0" y1="0" x2="0" y2="26"/><path d="M0 0 L14 5 L0 10 Z"/></g>
+      <g transform="translate(819,212)"><line x1="0" y1="0" x2="0" y2="26"/><path d="M0 0 L14 5 L0 10 Z"/></g>
+      <g transform="translate(1055,212)"><line x1="0" y1="0" x2="0" y2="26"/><path d="M0 0 L14 5 L0 10 Z"/></g>
+    </g>
+    <text x="111" y="258" font-size="12" style="fill:var(--go);font-family:var(--body)"▲ 檢查點：被追到從這裡重來</text>
+
+    <!-- ① pits -->
+    <g opacity=".82" style="fill:var(--ink)"
+      <rect x="150" y="92" width="12" height="116" rx="2"/>
+      <rect x="200" y="92" width="16" height="70" rx="2"/>
+      <rect x="236" y="140" width="16" height="68" rx="2"/>
+      <rect x="282" y="92" width="18" height="116" rx="2"/>
+      <rect x="318" y="92" width="12" height="116" rx="2"/>
+    </g>
+    <!-- ② thorns -->
+    <g style="fill:var(--danger)"
+      <path d="M380 150 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 Z"/>
+      <path d="M440 200 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 Z"/>
+      <path d="M470 120 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 Z"/>
+      <path d="M520 175 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 l6 -12 l6 12 Z"/>
+    </g>
+    <!-- ③ falling rocks: shadow first -->
+    <g>
+      <ellipse cx="625" cy="130" rx="18" ry="9" fill="none" stroke-dasharray="3 3" style="stroke:var(--ink-soft)"
+      <circle cx="625" cy="112" r="11" style="fill:var(--ink-soft)"
+      <ellipse cx="672" cy="178" rx="18" ry="9" fill="none" stroke-dasharray="3 3" style="stroke:var(--ink-soft)"
+      <circle cx="672" cy="160" r="11" style="fill:var(--ink-soft)"
+      <ellipse cx="720" cy="120" rx="18" ry="9" fill="none" stroke-dasharray="3 3" style="stroke:var(--ink-soft)"
+      <ellipse cx="760" cy="168" rx="18" ry="9" fill="none" stroke-dasharray="3 3" style="stroke:var(--ink-soft)"
+      <circle cx="760" cy="150" r="11" style="fill:var(--ink-soft)"
+      <ellipse cx="796" cy="128" rx="18" ry="9" fill="none" stroke-dasharray="3 3" style="stroke:var(--ink-soft)"
+      <text x="612" y="236" font-size="11" style="fill:var(--ink-soft);font-family:var(--body)"虛線圈＝石頭落點影子（先出現 1 秒）</text>
+    </g>
+    <!-- ④ sliding walls with gaps -->
+    <g style="fill:var(--ink-soft)"
+      <rect x="850" y="92" width="10" height="60"/><rect x="850" y="176" width="10" height="32"/>
+      <rect x="905" y="92" width="10" height="28"/><rect x="905" y="146" width="10" height="62"/>
+      <rect x="960" y="92" width="10" height="72"/><rect x="960" y="188" width="10" height="20"/>
+      <rect x="1015" y="92" width="10" height="40"/><rect x="1015" y="160" width="10" height="48"/>
+    </g>
+    <g stroke-width="1.5" fill="none" style="stroke:var(--ink-soft)"
+      <path d="M864 165 v-10 M864 155 l-3 4 M864 155 l3 4"/>
+      <path d="M919 133 v10 M919 143 l-3 -4 M919 143 l3 -4"/>
+      <path d="M974 176 v-10 M974 166 l-3 4 M974 166 l3 4"/>
+    </g>
+    <text x="846" y="236" font-size="11" style="fill:var(--ink-soft);font-family:var(--body)"缺口會上下移動，抓節奏鑽過去</text>
+    <!-- ⑤ turrets + bullets + cover rocks -->
+    <g>
+      <rect x="1252" y="104" width="26" height="22" rx="5" style="fill:var(--danger)"<rect x="1238" y="111" width="16" height="8" style="fill:var(--danger)"
+      <rect x="1252" y="172" width="26" height="22" rx="5" style="fill:var(--danger)"<rect x="1238" y="179" width="16" height="8" style="fill:var(--danger)"
+      <g stroke-width="2.5" stroke-linecap="round" style="stroke:var(--danger)"
+        <line x1="1215" y1="115" x2="1200" y2="115"/><line x1="1160" y1="115" x2="1145" y2="115"/><line x1="1100" y1="115" x2="1085" y2="115"/>
+        <line x1="1190" y1="183" x2="1175" y2="183"/><line x1="1130" y1="183" x2="1115" y2="183"/>
+      </g>
+      <g fill="#8a9bb0"><rect x="1110" y="130" width="22" height="18" rx="6"/><rect x="1180" y="150" width="22" height="18" rx="6"/><rect x="1080" y="160" width="22" height="18" rx="6"/></g>
+      <text x="1062" y="236" font-size="11" style="fill:var(--ink-soft);font-family:var(--body)"灰塊＝掩體；揮棒可以把子彈打回去</text>
+    </g>
+    <!-- finish -->
+    <g>
+            <g style="fill:var(--ink)"
+        <rect x="1300" y="92" width="10" height="10"/><rect x="1320" y="92" width="10" height="10"/><rect x="1340" y="92" width="10" height="10"/>
+        <rect x="1310" y="102" width="10" height="10"/><rect x="1330" y="102" width="10" height="10"/><rect x="1350" y="102" width="10" height="10"/>
+      </g>
+      <g style="fill:var(--gold)"
+        <rect x="1318" y="150" width="20" height="40"/><rect x="1298" y="164" width="20" height="26"/><rect x="1338" y="172" width="20" height="18"/>
+      </g>
+      <text x="1300" y="236" font-size="11" style="fill:var(--gold);font-family:var(--body)"頒獎台</text>
+    </g>
+    <!-- player + chasing wall -->
+    <rect x="40" y="90" width="22" height="120" fill="url(#spikes)" opacity=".95"/>
+    <rect x="40" y="90" width="22" height="120" fill="none" stroke-width="2" style="stroke:var(--wall)"
+    <g font-weight="800" font-size="14" style="fill:var(--wall);font-family:var(--display)"
+      <text x="40" y="34">刺牆</text>
+      <path d="M40 44 h70 l-8 -6 M110 44 l-8 6" stroke-width="2.5" fill="none" style="stroke:var(--wall)"
+      <text x="118" y="49" font-size="12" font-weight="700" style="font-family:var(--body)"一路追你</text>
+    </g>
+    <circle cx="86" cy="150" r="9" style="fill:var(--go)"<text x="78" y="134" font-size="11" font-weight="700" style="fill:var(--go);font-family:var(--body)"你</text>
+    <!-- metre scale -->
+    <g font-size="11" text-anchor="middle" style="font-family:var(--display);fill:var(--ink-soft)"
+      <text x="40" y="290">0 m</text><text x="111" y="290">30</text><text x="347" y="290">130</text><text x="583" y="290">230</text>
+      <text x="819" y="290">330</text><text x="1055" y="290">430</text><text x="1291" y="290">530</text><text x="1362" y="290">560</text>
+    </g>
+  </svg>
+  </div>
+  <div class="hint">手機上可以左右滑動看整條賽道。</div>
+</section>
+
+<section class="panel chart">
+  <h2>壓力曲線：刺牆有多快</h2>
+  <svg viewBox="0 0 720 260" role="img" aria-label="刺牆速度從每秒 7 公尺升到 9.5 公尺，玩家一般跑 10.8，衝刺 16.2">
+    <!-- plot area x 70..690 (5 sections, 124 px each), y 20..210 ; 0..18 m/s -> 210..20 (10.56 px per m/s) -->
+    <g stroke-width="1" style="stroke:var(--line)"
+      <line x1="70" y1="210" x2="690" y2="210"/>
+      <line x1="70" y1="157.2" x2="690" y2="157.2" stroke-dasharray="2 4"/>
+      <line x1="70" y1="104.4" x2="690" y2="104.4" stroke-dasharray="2 4"/>
+      <line x1="70" y1="51.6" x2="690" y2="51.6" stroke-dasharray="2 4"/>
+    </g>
+    <g font-size="11" text-anchor="end" style="font-family:var(--display);fill:var(--ink-soft)"
+      <text x="62" y="214">0</text><text x="62" y="161">5</text><text x="62" y="108">10</text><text x="62" y="56">15</text>
+      <text x="40" y="14" text-anchor="start">m/s</text>
+    </g>
+    <!-- sprint 16.2 -> y = 210-16.2*10.56 = 38.9 -->
+    <line x1="70" y1="38.9" x2="690" y2="38.9" stroke-width="2" stroke-dasharray="6 5" opacity=".6" style="stroke:var(--go)"
+    <text x="690" y="32" font-size="12" text-anchor="end" style="fill:var(--go);font-family:var(--body)"衝刺 16.2</text>
+    <!-- run 10.8 -> y = 95.9 -->
+    <line x1="70" y1="95.9" x2="690" y2="95.9" stroke-width="2.5" style="stroke:var(--go)"
+    <text x="690" y="89" font-size="12" text-anchor="end" font-weight="700" style="fill:var(--go);font-family:var(--body)"你平常跑 10.8</text>
+    <!-- wall steps: 7, 8, 8.5, 9, 9.5 -> y 136.1, 125.5, 120.2, 115.0, 109.7 -->
+    <path d="M70 136.1 H194 V125.5 H318 V120.2 H442 V115.0 H566 V109.7 H690" fill="none" stroke-width="3" style="stroke:var(--wall)"
+    <g font-size="12" font-weight="800" text-anchor="middle" style="font-family:var(--display);fill:var(--wall)"
+      <text x="132" y="152">7</text><text x="256" y="141">8</text><text x="380" y="136">8.5</text><text x="504" y="131">9</text><text x="628" y="126">9.5</text>
+    </g>
+    <g font-size="12" text-anchor="middle" style="font-family:var(--body);fill:var(--ink)"
+      <text x="132" y="232">① 地坑</text><text x="256" y="232">② 荊棘</text><text x="380" y="232">③ 落石</text><text x="504" y="232">④ 機關牆</text><text x="628" y="232">⑤ 砲台</text>
+    </g>
+    <text x="628" y="254" font-size="11" text-anchor="middle" style="fill:var(--danger);font-family:var(--body)"只快你 1.3 → 卡一下就被追上</text>
+  </svg>
+  <p class="hint">刺牆一直比你慢一點，但每卡一次（掉速、被荊棘彈開、躲子彈）牆就逼近。前段很寬鬆，越後面越沒有犯錯空間。開跑倒數 3 秒後，刺牆才開始動。</p>
+</section>
+
+<section>
+  <h2>五段怎麼玩</h2>
+  <div class="sections">
+    <div class="sec"><span class="tag">① 30–130 m</span><h3>地坑道</h3>
+      <p>一排寬 3–5 公尺的坑，有的整條橫跨，有的只擋一半要繞。單跳跳得過，用來熱身學節奏。</p>
+      <span class="fail">掉坑 → 回檢查點</span><span class="wallspd">刺牆 7 m/s</span></div>
+    <div class="sec"><span class="tag">② 130–230 m</span><h3>荊棘地</h3>
+      <p>地上一條條荊棘，只留彎彎曲曲的通道。走「之」字最快，硬跳過去也行。</p>
+      <span class="fail">踩到 → 彈開＋減速 1 秒（不會死，但刺牆追近）</span><span class="wallspd">刺牆 8 m/s</span></div>
+    <div class="sec"><span class="tag">③ 230–330 m</span><h3>落石谷</h3>
+      <p>地上先出現影子，1 秒後石頭砸下來。看影子躲，不用背位置，每次都不一樣。</p>
+      <span class="fail">被砸 → 倒地 1 秒</span><span class="wallspd">刺牆 8.5 m/s</span></div>
+    <div class="sec"><span class="tag">④ 330–430 m</span><h3>機關牆</h3>
+      <p>四道牆，缺口會上下移動。這段是大金剛味：看準時機鑽過去，等太久刺牆就到了。</p>
+      <span class="fail">撞牆 → 彈回來</span><span class="wallspd">刺牆 9 m/s</span></div>
+    <div class="sec"><span class="tag">⑤ 430–530 m</span><h3>砲台大道</h3>
+      <p>終點前兩座砲台對你開槍。躲在掩體後面，或用球棒把子彈打回去，打中別的同學會把他擊飛。</p>
+      <span class="fail">中彈 → 被擊退幾公尺</span><span class="wallspd">刺牆 9.5 m/s</span></div>
+    <div class="sec"><span class="tag">530–560 m</span><h3>終點＋頒獎台</h3>
+      <p>前三名站上頒獎台，名字加搞笑稱號（「坑底常客」「棒球之王」「被石頭愛上的人」）。全部人跑完或刺牆吃掉所有人就結算。</p></div>
+  </div>
+</section>
+
+<section class="cols">
+  <div class="panel">
+    <h2>規則（先這樣，玩過再調）</h2>
+    <ul>
+      <li>被刺牆追到：<b>回上一個檢查點</b>，刺牆退到你後面 25 公尺再繼續追。</li>
+      <li>多人：同學之間可以互相揮棒敲；被敲進坑也算掉坑。</li>
+      <li>單人：一樣能玩，目標變成刷最快時間。</li>
+      <li>過關拿到的金幣照舊進商店，升級和造型全部延用。</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <h2>工作量</h2>
+    <ul class="reuse">
+      <li><b>直接沿用：</b>跑、跳、二段跳、揮棒、鏡頭、角色、造型、商店、連線伺服器</li>
+      <li><b>改一下：</b>海嘯 → 刺牆（方向反過來追你）、石頭掩體 → 砲台段的掩體</li>
+    </ul>
+    <ul class="new">
+      <li><b>新做：</b>荊棘、落石＋影子、移動牆、砲台＋子彈、檢查點、終點和頒獎台</li>
+    </ul>
+  </div>
+</section>
+
+<section class="ask">
+  <h2>先問兒子這兩題</h2>
+  <ul>
+    <li>這五段裡，<b>哪一段聽起來最想玩</b>？有沒有想加、想換的陷阱？</li>
+    <li>他是關主，<b>這一關要叫什麼名字</b>？第一名的稱號要叫什麼？</li>
+  </ul>
+</section>
+</div>
