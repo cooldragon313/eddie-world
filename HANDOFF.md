@@ -9,7 +9,7 @@
 ## 🧭 這是什麼專案
 給 12 歲兒子玩的多人跑酷撿錢遊戲（靈感來自 Roblox《Escape Tsunami For Brainrots》）。
 - 正式版：https://cooldragon313.github.io/escapetsunamiformoney/ （GitHub Pages，`main` 一推就上線 → **改動一律先走分支**）
-- 🗺 **檔案結構（2026-10-27 起，分支上，還沒上架）**：網址一打開＝**刺牆賽跑** `index.html`（主玩法）；**海嘯島** = `island.html`（商店、造型、蓋房子，海嘯撿錢當副玩法）
+- 🗺 **檔案結構（2026-10-27 起，已上架：main `283cdc6`，伺服器 Cloudflare 版本 `e981869e`）**：網址一打開＝**刺牆賽跑** `index.html`（主玩法）；**海嘯島** = `island.html`（商店、造型、蓋房子，海嘯撿錢當副玩法）
   - `index.html` 是**產生出來的**：改 `race/race.src.html` 後跑 `python tools/build_race.py`。角色／造型／繪本畫風／揮棒自動從 `island.html` 抄過去，不要手改 `index.html`
   - 賽跑跑完的金幣走伺服器 `POST /race_reward`（**加錢不覆蓋**，上限 120、30 秒一次）；島上開著會收到 `race_reward` 訊息同步
 - 伺服器：**Cloudflare Worker**（Bernie 自己的帳號 cooldragon313@gmail.com），正式網址 `etfm.cooldragon313.workers.dev`
