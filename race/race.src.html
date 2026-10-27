@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>刺牆賽跑</title>
+<!--
+  SOURCE TEMPLATE — edit this file, then run:  python tools/build_race.py
+  The build pastes the island's storybook look, avatar/cosmetics and bat
+  swing (copied out of island.html) into the @@INCLUDE markers and writes
+  index.html (the site's home page). Never edit index.html by hand.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+  :root{
+    --sb-paper:#fff8ec; --sb-ink:#5b3a29; --sb-text:#4a3426; --sb-muted:#9a7d5f; --sb-line:#e2c9a0;
+    --sb-gold:#e8a317; --sb-gold-soft:#ffcf5a; --sb-red:#e0584a; --sb-mint:#7cc79a; --sb-sky:#6fb3e0; --wall:#8a3fa0;
+    --sb-font:"Fredoka","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    color-scheme:light;
+  }
+  html,body{height:100%}
+  body{margin:0;overflow:hidden;background:#cfe6f0;color:var(--sb-text);font-family:var(--sb-font);user-select:none;-webkit-user-select:none;touch-action:none}
+  #stage{position:fixed;inset:0}
+  .hud{position:fixed;z-index:5;display:flex;gap:6px;pointer-events:none}
+  .tl{top:calc(8px + env(safe-area-inset-top,0px));left:calc(8px + env(safe-area-inset-left,0px));flex-direction:column;align-items:flex-start}
+  .tr{top:calc(8px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));flex-direction:column;align-items:flex-end}
+  .chip{background:rgba(255,248,236,.94);border:2px solid var(--sb-ink);border-radius:999px;padding:2px 12px;font-weight:700;font-size:14px;box-shadow:0 3px 0 rgba(91,58,41,.25);font-variant-numeric:tabular-nums}
+  .chip b{font-size:17px}
+  .chip.sec{background:var(--sb-ink);color:var(--sb-paper)}
+  .lbl{font-size:12px;font-weight:700;background:rgba(255,248,236,.94);border-radius:6px;padding:0 6px}
+  .meter{width:min(42vw,240px);height:13px;border:2px solid var(--sb-ink);border-radius:999px;background:var(--sb-paper);overflow:hidden;position:relative}
+  .meter i{position:absolute;inset:0 auto 0 0;background:var(--sb-mint);width:100%}
+  .meter.warn i{background:var(--sb-gold-soft)} .meter.danger i{background:var(--sb-red)}
+  .meter.stam{height:9px} .meter.stam i{background:var(--sb-sky)} .meter.stam.tired i{background:#cdb999}
+  #danger{position:fixed;inset:auto 0 0 0;height:38vh;z-index:4;pointer-events:none;opacity:0;background:linear-gradient(to top,rgba(200,30,40,.7),rgba(200,30,40,0))}
+  .flash{position:fixed;left:50%;top:24%;transform:translateX(-50%);z-index:8;font-weight:900;font-size:22px;color:#fff;-webkit-text-stroke:1.5px var(--sb-ink);pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
+  .flash.on{opacity:1}
+  .big{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9;pointer-events:none;font-size:96px;font-weight:700;color:var(--sb-paper);-webkit-text-stroke:3px var(--sb-ink)}
+  .big[hidden]{display:none}
+  .card{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(70,48,32,.4);padding:12px}
+  .card[hidden]{display:none!important}
+  .card>div{background:var(--sb-paper);border:3px solid var(--sb-ink);border-radius:22px;padding:18px 22px;max-width:460px;width:100%;max-height:92vh;overflow:auto;text-align:center;box-shadow:0 8px 0 rgba(91,58,41,.25)}
+  .card h1{font-size:34px;margin:0;color:#e9822c;-webkit-text-stroke:1.5px var(--sb-ink);line-height:1.1}
+  .card p{margin:8px 0;font-size:15px}
+  .who{font-size:13px;color:var(--sb-muted)}
+  .keys{font-size:13px;color:var(--sb-muted);line-height:1.9}
+  kbd{background:#fff;border:1.5px solid var(--sb-ink);border-bottom-width:3px;border-radius:6px;padding:0 6px;font-family:var(--sb-font);font-size:12px;color:var(--sb-ink)}
+  .btn{display:inline-block;font:700 18px var(--sb-font);background:var(--sb-gold-soft);color:var(--sb-ink);border:2.5px solid var(--sb-ink);border-radius:999px;padding:8px 28px;cursor:pointer;box-shadow:0 4px 0 rgba(91,58,41,.35);margin:8px 4px 0;text-decoration:none}
+  .btn.ghost{background:#fff;font-size:14px;padding:6px 18px}
+  .btn:focus-visible{outline:3px solid var(--sb-red);outline-offset:2px}
+  .results{display:grid;grid-template-columns:1fr auto;gap:4px 14px;text-align:left;margin:12px 0;font-variant-numeric:tabular-nums}
+  .results b{font-size:19px}
+  .reward{font-weight:700;color:#c27a00}
+  #touch{display:none} body.touch #touch{display:block}
+  .tb{position:fixed;z-index:6;width:64px;height:64px;border-radius:50%;border:3px solid var(--sb-ink);background:var(--sb-paper);font:700 15px var(--sb-font);color:var(--sb-ink);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 rgba(91,58,41,.35)}
+  .tb.on{transform:translateY(3px);box-shadow:0 1px 0 rgba(91,58,41,.35)}
+  #tLeft{left:calc(16px + env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+  #tRight{left:calc(92px + env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+  #tJump{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));width:80px;height:80px;background:var(--sb-gold-soft)}
+  #tBat{right:calc(108px + env(safe-area-inset-right,0px));bottom:calc(22px + env(safe-area-inset-bottom,0px));background:#ffc4bb}
+  #tDash{right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(110px + env(safe-area-inset-bottom,0px));background:#ffe0c2}
+  @media (orientation: portrait) and (max-width: 600px){
+    body.touch::after{content:"📱 把手機橫過來玩";position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(255,248,236,.96);color:var(--sb-ink);font:700 22px/1.4 var(--sb-font)}
+  }
+  @media (prefers-reduced-motion: reduce){.flash{transition:none}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="hud tl">
+  <span class="chip sec" id="hSec">起跑區</span>
+  <span class="chip">⏱ <b id="hTime">0.0</b> 秒</span>
+  <span class="chip">📍 <b id="hDist">0</b> / 530 m</span>
+  <span class="chip">🪙 <b id="hCoins">0</b></span>
+</div>
+<div class="hud tr">
+  <span class="lbl">刺牆距離</span>
+  <div class="meter" id="meter"><i id="meterBar"></i></div>
+  <span class="lbl">衝刺體力</span>
+  <div class="meter stam" id="stam"><i id="stamBar"></i></div>
+  <span class="chip">被追到 <b id="hCaught">0</b> 次</span>
+</div>
+<div id="danger"></div>
+<div class="flash" id="flash"></div>
+<div class="big" id="count" hidden></div>
+
+<div class="card" id="startCard"><div>
+  <h1>刺牆賽跑</h1>
+  <p>刺牆從背後追上來！一路衝過地坑、荊棘、落石、機關牆和砲台，撿金幣衝到終點。</p>
+  <p class="who" id="who">讀取角色中…</p>
+  <p class="keys">
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向鍵 移動 · <kbd>空白鍵</kbd> 跳（空中再按＝二段跳）<br>
+    <kbd>Shift</kbd> 衝刺（有體力限制）· <kbd>F</kbd> 揮棒（可以把子彈打回去）<br>
+    手機：自動往前跑，用按鈕閃、跳、揮棒
+  </p>
+  <button class="btn" id="startBtn" type="button">開跑！</button>
+  <br><a class="btn ghost" id="islandLink" href="island.html">🏝 回海嘯島：商店、換造型</a>
+</div></div>
+
+<div class="card" id="endCard" hidden><div>
+  <h1 id="endTitle">通關！</h1>
+  <div class="results">
+    <span>時間</span><b id="rTime">0</b>
+    <span>最佳紀錄</span><b id="rBest">—</b>
+    <span>撿到金幣</span><b id="rCoins">0</b>
+    <span>被刺牆追到</span><b id="rCaught">0</b>
+    <span>掉坑 / 中彈</span><b id="rFails">0</b>
+  </div>
+  <p id="rTitle" style="font-weight:900;font-size:18px"></p>
+  <p class="reward" id="rReward"></p>
+  <button class="btn" id="againBtn" type="button">再跑一次</button>
+  <br><a class="btn ghost" href="island.html">🏝 回海嘯島花錢</a>
+</div></div>
+
+<div id="touch">
+  <div class="tb" id="tLeft">◀</div><div class="tb" id="tRight">▶</div>
+  <div class="tb" id="tJump">跳</div><div class="tb" id="tBat">揮棒</div><div class="tb" id="tDash">衝刺</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*@@INCLUDE:LOOK@@*/
+
+/*@@INCLUDE:AVATAR@@*/
+
+/*@@INCLUDE:SWING@@*/
+
+// ============================================================
+// RACE — 荊棘峽谷 1-1. Course runs along -Z; "m" = metres from the start.
+// Tuned in prototypes/spike-run.html (bot-tested: a clean run ~50 s,
+// a sloppy one 55–125 s with a few catches).
+// ============================================================
+const LANE = 8, FINISH = 530, END = 560;
+const CHECKPOINTS = [0, 30, 130, 230, 330, 430];
+const SECTIONS = [
+  { from: 0,   name: '起跑區',     wall: 9    },
+  { from: 30,  name: '① 地坑道',   wall: 9    },
+  { from: 130, name: '② 荊棘地',   wall: 9.5  },
+  { from: 230, name: '③ 落石谷',   wall: 10   },
+  { from: 330, name: '④ 機關牆',   wall: 10.5 },
+  { from: 430, name: '⑤ 砲台大道', wall: 11   },
+];
+const WALL_START_GAP = 12, WALL_LEASH = 18, WALL_CATCHUP = 15;
+const RUN = 10.8, SPRINT = 16.2, JUMP_V = 10.5, DJ_V = 8.5, GRAV = 30;
+const STAMINA_DRAIN = 1 / 2.5, STAMINA_FILL = 1 / 4;
+const PITS = [[44,48,-LANE,LANE],[60,64,-LANE,0],[70,74,0,LANE],[88,93,-LANE,LANE],[104,108,-LANE,LANE],[118,122,-LANE,2]];
+const THORNS = [[140,143,-LANE,3],[155,158,-3,LANE],[168,171,-LANE,3],[182,185,-3,LANE],[196,199,-LANE,1],[212,215,-1,LANE]];
+const WALLS = [{ m: 345, ph: 0 }, { m: 370, ph: 1.7 }, { m: 395, ph: 3.1 }, { m: 420, ph: 4.6 }];
+const GAP = 4.5, WALL_SWING = 5.2, WALL_SPEED = 1.1;
+const COVERS = [[452,-3],[466,3.5],[480,-4],[494,2],[508,-2.5],[520,3]];
+const TURRETS = [{ m: 545, x: -3.5 }, { m: 545, x: 3.5 }];
+// Coin lines: [fromM, toM, x] every 3 m — some sit on the risky line on purpose
+const COIN_LINES = [[10,28,0],[50,58,4],[76,86,-4],[95,103,0],[124,128,5],[146,152,-5],[160,166,5],[174,180,-5],
+  [188,194,5],[202,210,-4],[240,260,0],[275,295,-5],[305,325,5],[350,365,0],[378,390,0],[400,415,0],[440,450,0],[470,478,-1],[500,506,5]];
+const FINISH_BONUS = 15, CLEAN_BONUS = 10;
+
+// Server: same rule as the island — localhost talks to the local dev server,
+// github.io to the live one, anywhere else (claude.ai preview) plays solo.
+const ON_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const ON_LIVE = /github\.io$/.test(location.hostname);
+const SERVER = ON_LOCAL ? 'http://localhost:1999' : ON_LIVE ? 'https://etfm.cooldragon313.workers.dev' : '';
+const API = SERVER ? SERVER + '/parties/main/global' : '';
+let authToken = ''; try { authToken = localStorage.getItem('etfm-token') || ''; } catch(e){}
+if (!(ON_LOCAL || ON_LIVE)) document.getElementById('islandLink').hidden = true;
+
+// ---------- three.js ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+document.getElementById('stage').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xcfe6f0);
+scene.fog = new THREE.Fog(0xcfe6f0, 70, 180);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 400);
+camera.position.set(0, 9, 8);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a6f52, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.6); sun.position.set(6, 14, 8); scene.add(sun);
+function fitRenderer(){
+  const w = innerWidth, h = innerHeight; if (!w || !h) return;
+  renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', fitRenderer);
+if (window.ResizeObserver) new ResizeObserver(fitRenderer).observe(document.getElementById('stage'));
+fitRenderer(); setInterval(fitRenderer, 1000);
+
+const LM = c => new THREE.MeshLambertMaterial({ color: c });
+const mats = {
+  ground: LM(0xd9ad72), groundAlt: LM(0xcfa165), edge: LM(0x9b7b55), pit: LM(0x3d2a1e),
+  thorn: LM(0x6aa04a), spike: LM(0xe0584a), rock: LM(0x9a8c80),
+  shadow: new THREE.MeshBasicMaterial({ color: 0x3d2a1e, transparent: true, opacity: 0.35 }),
+  wall: LM(0xa08a74), cover: LM(0xb0bcc8), turret: LM(0xe0584a),
+  bullet: new THREE.MeshBasicMaterial({ color: 0xff5a3c }), bulletBack: new THREE.MeshBasicMaterial({ color: 0x2e9b62 }),
+  flag: LM(0x7cc79a), finishA: LM(0xffffff), finishB: LM(0x5b3a29), gold: LM(0xffcf5a), coin: LM(0xffc81e),
+};
+const box = (w, h, d, mat, x, y, z, outline) => {
+  const o = new THREE.Mesh(outline ? sbRoundBox(w, h, d, Math.min(0.18, w / 4, h / 4, d / 4)) : new THREE.BoxGeometry(w, h, d), mat);
+  o.position.set(x, y, z); scene.add(o); if (outline) sbOutline(o, 0.05); return o;
+};
+function inPit(m, x){ for (const p of PITS) if (m >= p[0] && m <= p[1] && x >= p[2] && x <= p[3]) return p; return null; }
+
+// Ground in 2 m slices so pits are real holes
+for (let m = -40; m < END; m += 2){
+  const cuts = [-LANE]; for (const p of PITS) if (m + 1 >= p[0] && m + 1 <= p[1]) cuts.push(p[2], p[3]);
+  cuts.push(LANE); cuts.sort((a, b) => a - b);
+  for (let i = 0; i < cuts.length - 1; i++){
+    const x0 = Math.max(-LANE, cuts[i]), x1 = Math.min(LANE, cuts[i + 1]);
+    if (x1 - x0 < 0.01 || inPit(m + 1, (x0 + x1) / 2)) continue;
+    box(x1 - x0, 1, 2.02, (Math.floor(m / 10) % 2) ? mats.ground : mats.groundAlt, (x0 + x1) / 2, -0.5, -(m + 1));
+  }
+}
+box(1, 1.4, END + 40, mats.edge, -LANE - 0.5, 0.2, -(END - 40) / 2);
+box(1, 1.4, END + 40, mats.edge,  LANE + 0.5, 0.2, -(END - 40) / 2);
+for (const p of PITS) box(p[3] - p[2], 0.2, p[1] - p[0], mats.pit, (p[2] + p[3]) / 2, -6, -(p[0] + p[1]) / 2);
+// Canyon walls either side for the 峽谷 feel
+for (let m = -20; m < END; m += 14) for (const s of [-1, 1]){
+  const h = 6 + Math.abs(Math.sin(m * 0.37 + s)) * 7;
+  box(4 + Math.abs(Math.sin(m)) * 3, h, 13, LM(s < 0 ? 0xc79a6a : 0xbd8f5f), s * (LANE + 3.5 + Math.abs(Math.cos(m)) * 1.5), h / 2 - 0.5, -m);
+}
+// Thorns
+for (const t of THORNS){
+  box(t[3] - t[2], 0.3, t[1] - t[0], mats.thorn, (t[2] + t[3]) / 2, 0.15, -(t[0] + t[1]) / 2);
+  for (let x = t[2] + 0.6; x < t[3]; x += 1.2) for (let m = t[0] + 0.6; m < t[1]; m += 1.2){
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.9, 6), mats.spike); c.position.set(x, 0.75, -m); scene.add(c);
+  }
+}
+// Checkpoints, finish, podium
+for (const cp of CHECKPOINTS.slice(1)){ box(0.2, 3, 0.2, mats.edge, -LANE + 0.4, 1.5, -cp); box(1.4, 0.8, 0.1, mats.flag, -LANE + 1.2, 2.6, -cp, true); }
+for (let i = 0; i < 16; i++) box(1, 0.05, 1, i % 2 ? mats.finishA : mats.finishB, -LANE + 0.5 + i, 0.03, -FINISH);
+box(0.4, 4.4, 0.4, mats.edge, -LANE + 0.3, 2.2, -FINISH, true); box(0.4, 4.4, 0.4, mats.edge, LANE - 0.3, 2.2, -FINISH, true);
+box(16, 0.7, 0.4, mats.gold, 0, 4.4, -FINISH, true);
+box(3, 2, 3, mats.gold, 0, 1, -(FINISH + 18), true); box(3, 1.3, 3, mats.gold, -3, 0.65, -(FINISH + 18), true); box(3, 0.8, 3, mats.gold, 3, 0.4, -(FINISH + 18), true);
+// Moving walls
+const walls = WALLS.map(w => ({ ...w, a: box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m), b: box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m), gapX: 0 }));
+function layoutWalls(time){
+  for (const w of walls){
+    w.gapX = Math.sin(time * WALL_SPEED + w.ph) * WALL_SWING;
+    const l1 = w.gapX - GAP / 2, r0 = w.gapX + GAP / 2;
+    w.a.scale.x = Math.max(0.01, l1 + LANE); w.a.position.x = (l1 - LANE) / 2;
+    w.b.scale.x = Math.max(0.01, LANE - r0); w.b.position.x = (r0 + LANE) / 2;
+  }
+}
+layoutWalls(0);
+const covers = COVERS.map(([m, x]) => ({ m, x, mesh: box(2.6, 2, 1.6, mats.cover, x, 1, -m, true) }));
+const turrets = TURRETS.map((t, i) => {
+  box(1.8, 1.8, 1.8, mats.turret, t.x, 0.9, -t.m, true);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1.6, 12), mats.edge);
+  barrel.rotation.x = Math.PI / 2; barrel.position.set(t.x, 1.2, -t.m + 1.3); scene.add(barrel); sbOutline(barrel, 0.04);
+  return { ...t, next: 1 + i * 0.6 };
+});
+// Coins
+const coinGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 18);
+const coins = [];
+for (const [a, b, x] of COIN_LINES) for (let m = a; m <= b; m += 3){
+  if (inPit(m, x)) continue;
+  const mesh = new THREE.Mesh(coinGeo, mats.coin); mesh.rotation.x = Math.PI / 2; mesh.position.set(x, 1, -m); scene.add(mesh);
+  coins.push({ m, x, mesh, taken: false });
+}
+// Spike wall (chaser) — 4 m tall, see-through when it's between you and the camera
+const chaserMat = new THREE.MeshLambertMaterial({ color: 0x8a3fa0, transparent: true, opacity: 1 });
+const chaserSpike = new THREE.MeshLambertMaterial({ color: 0xe0584a, transparent: true, opacity: 1 });
+const chaser = new THREE.Group();
+const slab = new THREE.Mesh(new THREE.BoxGeometry(LANE * 2 + 2, 4, 1.2), chaserMat); slab.position.y = 2; chaser.add(slab);
+for (let x = -LANE; x <= LANE; x += 1.3) for (let y = 0.6; y < 4; y += 1.3){
+  const c = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.4, 6), chaserSpike); c.rotation.x = -Math.PI / 2; c.position.set(x, y, -1.2); chaser.add(c);
+}
+scene.add(chaser);
+
+// Player: the island avatar (rebuilt once the profile loads)
+let me = null;
+function setAvatar(custom){
+  if (me) scene.remove(me.group);
+  me = buildAvatar(custom || DEFAULT_CUSTOM);
+  sbOutline(me.group, 0.035);
+  const s = BODY_SCALES[(custom && custom.body) || 'normal'] || 1;
+  me.group.scale.setScalar(s * 0.8);
+  me.group.rotation.order = 'YXZ';
+  scene.add(me.group);
+}
+setAvatar(DEFAULT_CUSTOM);
+
+const rocks = [], bullets = [];
+
+// ---------- state ----------
+const S = { phase: 'menu' };
+function reset(){
+  Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, slowUntil: 0, downUntil: 0,
+    swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, time: 0, caught: 0, pits: 0, shot: 0, rockNext: 0,
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0 });
+  for (const r of rocks){ scene.remove(r.mesh); scene.remove(r.shadow); } rocks.length = 0;
+  for (const b of bullets) scene.remove(b.mesh); bullets.length = 0;
+  for (const c of coins){ c.taken = false; c.mesh.visible = true; }
+}
+reset();
+const keys = {};
+addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+  if ((e.code === 'Enter' || e.code === 'Space') && S.phase !== 'run' && S.phase !== 'count'){ e.preventDefault(); startRun(); return; }
+  keys[e.code] = true;
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) for (const k in keys) keys[k] = false; });
+const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+if (isTouch) document.body.classList.add('touch');
+for (const [id, code] of [['tLeft','ArrowLeft'],['tRight','ArrowRight'],['tJump','Space'],['tBat','KeyF'],['tDash','ShiftLeft']]){
+  const el = document.getElementById(id);
+  const on = e => { e.preventDefault(); keys[code] = true; el.classList.add('on'); };
+  const off = e => { e.preventDefault(); keys[code] = false; el.classList.remove('on'); };
+  el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
+}
+
+// ---------- UI ----------
+const $ = id => document.getElementById(id);
+let flashTimer = 0;
+function flash(text){ const f = $('flash'); f.textContent = text; f.classList.add('on'); clearTimeout(flashTimer); flashTimer = setTimeout(() => f.classList.remove('on'), 1100); }
+function sectionAt(m){ for (let i = SECTIONS.length - 1; i >= 0; i--) if (m >= SECTIONS[i].from) return SECTIONS[i]; return SECTIONS[0]; }
+function startRun(){
+  reset(); $('startCard').hidden = true; $('endCard').hidden = true;
+  S.phase = 'count'; S.countAt = performance.now();
+}
+$('startBtn').onclick = startRun; $('againBtn').onclick = startRun;
+
+function respawn(reason){
+  S.m = S.cp + 2; S.x = 0; S.y = 0; S.vy = 0; S.knockV = 0; S.slowUntil = 0; S.downUntil = S.time + 0.6;
+  S.wallM = Math.min(S.wallM, S.cp - 25);
+  flash(reason);
+}
+function bestTime(){ try { return parseFloat(localStorage.getItem('etfm-race-best') || '') || null; } catch(e){ return null; } }
+function finish(){
+  S.phase = 'done'; $('danger').style.opacity = 0;
+  const t = +S.time.toFixed(1), prevBest = bestTime(), newBest = !prevBest || t < prevBest;
+  if (newBest){ try { localStorage.setItem('etfm-race-best', String(t)); } catch(e){} }
+  const clean = S.caught === 0 && S.pits === 0;
+  const reward = S.coins + FINISH_BONUS + (clean ? CLEAN_BONUS : 0);
+  $('rTime').textContent = t + ' 秒'; $('rBest').textContent = (newBest ? t : prevBest) + ' 秒' + (newBest ? ' 🆕' : '');
+  $('rCoins').textContent = S.coins; $('rCaught').textContent = S.caught + ' 次'; $('rFails').textContent = `${S.pits} / ${S.shot}`;
+  const title = clean ? '🏆 刺牆碰不到我' : S.pits >= 3 ? '🕳 坑底常客' : S.caught >= 3 ? '🦔 刺牆的好朋友' : S.shot >= 3 ? '🎯 人肉標靶' : S.coins >= 50 ? '💰 撿錢達人' : '🏃 穩穩跑完';
+  $('rTitle').textContent = '稱號：' + title;
+  $('endCard').hidden = false; $('againBtn').focus();
+  claimReward(reward, t);
+}
+// Coins go to the island account via POST /race_reward (adds, never overwrites)
+async function claimReward(coins, time){
+  const el = $('rReward');
+  if (!API){ el.textContent = `獎金 $${coins}（試玩版不存檔）`; return; }
+  if (!authToken){ el.textContent = `獎金 $${coins} — 先到海嘯島登入，下次跑完就會存進帳號`; return; }
+  el.textContent = `獎金 $${coins} 存入中…`;
+  try {
+    const r = await fetch(API + '/race_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ coins, time }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) el.textContent = `獎金 +$${j.coins} 已存入帳號（現在 $${j.money}）`;
+    else el.textContent = j.message || '獎金沒存到，等一下再跑一次';
+  } catch(e){ el.textContent = '連不上伺服器，這次的獎金沒存到'; }
+}
+// Load the island character for this account
+(async () => {
+  const who = $('who');
+  if (!API){ who.textContent = '試玩版：用預設角色'; return; }
+  if (!authToken){ who.innerHTML = '還沒登入：用預設角色。<a href="island.html">去海嘯島登入</a>就能用自己的角色、存獎金。'; return; }
+  try {
+    const r = await fetch(API + '/me', { headers: { Authorization: 'Bearer ' + authToken } });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'me');
+    const custom = j.profile && j.profile.custom;
+    if (custom) setAvatar({ ...DEFAULT_CUSTOM, ...custom, cosmetics: { ...DEFAULT_CUSTOM.cosmetics, ...(custom.cosmetics || {}) } });
+    who.textContent = `${j.displayName || j.username} 準備上場`;
+  } catch(e){ who.textContent = '讀不到帳號：先用預設角色跑'; }
+})();
+
+// ---------- game loop ----------
+let last = 0;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = last ? Math.min(0.05, Math.max(0, (now - last) / 1000)) : 0.016;
+  last = now;
+  if (S.phase === 'count'){
+    const left = 3 - (performance.now() - S.countAt) / 1000, c = $('count');
+    c.hidden = false; c.textContent = left > 0 ? Math.ceil(left) : 'GO!';
+    if (left <= -0.4){ c.hidden = true; S.phase = 'run'; }
+  }
+  if (S.phase === 'run') step(dt);
+  layoutWalls(S.phase === 'run' ? S.time : now / 1000);
+  render(dt);
+}
+
+function step(dt){
+  S.time += dt;
+  const down = S.time < S.downUntil;
+  let fwd = isTouch ? 1 : 0, side = 0;
+  if (keys.KeyW || keys.ArrowUp) fwd = 1;
+  if (keys.KeyS || keys.ArrowDown) fwd = -0.6;
+  if (keys.KeyA || keys.ArrowLeft) side -= 1;
+  if (keys.KeyD || keys.ArrowRight) side += 1;
+  if (down){ fwd = 0; side = 0; }
+  const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && fwd > 0;
+  if (wantSprint && !S.tired && S.stamina > 0.02){ S.stamina = Math.max(0, S.stamina - STAMINA_DRAIN * dt); if (S.stamina === 0) S.tired = true; }
+  else { S.stamina = Math.min(1, S.stamina + STAMINA_FILL * dt); if (S.stamina > 0.35) S.tired = false; }
+  let speed = (wantSprint && !S.tired && S.stamina > 0.02) ? SPRINT : RUN;
+  if (S.time < S.slowUntil) speed *= 0.45;
+  S.moving = (fwd !== 0 || side !== 0) && !down;
+  const prevM = S.m, prevX = S.x;
+  S.m += (fwd * speed - S.knockV) * dt;
+  S.x += side * speed * 0.8 * dt;
+  S.knockV = Math.max(0, S.knockV - 25 * dt);
+  S.x = Math.max(-LANE + 0.5, Math.min(LANE - 0.5, S.x));
+  S.m = Math.max(-30, S.m);
+  S.side = side;
+  // jump: hold = hop on landing; double jump needs a fresh press
+  const fresh = keys.Space && !S.jumpHeld; S.jumpHeld = !!keys.Space;
+  if (!down){
+    if (keys.Space && S.onGround){ S.vy = JUMP_V; S.onGround = false; }
+    else if (fresh && !S.onGround && !S.djUsed){ S.vy = DJ_V; S.djUsed = true; S.flipT = 0.0001; }
+  }
+  S.vy -= GRAV * dt; S.y += S.vy * dt;
+  if (!inPit(S.m, S.x) && S.y <= 0 && S.y > -0.8){ S.y = 0; S.vy = 0; S.onGround = true; S.djUsed = false; }
+  else if (S.y < 0) S.onGround = false;
+  if (S.y < -5){ S.pits++; respawn('掉坑了！回檢查點'); return; }
+  // solids
+  for (const w of walls) for (const s of [{ x0: -LANE, x1: w.gapX - GAP / 2 }, { x0: w.gapX + GAP / 2, x1: LANE }]){
+    if (S.y > 4.5) continue;
+    if (Math.abs(S.m - w.m) < 0.95 && S.x > s.x0 - 0.45 && S.x < s.x1 + 0.45){ if (Math.abs(prevM - w.m) >= 0.95) S.m = prevM; else S.x = prevX; }
+  }
+  for (const c of covers){
+    if (S.y > 2) continue;
+    if (Math.abs(S.m - c.m) < 1.25 && Math.abs(S.x - c.x) < 1.75){ if (Math.abs(prevM - c.m) >= 1.25) S.m = prevM; else S.x = prevX; }
+  }
+  // thorns
+  if (S.y < 0.6) for (const t of THORNS){
+    if (S.m >= t[0] && S.m <= t[1] && S.x >= t[2] - 0.3 && S.x <= t[3] + 0.3 && S.time > S.slowUntil){
+      S.knockV = 7; S.slowUntil = S.time + 1; S.vy = 5; S.y = 0.05; flash('🌵 被荊棘刺到！'); break;
+    }
+  }
+  // falling rocks: shadow first, then drop; half aim where you're heading
+  if (S.m > 225 && S.m < 330 && S.time > S.rockNext){
+    S.rockNext = S.time + 0.55;
+    const aimed = Math.random() < 0.5;
+    const m = Math.min(329, aimed ? S.m + RUN * 1.05 + (Math.random() - 0.5) * 3 : S.m + 6 + Math.random() * 16);
+    const x = aimed ? Math.max(-LANE + 1.2, Math.min(LANE - 1.2, S.x + (Math.random() - 0.5) * 2)) : (Math.random() * 2 - 1) * (LANE - 1.2);
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), mats.shadow); shadow.rotation.x = -Math.PI / 2; shadow.position.set(x, 0.02, -m); scene.add(shadow);
+    const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1), mats.rock); mesh.position.set(x, 18, -m); scene.add(mesh);
+    rocks.push({ x, m, t: 0, shadow, mesh, landed: false });
+  }
+  for (let i = rocks.length - 1; i >= 0; i--){
+    const r = rocks[i]; r.t += dt;
+    const k = Math.max(0, (r.t - 1.0) / 0.25);
+    r.mesh.position.y = Math.max(1.1, 18 - 17 * k * k); r.mesh.rotation.x += dt * 3;
+    r.shadow.scale.setScalar(0.6 + Math.min(1, r.t) * 0.4);
+    if (!r.landed && k >= 1){
+      r.landed = true;
+      if (Math.hypot(S.x - r.x, S.m - r.m) < 1.7 && S.y < 2){ S.downUntil = S.time + 1; S.knockV = 3; flash('🪨 被石頭砸到！'); }
+    }
+    if (r.t > 2.2){ scene.remove(r.mesh); scene.remove(r.shadow); r.mesh.geometry.dispose(); r.shadow.geometry.dispose(); rocks.splice(i, 1); }
+  }
+  // turrets
+  for (const tu of turrets){
+    if (S.m < 432 || S.m > tu.m - 2) continue;
+    tu.next -= dt;
+    if (tu.next <= 0){
+      tu.next = 1.0 + Math.random() * 0.4;
+      const aimX = Math.max(-LANE + 0.5, Math.min(LANE - 0.5, S.x + (Math.random() - 0.5) * 1.2));
+      const flight = Math.max(0.3, (tu.m - 1.5 - S.m) / 22);
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), mats.bullet); scene.add(mesh);
+      bullets.push({ x: tu.x, vx: (aimX - tu.x) / flight, m: tu.m - 1.5, vm: -22, mesh, back: false });
+    }
+  }
+  if (keys.KeyF && S.time > S.swingCd){ S.swingUntil = S.time + SWING_DUR; S.swingCd = S.time + 0.5; }
+  const swinging = S.time < S.swingUntil;
+  for (let i = bullets.length - 1; i >= 0; i--){
+    const b = bullets[i];
+    b.m += b.vm * dt; b.x += (b.back ? -b.vx : b.vx) * dt;
+    if (swinging && !b.back && b.m > S.m && b.m - S.m < 2.8 && Math.abs(b.x - S.x) < 1.9){ b.back = true; b.vm = 28; b.mesh.material = mats.bulletBack; flash('⚾ 打回去！'); }
+    let gone = b.m < -30 || b.m > END + 20;
+    if (!b.back && Math.abs(b.m - S.m) < 0.6 && Math.abs(b.x - S.x) < 0.75 && S.y < 2.4){ S.knockV = 9; S.shot++; flash('💥 中彈！'); gone = true; }
+    for (const c of covers) if (Math.abs(b.m - c.m) < 0.8 && Math.abs(b.x - c.x) < 1.3) gone = true;
+    for (const tu of turrets) if (b.back && Math.abs(b.m - tu.m) < 1 && Math.abs(b.x - tu.x) < 1.1){ gone = true; tu.next = 2.5; flash('💥 砲台被打中，暫停！'); }
+    if (gone){ scene.remove(b.mesh); b.mesh.geometry.dispose(); bullets.splice(i, 1); }
+  }
+  // coins
+  for (const c of coins){
+    if (c.taken) continue;
+    if (Math.abs(c.m - S.m) < 1.1 && Math.abs(c.x - S.x) < 1.1 && S.y < 2.2){ c.taken = true; c.mesh.visible = false; S.coins++; }
+  }
+  // checkpoints
+  for (const cp of CHECKPOINTS) if (S.m >= cp && cp > S.cp){ S.cp = cp; flash('🚩 檢查點'); }
+  // the wall: your section's speed, leashed to stay within WALL_LEASH behind
+  const gapNow = S.m - S.wallM;
+  S.wallM += (gapNow > WALL_LEASH ? WALL_CATCHUP : sectionAt(S.m).wall) * dt;
+  if (S.wallM >= S.m - 0.6){ S.caught++; respawn('🦔 被刺牆追到！回檢查點'); }
+  if (S.m >= FINISH) finish();
+  // HUD
+  $('hSec').textContent = sectionAt(S.m).name; $('hTime').textContent = S.time.toFixed(1);
+  $('hDist').textContent = Math.max(0, Math.floor(S.m)); $('hCoins').textContent = S.coins; $('hCaught').textContent = S.caught;
+  const gap = S.m - S.wallM, meter = $('meter');
+  $('meterBar').style.width = Math.max(4, Math.min(100, gap / 30 * 100)) + '%';
+  meter.classList.toggle('warn', gap < 14); meter.classList.toggle('danger', gap < 8);
+  $('stamBar').style.width = Math.round(S.stamina * 100) + '%'; $('stam').classList.toggle('tired', S.tired);
+  $('danger').style.opacity = Math.max(0, Math.min(1, (12 - gap) / 10)).toFixed(2);
+}
+
+const _camTarget = new THREE.Vector3();
+function render(dt){
+  const g = me.group, running = S.phase === 'run';
+  g.position.set(S.x, Math.max(-6, S.y || 0), -(S.m || 0));
+  const down = running && S.time < S.downUntil;
+  g.rotation.z = down ? 1.2 : 0;
+  g.rotation.y += ((running ? -(S.side || 0) * 0.35 : 0) - g.rotation.y) * Math.min(1, dt * 10);
+  if (S.flipT){ S.flipT += dt / 0.38; g.rotation.x = -Math.PI * 2 * (1 - Math.pow(1 - Math.min(1, S.flipT), 2)); if (S.flipT >= 1){ S.flipT = 0; g.rotation.x = 0; } }
+  // limbs: run cycle, bat swing on top
+  if (running && S.moving && S.onGround){ S.runPhase += dt * 16; }
+  const sw = Math.sin(S.runPhase || 0) * (running && S.moving ? 0.7 : 0);
+  me.legL.rotation.x = sw; me.legR.rotation.x = -sw; me.armL.rotation.x = -sw * 0.6; me.armR.rotation.x = sw * 0.6;
+  me.armL.rotation.y *= 0.7; me.armR.rotation.y *= 0.7;
+  if (running && S.time < S.swingUntil) poseBatSwing(me.armR, me.armL, 1 - (S.swingUntil - S.time) / SWING_DUR);
+  for (const c of coins) if (!c.taken) c.mesh.rotation.z += dt * 3;
+  for (const b of bullets) b.mesh.position.set(b.x, 1.3, -b.m);
+  chaser.position.set(0, 0, -(S.wallM || -WALL_START_GAP));
+  // camera: high and behind; see-through wall when it's between camera and you
+  _camTarget.set((S.x || 0) * 0.6, 9, -(S.m || 0) + 8);
+  if (!Number.isFinite(camera.position.x + camera.position.y + camera.position.z)) camera.position.copy(_camTarget);
+  camera.position.lerp(_camTarget, Math.min(1, dt * 6));
+  camera.lookAt((S.x || 0) * 0.4, 0.5, -(S.m || 0) - 12);
+  const near = running && (S.m - S.wallM) < 9;
+  chaserMat.opacity = chaserSpike.opacity = near ? 0.35 : 1;
+  chaserMat.depthWrite = chaserSpike.depthWrite = !near;
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
