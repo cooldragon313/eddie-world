@@ -20,8 +20,10 @@
     --sb-font:"Fredoka","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
     color-scheme:light;
   }
-  html,body{height:100%}
-  body{margin:0;overflow:hidden;background:#cfe6f0;color:var(--sb-text);font-family:var(--sb-font);user-select:none;-webkit-user-select:none;touch-action:none}
+  html,body{height:100%;overscroll-behavior:none}
+  /* Locked screen: no scrolling, rubber-banding, pull-to-refresh, pinch-zoom of the page or long-press menus */
+  body{margin:0;position:fixed;inset:0;overflow:hidden;background:#cfe6f0;color:var(--sb-text);font-family:var(--sb-font);
+       user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;-webkit-tap-highlight-color:transparent}
   #stage{position:fixed;inset:0}
   .hud{position:fixed;z-index:5;display:flex;gap:6px;pointer-events:none}
   .tl{top:calc(8px + env(safe-area-inset-top,0px));left:calc(8px + env(safe-area-inset-left,0px));flex-direction:column;align-items:flex-start}
@@ -54,13 +56,22 @@
   .results b{font-size:19px}
   .reward{font-weight:700;color:#c27a00}
   #touch{display:none} body.touch #touch{display:block}
-  .tb{position:fixed;z-index:6;width:64px;height:64px;border-radius:50%;border:3px solid var(--sb-ink);background:var(--sb-paper);font:700 15px var(--sb-font);color:var(--sb-ink);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 rgba(91,58,41,.35)}
+  /* Joystick: the whole bottom-left zone grabs your thumb; the ring shows where it is */
+  #stickZone{position:fixed;left:0;bottom:0;width:min(42vw,300px);height:min(62vh,260px);z-index:6;touch-action:none}
+  #stick{position:absolute;left:calc(22px + env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;
+         background:rgba(255,248,236,.35);border:3px solid rgba(91,58,41,.55);pointer-events:none}
+  #knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(255,248,236,.95);border:2.5px solid var(--sb-ink);box-shadow:0 3px 0 rgba(91,58,41,.3)}
+  .tb{position:fixed;z-index:6;width:62px;height:62px;border-radius:50%;border:3px solid var(--sb-ink);background:var(--sb-paper);font:700 15px var(--sb-font);color:var(--sb-ink);
+      display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 rgba(91,58,41,.35);touch-action:none}
   .tb.on{transform:translateY(3px);box-shadow:0 1px 0 rgba(91,58,41,.35)}
-  #tLeft{left:calc(16px + env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px))}
-  #tRight{left:calc(92px + env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px))}
-  #tJump{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));width:80px;height:80px;background:var(--sb-gold-soft)}
-  #tBat{right:calc(108px + env(safe-area-inset-right,0px));bottom:calc(22px + env(safe-area-inset-bottom,0px));background:#ffc4bb}
-  #tDash{right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(110px + env(safe-area-inset-bottom,0px));background:#ffe0c2}
+  .tb.mini{width:40px;height:40px;font-size:18px}
+  #tJump{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));width:84px;height:84px;font-size:18px;background:var(--sb-gold-soft)}
+  #tBat{right:calc(110px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));background:#ffc4bb}
+  #tDash{right:calc(24px + env(safe-area-inset-right,0px));bottom:calc(112px + env(safe-area-inset-bottom,0px));background:#ffe0c2}
+  /* zoom + fullscreen: a row under the HUD on the right */
+  #tZoomOut{right:calc(110px + env(safe-area-inset-right,0px));top:calc(138px + env(safe-area-inset-top,0px))}
+  #tZoomIn{right:calc(62px + env(safe-area-inset-right,0px));top:calc(138px + env(safe-area-inset-top,0px))}
+  #tFull{right:calc(14px + env(safe-area-inset-right,0px));top:calc(138px + env(safe-area-inset-top,0px))}
   @media (orientation: portrait) and (max-width: 600px){
     body.touch::after{content:"📱 把手機橫過來玩";position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(255,248,236,.96);color:var(--sb-ink);font:700 22px/1.4 var(--sb-font)}
   }
@@ -115,8 +126,10 @@
 </div></div>
 
 <div id="touch">
-  <div class="tb" id="tLeft">◀</div><div class="tb" id="tRight">▶</div>
+  <div id="stickZone"><div id="stick"><div id="knob"></div></div></div>
   <div class="tb" id="tJump">跳</div><div class="tb" id="tBat">揮棒</div><div class="tb" id="tDash">衝刺</div>
+  <div class="tb mini" id="tZoomOut" aria-label="拉遠">－</div><div class="tb mini" id="tZoomIn" aria-label="拉近">＋</div>
+  <div class="tb mini" id="tFull" aria-label="全螢幕">⛶</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -764,12 +777,74 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) for (const k in keys) keys[k] = false; });
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 if (isTouch) document.body.classList.add('touch');
-for (const [id, code] of [['tLeft','ArrowLeft'],['tRight','ArrowRight'],['tJump','Space'],['tBat','KeyF'],['tDash','ShiftLeft']]){
+// No long-press menus or iOS page pinch on the game screen
+addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+// Buttons: each finger is captured by the button it pressed, so sliding off
+// it or pressing two at once can't leave a key stuck (the old "random bug").
+const tbIds = [['tJump','Space'],['tBat','KeyF'],['tDash','ShiftLeft']];
+for (const [id, code] of tbIds){
   const el = document.getElementById(id);
-  const on = e => { e.preventDefault(); keys[code] = true; el.classList.add('on'); };
-  const off = e => { e.preventDefault(); keys[code] = false; el.classList.remove('on'); };
-  el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
+  el.addEventListener('pointerdown', e => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch(_){} keys[code] = true; el.classList.add('on'); });
+  const off = e => { keys[code] = false; el.classList.remove('on'); };
+  el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('lostpointercapture', off);
 }
+
+// Joystick: forward / back / left / right, analog; let go and you stop.
+const joy = { x: 0, y: 0, id: null, cx: 0, cy: 0 };
+const STICK_R = 50;
+const stickZone = document.getElementById('stickZone'), stickEl = document.getElementById('stick'), knob = document.getElementById('knob');
+function joyMove(e){
+  let dx = e.clientX - joy.cx, dy = e.clientY - joy.cy;
+  const d = Math.hypot(dx, dy); if (d > STICK_R){ dx *= STICK_R / d; dy *= STICK_R / d; }
+  joy.x = dx / STICK_R; joy.y = dy / STICK_R;
+  knob.style.transform = `translate(${dx}px, ${dy}px)`;
+}
+function joyEnd(){ joy.id = null; joy.x = joy.y = 0; knob.style.transform = ''; }
+stickZone.addEventListener('pointerdown', e => {
+  if (joy.id !== null) return;
+  e.preventDefault(); joy.id = e.pointerId; try { stickZone.setPointerCapture(e.pointerId); } catch(_){}
+  const r = stickEl.getBoundingClientRect(); joy.cx = r.left + r.width / 2; joy.cy = r.top + r.height / 2;
+  joyMove(e);
+});
+stickZone.addEventListener('pointermove', e => { if (e.pointerId === joy.id) joyMove(e); });
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) stickZone.addEventListener(ev, e => { if (e.pointerId === joy.id) joyEnd(); });
+addEventListener('blur', joyEnd);
+
+// Camera zoom: buttons, two-finger pinch on the screen, mouse wheel
+let camZoom = 1;
+const ZOOM_MIN = 0.6, ZOOM_MAX = 1.7;
+function setZoom(z){ camZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)); try { localStorage.setItem('etfm-race-zoom', String(camZoom)); } catch(_){} }
+try { setZoom(parseFloat(localStorage.getItem('etfm-race-zoom') || '1') || 1); } catch(_){}
+for (const [id, d] of [['tZoomIn', -0.15], ['tZoomOut', 0.15]]){
+  document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); setZoom(camZoom + d); });
+}
+addEventListener('wheel', e => { setZoom(camZoom + e.deltaY * 0.0012); }, { passive: true });
+const pinch = new Map(); let pinchD = 0;
+const stageEl = document.getElementById('stage');
+stageEl.addEventListener('pointerdown', e => { pinch.set(e.pointerId, e); });
+stageEl.addEventListener('pointermove', e => {
+  if (!pinch.has(e.pointerId)) return; pinch.set(e.pointerId, e);
+  if (pinch.size === 2){
+    const [a, b] = [...pinch.values()], d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    if (pinchD) setZoom(camZoom * pinchD / d);
+    pinchD = d;
+  }
+});
+for (const ev of ['pointerup', 'pointercancel']) stageEl.addEventListener(ev, e => { pinch.delete(e.pointerId); pinchD = 0; });
+
+// Fullscreen (+ landscape lock where the phone allows it); hidden where unsupported (iPhone Safari)
+const fsBtn = document.getElementById('tFull');
+const canFS = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+if (!canFS) fsBtn.hidden = true;
+fsBtn.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const el = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement){ (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+  const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+  if (p && p.then) p.then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch(_){} }).catch(() => {});
+});
 
 // ---------- UI ----------
 const $ = id => document.getElementById(id);
@@ -848,11 +923,15 @@ function frame(now){
 function step(dt){
   S.time += dt;
   const down = S.time < S.downUntil;
-  let fwd = isTouch ? 1 : 0, side = 0;
+  // joystick (analog, small dead zone) or keyboard
+  const jx = Math.abs(joy.x) > 0.15 ? joy.x : 0, jy = Math.abs(joy.y) > 0.15 ? joy.y : 0;
+  // full speed at ~3/4 of the stick's reach, so thumbs don't have to hug the rim
+  let fwd = Math.max(-1, Math.min(1, -jy * 1.35)), side = Math.max(-1, Math.min(1, jx * 1.35));
+  if (fwd < 0) fwd *= 0.6;                       // backing up is slower, like the keyboard
   if (keys.KeyW || keys.ArrowUp) fwd = 1;
   if (keys.KeyS || keys.ArrowDown) fwd = -0.6;
-  if (keys.KeyA || keys.ArrowLeft) side -= 1;
-  if (keys.KeyD || keys.ArrowRight) side += 1;
+  if (keys.KeyA || keys.ArrowLeft) side = -1;
+  if (keys.KeyD || keys.ArrowRight) side = 1;
   if (down){ fwd = 0; side = 0; }
   const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && fwd > 0;
   if (wantSprint && !S.tired && S.stamina > 0.02){ S.stamina = Math.max(0, S.stamina - STAMINA_DRAIN * dt); if (S.stamina === 0) S.tired = true; }
@@ -977,7 +1056,7 @@ function render(dt){
   for (const b of bullets) b.mesh.position.set(b.x, 1.3, -b.m);
   chaser.position.set(0, 0, -(S.wallM || -WALL_START_GAP));
   // camera: high and behind; see-through wall when it's between camera and you
-  _camTarget.set((S.x || 0) * 0.6, 9, -(S.m || 0) + 8);
+  _camTarget.set((S.x || 0) * 0.6, 9 * camZoom, -(S.m || 0) + 8 * camZoom);
   if (!Number.isFinite(camera.position.x + camera.position.y + camera.position.z)) camera.position.copy(_camTarget);
   camera.position.lerp(_camTarget, Math.min(1, dt * 6));
   camera.lookAt((S.x || 0) * 0.4, 0.5, -(S.m || 0) - 12);
