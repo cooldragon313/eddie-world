@@ -55,9 +55,17 @@
   .results{display:grid;grid-template-columns:1fr auto;gap:4px 14px;text-align:left;margin:12px 0;font-variant-numeric:tabular-nums}
   .results b{font-size:19px}
   .reward{font-weight:700;color:#c27a00}
-  .lvls{display:flex;flex-direction:column;gap:8px;align-items:stretch;margin:10px auto 0;max-width:320px}
+  .lvls{display:flex;flex-direction:column;gap:12px;align-items:stretch;margin:10px auto 0;max-width:360px}
   .btn.lvl{display:flex;flex-direction:column;align-items:center;margin:0;padding:8px 18px;line-height:1.2}
   .btn.lvl small{font-size:12px;font-weight:600;color:var(--sb-muted)}
+  .lvlcard{display:flex;flex-direction:column;gap:4px}
+  .board{list-style:none;margin:0;padding:6px 8px;background:#fff;border:2px solid var(--sb-line);border-radius:12px;font-size:13px;text-align:left}
+  .board.empty{color:var(--sb-muted);text-align:center}
+  .board li{display:grid;grid-template-columns:18px 1fr auto auto 18px;gap:6px;align-items:center;padding:1px 0;font-variant-numeric:tabular-nums}
+  .board li.me{font-weight:700;color:#c27a00}
+  .board .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .board .ms{color:var(--sb-muted);font-size:12px}
+  .rank{font-weight:900;font-size:17px;color:var(--sb-ink);margin:4px 0}
   #touch{display:none} body.touch #touch{display:block}
   /* Joystick: the whole bottom-left zone grabs your thumb; the ring shows where it is */
   #stickZone{position:fixed;left:0;bottom:0;width:min(42vw,300px);height:min(62vh,260px);z-index:6;touch-action:none}
@@ -122,10 +130,11 @@
     <span>最佳紀錄</span><b id="rBest">—</b>
     <span>撿到金幣</span><b id="rCoins">0</b>
     <span>被刺牆追到</span><b id="rCaught">0</b>
-    <span>掉坑 / 中彈</span><b id="rFails">0</b>
+    <span>失誤（被打中・掉下去・被追到）</span><b id="rFails">0</b>
   </div>
   <p id="rTitle" style="font-weight:900;font-size:18px"></p>
   <p class="reward" id="rReward"></p>
+  <p class="rank" id="rRank"></p>
   <button class="btn" id="againBtn" type="button">再跑一次</button>
   <button class="btn ghost" id="menuBtn" type="button">選別關</button>
   <br><a class="btn ghost" href="island.html">🏝 回海嘯島花錢</a>
@@ -636,7 +645,8 @@ const LEVEL1 = {
   floors: [[-40, 560, -L1_LANE, L1_LANE]],
   holes: [[44,48,-8,8],[60,64,-8,0],[70,74,0,8],[88,93,-8,8],[104,108,-8,8],[118,122,-8,2]],
   thorns: [[140,143,-8,3],[155,158,-3,8],[168,171,-8,3],[182,185,-3,8],[196,199,-8,1],[212,215,-1,8]],
-  rocks: [225, 330],
+  // meteor zones: [from, to, seconds between rocks, share aimed at where you're heading]
+  rocks: [[225, 330, 0.38, 0.6], [60, 125, 0.9, 0.5]],
   slideWalls: [{ m: 345, ph: 0 }, { m: 370, ph: 1.7 }, { m: 395, ph: 3.1 }, { m: 420, ph: 4.6 }],
   covers: [[452,-3],[466,3.5],[480,-4],[494,2],[508,-2.5],[520,3]],
   turrets: [{ m: 545, x: -3.5 }, { m: 545, x: 3.5 }], turretFrom: 432,
@@ -948,7 +958,7 @@ const S = { phase: 'menu', time: 0 };
 function reset(){
   Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, knockX: 0, slowUntil: 0, downUntil: 0,
     swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, cpX: 0, time: 0, caught: 0, pits: 0, shot: 0, hits: 0, rockNext: 0,
-    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0 });
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0 });
   for (const f of flying) world.remove(f.mesh); flying.length = 0;
   for (const sp of spears){ sp.next = 0; sp.armed = true; }
   for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
@@ -1038,17 +1048,45 @@ function flash(text){ const f = $('flash'); f.textContent = text; f.classList.ad
 function sectionAt(m){ for (let i = L.sections.length - 1; i >= 0; i--) if (m >= L.sections[i].from) return L.sections[i]; return L.sections[0]; }
 const bestKey = lv => lv.id === 1 ? 'etfm-race-best' : 'etfm-race-best-' + lv.id;   // level 1 keeps its old key
 function bestTime(lv){ try { return parseFloat(localStorage.getItem(bestKey(lv)) || '') || null; } catch(e){ return null; } }
+// Misses = every time something got you: caught by the wall, fell, or was hit
+// by a bullet / bar / hammer / spear / rock / thorns. The leaderboard ranks
+// by time, then misses; 0 misses earns a crown.
+const missesOf = () => S.caught + S.pits + S.shot + S.hits + S.speared + S.rocked + S.thorned;
+const DEVICE = isTouchDevice() ? 'phone' : 'pc';
+function isTouchDevice(){ return ('ontouchstart' in window) || navigator.maxTouchPoints > 0; }
+const boards = {};   // level id -> rows from the server
+const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+function boardHtml(rows, meName){
+  if (!API) return '<div class="board empty">排行榜在正式網址才看得到</div>';
+  if (!rows) return '<div class="board empty">讀取排行榜…</div>';
+  if (!rows.length) return '<div class="board empty">還沒有人跑完，搶第一名！</div>';
+  return '<ol class="board">' + rows.slice(0, 5).map((r, i) =>
+    `<li class="${r.name === meName ? 'me' : ''}"><span class="rk">${i + 1}</span><span class="nm">${esc(r.name)}${r.misses === 0 ? ' 👑' : ''}</span>` +
+    `<span class="tm">${r.time.toFixed(1)}秒</span><span class="ms">失誤 ${r.misses}</span><span class="dv">${r.device === 'phone' ? '📱' : '💻'}</span></li>`).join('') + '</ol>';
+}
+let myName = '';
 function renderLevelButtons(){
   const wrap = $('levelBtns'); wrap.innerHTML = '';
   for (const lv of LEVELS){
+    const card = document.createElement('div'); card.className = 'lvlcard';
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn lvl';
     const best = bestTime(lv);
-    b.innerHTML = `${lv.name}<small>${best ? '最佳 ' + best + ' 秒' : '還沒跑過'}</small>`;
+    b.innerHTML = `${lv.name}<small>${best ? '我的最佳 ' + best + ' 秒' : '還沒跑過'}</small>`;
     b.onclick = () => startRun(lv);
-    wrap.appendChild(b);
+    card.appendChild(b);
+    card.insertAdjacentHTML('beforeend', boardHtml(boards[lv.id], myName));
+    wrap.appendChild(card);
   }
 }
-renderLevelButtons();
+async function loadBoards(){
+  if (!API) return;
+  await Promise.all(LEVELS.map(async lv => {
+    try { const r = await fetch(API + '/race_board?level=' + lv.id); const j = await r.json(); boards[lv.id] = Array.isArray(j.rows) ? j.rows : []; }
+    catch(e){ boards[lv.id] = []; }
+  }));
+  if (S.phase === 'menu') renderLevelButtons();
+}
+renderLevelButtons(); loadBoards();
 function startRun(level){
   if (level !== L || !chaser) buildLevel(level);
   reset(); $('startCard').hidden = true; $('endCard').hidden = true;
@@ -1056,7 +1094,7 @@ function startRun(level){
   S.phase = 'count'; S.countAt = performance.now();
 }
 $('againBtn').onclick = () => startRun(L);
-$('menuBtn').onclick = () => { S.phase = 'menu'; $('endCard').hidden = true; renderLevelButtons(); $('startCard').hidden = false; };
+$('menuBtn').onclick = () => { S.phase = 'menu'; $('endCard').hidden = true; renderLevelButtons(); loadBoards(); $('startCard').hidden = false; };
 
 function respawn(reason){
   S.m = S.cp + 2; S.x = S.cpX; S.y = 0; S.vy = 0; S.knockV = 0; S.knockX = 0; S.slowUntil = 0; S.downUntil = S.time + 0.6;
@@ -1068,27 +1106,32 @@ function finish(){
   S.phase = 'done'; $('danger').style.opacity = 0; $('gateChip').hidden = true;
   const t = +S.time.toFixed(1), prevBest = bestTime(L), newBest = !prevBest || t < prevBest;
   if (newBest){ try { localStorage.setItem(bestKey(L), String(t)); } catch(e){} }
-  const clean = S.caught === 0 && S.pits === 0;
+  const misses = missesOf(), clean = misses === 0;
   const reward = S.coins + L.finishBonus + (clean ? 10 : 0);
   $('endTitle').textContent = L.short + ' 通關！';
   $('rTime').textContent = t + ' 秒'; $('rBest').textContent = (newBest ? t : prevBest) + ' 秒' + (newBest ? ' 🆕' : '');
-  $('rCoins').textContent = S.coins; $('rCaught').textContent = S.caught + ' 次'; $('rFails').textContent = `${S.pits} / ${S.shot + S.hits + S.speared}`;
-  const title = clean ? '🏆 刺牆碰不到我' : S.pits >= 3 ? (L.id === 2 ? '☁️ 高空墜落專家' : '🕳 坑底常客') : S.caught >= 3 ? '🦔 刺牆的好朋友'
+  $('rCoins').textContent = S.coins; $('rCaught').textContent = S.caught + ' 次'; $('rFails').textContent = misses + (clean ? ' 👑 完美' : ' 次');
+  const title = clean ? '👑 完美過關' : S.pits >= 3 ? (L.id === 2 ? '☁️ 高空墜落專家' : '🕳 坑底常客') : S.caught >= 3 ? '🦔 刺牆的好朋友'
     : S.hits >= 4 ? '🍢 被烤肉棒串起來' : S.speared >= 4 ? '🎋 竹箭靶子' : S.shot >= 3 ? '🎯 人肉標靶' : S.coins >= 30 ? '💰 撿錢達人' : '🏃 穩穩跑完';
   $('rTitle').textContent = '稱號：' + title;
   $('endCard').hidden = false; $('againBtn').focus();
-  claimReward(reward, t);
+  $('rRank').textContent = '';
+  claimReward(reward, t, misses);
 }
 // Coins go to the island account via POST /race_reward (adds, never overwrites)
-async function claimReward(coins, time){
+async function claimReward(coins, time, misses){
   const el = $('rReward');
   if (!API){ el.textContent = `獎金 $${coins}（試玩版不存檔）`; return; }
   if (!authToken){ el.textContent = `獎金 $${coins} — 先到海嘯島登入，下次跑完就會存進帳號`; return; }
   el.textContent = `獎金 $${coins} 存入中…`;
   try {
-    const r = await fetch(API + '/race_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ coins, time, level: L.id }) });
+    const r = await fetch(API + '/race_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ coins, time, level: L.id, misses, device: DEVICE }) });
     const j = await r.json().catch(() => ({}));
-    if (r.ok) el.textContent = `獎金 +$${j.coins} 已存入帳號（現在 $${j.money}）`;
+    if (r.ok){
+      el.textContent = `獎金 +$${j.coins} 已存入帳號（現在 $${j.money}）`;
+      if (j.rank) $('rRank').textContent = j.improved ? `🏁 排行榜第 ${j.rank} 名！` : `排行榜：你的最佳還是第 ${j.rank} 名`;
+      if (Array.isArray(j.board)) boards[L.id] = j.board;
+    }
     else el.textContent = j.message || '獎金沒存到，等一下再跑一次';
   } catch(e){ el.textContent = '連不上伺服器，這次的獎金沒存到'; }
 }
@@ -1103,7 +1146,8 @@ async function claimReward(coins, time){
     if (!r.ok) throw new Error(j.error || 'me');
     const custom = j.profile && j.profile.custom;
     if (custom) setAvatar({ ...DEFAULT_CUSTOM, ...custom, cosmetics: { ...DEFAULT_CUSTOM.cosmetics, ...(custom.cosmetics || {}) } });
-    who.textContent = `${j.displayName || j.username} 準備上場`;
+    myName = j.displayName || j.username || ''; renderLevelButtons();
+    who.textContent = `${myName} 準備上場`;
   } catch(e){ who.textContent = '讀不到帳號：先用預設角色跑'; }
 })();
 
@@ -1182,13 +1226,14 @@ function step(dt){
   // ---- level 1 hazards ----
   if (L.thorns && S.y < 0.6) for (const t of L.thorns){
     if (S.m >= t[0] && S.m <= t[1] && S.x >= t[2] - 0.3 && S.x <= t[3] + 0.3 && S.time > S.slowUntil){
-      S.knockV = 7; S.slowUntil = S.time + 1; S.vy = 5; S.y = 0.05; flash('🌵 被荊棘刺到！'); break;
+      S.knockV = 7; S.slowUntil = S.time + 1; S.vy = 5; S.y = 0.05; S.thorned++; flash('🌵 被荊棘刺到！'); break;
     }
   }
-  if (L.rocks && S.m > L.rocks[0] && S.m < L.rocks[1] && S.time > S.rockNext){
-    S.rockNext = S.time + 0.55;
-    const aimed = Math.random() < 0.5;
-    const m = Math.min(L.rocks[1] - 1, aimed ? S.m + RUN * 1.05 + (Math.random() - 0.5) * 3 : S.m + 6 + Math.random() * 16);
+  const rz = (L.rocks || []).find(z => S.m > z[0] && S.m < z[1]);
+  if (rz && S.time > S.rockNext){
+    S.rockNext = S.time + rz[2];
+    const aimed = Math.random() < rz[3];
+    const m = Math.min(rz[1] - 1, aimed ? S.m + RUN * 1.05 + (Math.random() - 0.5) * 3 : S.m + 6 + Math.random() * 16);
     const x = aimed ? Math.max(-L1_LANE + 1.2, Math.min(L1_LANE - 1.2, S.x + (Math.random() - 0.5) * 2)) : (Math.random() * 2 - 1) * (L1_LANE - 1.2);
     const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), mats.shadow); shadow.rotation.x = -Math.PI / 2; shadow.position.set(x, 0.02, -m); add(shadow);
     const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1), mats.rock); mesh.position.set(x, 18, -m); add(mesh);
@@ -1201,7 +1246,7 @@ function step(dt){
     r.shadow.scale.setScalar(0.6 + Math.min(1, r.t) * 0.4);
     if (!r.landed && k >= 1){
       r.landed = true;
-      if (Math.hypot(S.x - r.x, S.m - r.m) < 1.7 && S.y < 2){ S.downUntil = S.time + 1; S.knockV = 3; flash('🪨 被石頭砸到！'); }
+      if (Math.hypot(S.x - r.x, S.m - r.m) < 1.7 && S.y < 2){ S.downUntil = S.time + 1; S.knockV = 3; S.rocked++; flash('🪨 被石頭砸到！'); }
     }
     if (r.t > 2.2){ world.remove(r.mesh); world.remove(r.shadow); r.mesh.geometry.dispose(); r.shadow.geometry.dispose(); rocks.splice(i, 1); }
   }
