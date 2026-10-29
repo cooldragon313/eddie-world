@@ -47,7 +47,12 @@
     background:#fff6d8;border:2.5px solid var(--sb-ink);border-radius:14px;padding:6px 14px;font:800 16px/1.4 var(--sb-font);color:var(--sb-ink);
     box-shadow:0 4px 0 rgba(91,58,41,.3);pointer-events:none;text-align:center}
   #say::before{content:'媽媽：';color:#c0392b}
-  #say.kid::before{content:'';}
+  #kidSay{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:7;max-width:min(80vw,380px);
+    background:#e8f6ff;border:2.5px solid var(--sb-ink);border-radius:16px;padding:5px 14px;font:800 15px/1.4 var(--sb-font);color:var(--sb-ink);
+    box-shadow:0 4px 0 rgba(91,58,41,.3);pointer-events:none;text-align:center}
+  #kidSay::before{content:'艾迪：';color:#3a7bc8}
+  #kidSay::after{content:'';position:absolute;left:50%;bottom:-11px;transform:translateX(-50%);border:9px solid transparent;border-top-color:var(--sb-ink);border-bottom:0}
+  #kidSay[hidden]{display:none}
 
   /* bottom controls */
   #bar{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;flex-wrap:wrap;justify-content:center;gap:6px;
@@ -150,6 +155,7 @@
 </div>
 <div id="steps">🤫 走廊很安靜</div>
 <div id="say" hidden></div>
+<div id="kidSay" hidden></div>
 
 <div id="bar">
   <div class="items">
@@ -1173,7 +1179,8 @@ $('stage').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1d2338);
 const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 80);
-const CAM_POS = new THREE.Vector3(0, 6.7, 4.0), CAM_AT = new THREE.Vector3(0, 3.75, -1.3);
+// behind Eddie's right shoulder, looking down at the desk (Eddie is drawn see-through)
+const CAM_POS = new THREE.Vector3(2.0, 8.3, 8.4), CAM_AT = new THREE.Vector3(-0.2, 3.4, -1.2);
 camera.position.copy(CAM_POS); camera.lookAt(CAM_AT);
 
 scene.add(new THREE.HemisphereLight(0xa9b8ff, 0x3a2a20, 0.55));
@@ -1342,6 +1349,23 @@ function paintLeft(){
   if (S && S.leftDoodle){ pageL.x.fillStyle = 'rgba(251,246,234,.62)'; pageL.x.fillRect(0, 0, 512, 680); pageL.x.drawImage(S.leftDoodle, 0, 0); }
   pageL.t.needsUpdate = true;
 }
+
+// ---------- Eddie (shared model), sitting at the desk, see-through ----------
+const eddie = (() => {
+  const A = buildEddieAvatar(DEFAULT_CUSTOM, { bat: false }), e = A.eddie, g = A.group;
+  // size: a 12-year-old is ~6 units tall standing (1 unit = 25 cm)
+  const b0 = new THREE.Box3().setFromObject(g); g.scale.setScalar(4.4 / (b0.max.y - b0.min.y));   // storybook-sized next to the desk
+  // sit: thighs forward, shins down, hands on the desk
+  for (const l of e.legs){ l.rotation.x = 1.5; l.userData.knee.rotation.x = -1.5; }
+  for (const a of e.arms){ a.rotation.x = 1.15; a.userData.elbow.rotation.x = 0.7; }
+  e.arms[0].rotation.z = 0.25; e.arms[1].rotation.z = -0.25;
+  g.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(g); g.position.set(-0.3, -b.min.y + 0.9, 3.3);   // sitting on a chair
+  g.traverse(o => { if (!o.isMesh) return;
+    o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.4; o.renderOrder = 5; });   // depth stays on: only the nearest surface shows, so the ghost reads cleanly
+  scene.add(g);
+  return { A, e, g };
+})();
 
 // ---------- the mirror on the desk (shows the door behind you) ----------
 const rt = new THREE.WebGLRenderTarget(640, 440);
@@ -1518,7 +1542,7 @@ const LINES = {
 let S;
 function newState(){
   return {
-    running: false, t: 0, mood: 0, anger: 0, hits: 0, di: 0, prog: 0, drawn: 0, scribble: 0, erasing: false, flips: 0, leftDoodle: null, pendingLeft: null, hitsBy: { glue: 0, hand: 0, hanger: 0 }, streak: 0, firstLook: true,
+    running: false, t: 0, kidT: 0, mood: 0, anger: 0, hits: 0, di: 0, prog: 0, drawn: 0, scribble: 0, erasing: false, flips: 0, leftDoodle: null, pendingLeft: null, hitsBy: { glue: 0, hand: 0, hanger: 0 }, streak: 0, firstLook: true,
     cur: -1, itemState: 'hidden', itemT: 0,   // hidden | rising | out | stowing
     pageIdle: 0, flipT: -1,
     g: { st: 'away', weapon: 'glue', waitFlip: false, waitT: 0, t: rand(3, 5), dur: 0, fake: false, caught: false, idleWarned: false, guard: 0, stepT: 0, stepN: 0 },
@@ -1529,7 +1553,19 @@ S = newState(); paintSpread();
 for (const it of ITEMS) it.mins = 0;
 
 function difficulty(){ return clamp(S.t / ROUND, 0, 1); }
-function say(text, secs, kid){ const el = $('say'); el.textContent = text; el.classList.toggle('kid', !!kid); el.hidden = false; S.sayT = secs || 2.2; }
+function say(text, secs, kid){
+  if (kid){ const k = $('kidSay'); k.textContent = text; k.hidden = false; S.kidT = secs || 2; return; }
+  const el = $('say'); el.textContent = text; el.hidden = false; S.sayT = secs || 2.2;
+}
+// Eddie's inner voice (only sometimes, so it stays funny)
+const KID = {
+  omen:   ['糟了…有腳步聲！', '媽媽來了！快收！', '腳步聲…！'],
+  fake:   ['……呼，嚇死我了。', '咦？走掉了？', '假警報…'],
+  caught: ['痛痛痛！', '哇啊——', '我錯了啦！', '屁股開花了…'],
+  take:   { 1: ['這集超好看', '看一頁就好'], 2: ['看一集就好…', '嘿嘿，貓咪～'], 3: ['嘿嘿，打一場就好', '這關快過了！'] },
+  flip:   ['翻了翻了…', '有啦有啦，在讀了'],
+};
+const kidMaybe = (list, p) => { if (Math.random() < (p || 0.6)) say(pick(list), 1.8, true); };
 
 // --- 媽媽's loop: away → omen → (fake: retreat) | open → look → close → away
 function gmaNext(){
@@ -1538,8 +1574,9 @@ function gmaNext(){
     g.st = 'omen'; g.dur = g.t = Math.max(1.0, 1.7 - 0.6 * d)   // warning time: footsteps before the door (Bernie: humans need ~0.6 s to react)
        + (g.guard > 0 ? 0 : rand(0, 0.25));
     g.fake = !S.firstLook && Math.random() < 0.18 + 0.32 * d; g.stepT = 0; g.stepN = 0;
+    if (S.itemState !== 'hidden') kidMaybe(KID.omen, 0.7);
   } else if (g.st === 'omen'){
-    if (g.fake){ g.st = 'retreat'; g.t = 0.9; }
+    if (g.fake){ g.st = 'retreat'; g.t = 0.9; kidMaybe(KID.fake, 0.5); }
     else { g.st = 'open'; g.t = 0.32; sfx.knob(); g.weapon = pick(Object.keys(WEAPONS)); mom.setWeapon(g.weapon); }
   } else if (g.st === 'retreat'){
     g.st = 'away'; g.t = rand(1.2, 3.0) * (1 - 0.4 * d);
@@ -1569,6 +1606,7 @@ function caught(){
   S.anger = clamp(S.anger + W.anger + (g.guard > 0 ? 6 : 0), 0, 100);
   S.mood = Math.max(0, S.mood - 6);
   S.hitsBy[g.weapon || 'glue']++;
+  setTimeout(() => say(pick(KID.caught), 1.6, true), 450);
   say(pick(W.lines), 2.4);
   const w = $('whip'); w.dataset.w = g.weapon || 'glue'; w.classList.remove('go'); void w.offsetWidth; w.classList.add('go');
   sfx.whip(); setTimeout(() => {
@@ -1589,6 +1627,7 @@ function takeOut(i){
   if (S.cur === i && (S.itemState === 'rising' || S.itemState === 'out')){ stow(); return; }
   if (S.itemState !== 'hidden') return;
   S.cur = i; S.itemState = 'rising'; S.itemT = 0.28; ITEMS[i].mesh.visible = true;
+  if (KID.take[i] && S.kidT <= 0) kidMaybe(KID.take[i], 0.3);
   updateButtons();
 }
 function stow(){
@@ -1606,7 +1645,7 @@ function flip(){
   paintRight();
   sfx.page();
   // 媽媽 waiting at the door for you to turn the page: that's what she wanted
-  if (S.g.waitFlip){ S.g.waitFlip = false; S.g.t = Math.min(S.g.t, 0.9); say('嗯，這樣才對。', 1.4); }
+  if (S.g.waitFlip){ S.g.waitFlip = false; S.g.t = Math.min(S.g.t, 0.9); say('嗯，這樣才對。', 1.4); say(pick(KID.flip), 1.4, true); }
 }
 function updateButtons(){
   ITEMS.forEach((it, i) => { const b = $('it' + i); b.classList.toggle('on', S.cur === i && S.itemState !== 'hidden'); b.disabled = S.itemState !== 'hidden' && S.cur !== i; });
@@ -1681,6 +1720,7 @@ function update(dt){
     if (S.anger >= 100) return endGame(false);
     if (S.t >= ROUND) return endGame(true);
     if (S.sayT > 0){ S.sayT -= dt; if (S.sayT <= 0) $('say').hidden = true; }
+    if (S.kidT > 0){ S.kidT -= dt; if (S.kidT <= 0) $('kidSay').hidden = true; }
   }
   animate(dt);
   hud();
@@ -1737,6 +1777,20 @@ function animate(dt){
   });
   screenGlow.intensity += (glow - screenGlow.intensity) * Math.min(1, dt * 10);
 
+  // Eddie: looks down while playing, glances at the door at footsteps, flinches when hit
+  { const e = eddie.e, g = S.g, playing = S.itemState === 'out' || S.itemState === 'rising';
+    const scared = g.st === 'omen' || g.st === 'open', hit = g.caught && (g.st === 'look');
+    e.face.set(hit ? 'sad' : scared ? 'surprised' : playing ? (S.cur >= 2 ? 'laugh' : 'smile') : 'smug');
+    const hy = scared ? 0.55 : 0, hx = playing ? 0.35 : 0.1;
+    e.head.rotation.y += (hy - e.head.rotation.y) * Math.min(1, dt * 10);
+    e.head.rotation.x += (hx - e.head.rotation.x) * Math.min(1, dt * 8);
+    e.body.position.y = hit ? Math.abs(Math.sin(tt * 30)) * 0.04 : 0;
+    eddie.st = eddie.st || { blinkAt: 2, blinkT: -1 };
+    const bs = eddie.st; bs.blinkAt -= dt;
+    if (bs.blinkAt <= 0 && bs.blinkT < 0){ bs.blinkT = 0; bs.blinkAt = 2 + Math.random() * 3; }
+    if (bs.blinkT >= 0){ bs.blinkT += dt; e.face.blink(Math.sin(Math.min(1, bs.blinkT / 0.15) * Math.PI)); if (bs.blinkT > 0.15){ bs.blinkT = -1; e.face.blink(0); } }
+  }
+
   // camera: little breathing + whip shake
   camera.position.copy(CAM_POS); camera.position.y += Math.sin(tt * 1.3) * 0.03;
   if (S.shake > 0){ S.shake -= dt; const a = S.shake * 1.5 * (S.shakeK || 1); camera.position.x += (Math.random() - 0.5) * a; camera.position.y += (Math.random() - 0.5) * a; }
@@ -1763,7 +1817,7 @@ function hud(){
 }
 
 function render(){
-  renderer.setRenderTarget(rt); renderer.render(scene, mirrorCam);
+  eddie.g.visible = false; renderer.setRenderTarget(rt); renderer.render(scene, mirrorCam); eddie.g.visible = true;
   renderer.setRenderTarget(null); renderer.render(scene, camera);
 }
 function frame(now){
@@ -1775,7 +1829,7 @@ function frame(now){
 function resize(){
   const w = innerWidth, h = innerHeight, a = w / h;
   renderer.setSize(w, h); camera.aspect = a;
-  camera.fov = clamp(Math.max(52, 2 * Math.atan(0.52 / a) * 180 / Math.PI), 52, 100);
+  camera.fov = clamp(Math.max(52, 2 * Math.atan(0.44 / a) * 180 / Math.PI), 52, 92);   // portrait phones: a bit tighter so the desk stays big
   camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
@@ -1784,7 +1838,7 @@ addEventListener('resize', resize); resize();
 function start(){
   S = newState(); for (const it of ITEMS){ it.mins = 0; it.mesh.visible = false; }
   resetDoodles(); spread = 0; paintSpread(); lastMin = -1; $('win').hidden = true; doorHinge.rotation.y = 0; gma.position.z = 22;
-  $('startCard').hidden = true; $('endCard').hidden = true; $('say').hidden = true;
+  $('startCard').hidden = true; $('endCard').hidden = true; $('say').hidden = true; $('kidSay').hidden = true;
   S.running = true; updateButtons();
   say('（八點了，媽媽剛走出去……）', 2.2, true);
 }
@@ -1805,6 +1859,7 @@ function celebrate(){
   if (S.cur >= 0){ S.itemState = 'stowing'; S.itemT = 0.01; }
   sfx.chimes();
   say('……十點了，好啦，去睡覺。', 2.6);
+  setTimeout(() => say('耶！！今晚我贏了！', 2.2, true), 700);
   const w = $('win'); w.hidden = false; w.classList.remove('go'); void w.offsetWidth; w.classList.add('go');
   const box = $('confetti'); box.innerHTML = '';
   const colors = ['#ffcf5a', '#ff8fb0', '#6fb3e0', '#7cc79a', '#e0584a', '#fff8ec'];
