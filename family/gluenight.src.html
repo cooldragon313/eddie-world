@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>熱熔膠條之夜</title>
+<title>恐怖考前複習夜</title>
 <!--
   SOURCE TEMPLATE — edit this file, then run:  python tools/build_family.py
   The build pastes the island's storybook look (toon ramp, ink outlines,
@@ -35,7 +35,7 @@
   .meter.anger i{background:var(--sb-gold-soft)} .meter.anger.hot i{background:var(--sb-red)}
   .iconbtn{pointer-events:auto;border:2px solid var(--sb-ink);background:var(--sb-paper);border-radius:999px;font:700 14px var(--sb-font);color:var(--sb-ink);padding:3px 10px;cursor:pointer;box-shadow:0 3px 0 rgba(91,58,41,.25)}
 
-  /* omen: footprints grow and redden as 嬤嬤 comes closer */
+  /* omen: footprints grow and redden as 媽媽 comes closer */
   #steps{--tx:-50%;--sc:1;position:fixed;z-index:6;left:50%;top:calc(52px + env(safe-area-inset-top,0px));transform:translateX(var(--tx)) scale(var(--sc));pointer-events:none;
     font:900 15px var(--sb-font);color:var(--sb-ink);background:rgba(255,248,236,.94);border:2.5px solid var(--sb-ink);border-radius:999px;padding:3px 14px;
     box-shadow:0 3px 0 rgba(91,58,41,.3);transition:transform .12s,background .12s;white-space:nowrap}
@@ -45,7 +45,7 @@
   #say{position:fixed;left:50%;top:calc(92px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:7;max-width:min(90vw,480px);
     background:#fff6d8;border:2.5px solid var(--sb-ink);border-radius:14px;padding:6px 14px;font:800 16px/1.4 var(--sb-font);color:var(--sb-ink);
     box-shadow:0 4px 0 rgba(91,58,41,.3);pointer-events:none;text-align:center}
-  #say::before{content:'嬤嬤：';color:#c0392b}
+  #say::before{content:'媽媽：';color:#c0392b}
   #say.kid::before{content:'';}
 
   /* bottom controls */
@@ -73,7 +73,12 @@
   #whip .stick{position:absolute;left:50%;top:-10vh;width:22px;height:95vh;margin-left:-11px;border-radius:11px;
     background:linear-gradient(to right,rgba(255,246,216,.75),rgba(255,255,255,.95) 40%,rgba(255,236,190,.8));border:3px solid var(--sb-ink);
     transform-origin:50% 0;transform:rotate(-75deg);opacity:0}
-  #whip.go .stick{animation:swish .32s cubic-bezier(.5,0,.9,.5) forwards}
+  #whip.go .stick,#whip.go .hg{animation:swish .32s cubic-bezier(.5,0,.9,.5) forwards}
+  #whip[data-w=hand] .stick{background:linear-gradient(to right,#ffb3c6,#ff8fb0);width:16px;margin-left:-8px}
+  #whip[data-w=hand] .stick::after{content:'🖐';position:absolute;left:50%;bottom:-6vh;transform:translateX(-50%) rotate(180deg);font-size:min(18vw,110px)}
+  #whip .hg{position:absolute;left:50%;top:-10vh;height:80vh;width:53vh;margin-left:-26.5vh;transform-origin:50% 0;transform:rotate(-75deg);opacity:0;display:none}
+  #whip[data-w=hanger] .stick{display:none}
+  #whip[data-w=hanger] .hg{display:block}
   @keyframes swish{0%{transform:rotate(-80deg);opacity:1}100%{transform:rotate(38deg);opacity:1}}
   #whip .pa{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%) scale(0) rotate(-8deg);font:900 min(28vw,170px)/1 var(--sb-font);color:#fff;
     -webkit-text-stroke:6px #c0392b;paint-order:stroke fill;text-shadow:0 8px 0 #5b3a29}
@@ -113,7 +118,7 @@
   <div class="meter" id="moodBar"><i></i></div>
 </div>
 <div class="hud tr">
-  <span class="lbl">嬤嬤怒氣</span>
+  <span class="lbl">媽媽怒氣</span>
   <div class="meter anger" id="angerBar"><i></i></div>
   <button class="iconbtn" id="soundBtn" type="button">🔇 聲音</button>
 </div>
@@ -133,25 +138,30 @@
   </div>
 </div>
 
-<div id="whip"><div class="red"></div><div class="stick"></div><div class="pa">啪！</div></div>
+<div id="whip"><div class="red"></div><div class="stick"></div>
+  <svg class="hg" viewBox="0 0 200 300" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M100 10 q-22 0 -22 22 q0 18 22 22 v26 L12 280 H188 L100 80" stroke="#5b3a29" stroke-width="16"/>
+    <path d="M100 10 q-22 0 -22 22 q0 18 22 22 v26 L12 280 H188 L100 80" stroke="#6fb3e0" stroke-width="9"/></g></svg>
+  <div class="pa">啪！</div></div>
 
 <div class="card" id="startCard"><div>
-  <h1>熱熔膠條之夜</h1>
-  <div class="sub">嬤嬤在走廊巡邏中</div>
-  <p>晚上八點，功課還沒寫。<br>嬤嬤一轉身，你就偷玩；她一開門，你就裝乖。</p>
+  <h1>恐怖考前複習夜</h1>
+  <div class="sub">媽媽在走廊巡邏中</div>
+  <p>晚上八點，功課還沒寫。<br>媽媽一轉身，你就偷玩；她一開門，你就裝乖。</p>
   <ul>
     <li>點上排的東西開始偷玩，心情往上加。越爽的越難藏。</li>
     <li>聽到腳步、看到 👣 變紅，趕快按 <b>裝乖</b>。</li>
     <li>桌上的鏡子看得到背後的門。門縫有影子＝有人。</li>
-    <li>很久沒翻頁，嬤嬤會起疑，記得偶爾 <b>翻頁</b>。</li>
-    <li>撐到十點過關。被抽太多下，嬤嬤爆炸就結束。</li>
+    <li>很久沒翻頁，媽媽會起疑，記得偶爾 <b>翻頁</b>。</li>
+    <li>媽媽每次手上的武器不一樣：🩹 熱熔膠條、🖐 愛的小手、🧥 衣架（衣架最痛）。</li>
+    <li>撐到十點過關。被抽太多下，媽媽爆炸就結束。</li>
   </ul>
   <button class="btn" id="startBtn" type="button">開始寫功課</button>
   <p class="muted">靜音也玩得了；開聲音會更可怕。電腦：1–4 偷玩、空白鍵裝乖、F 翻頁</p>
 </div></div>
 
 <div class="card" id="endCard" hidden><div>
-  <h1 id="endTitle">嬤嬤爆炸了</h1>
+  <h1 id="endTitle">媽媽爆炸了</h1>
   <div class="sub" id="endSub">今晚戰報</div>
   <div class="stat" id="endStat"></div>
   <p id="endLine"></p>
@@ -163,11 +173,13 @@
 <script>
 /*@@INCLUDE:LOOK@@*/
 
+/*@@INCLUDE:AVATAR@@*/
+
 // ============================================================
-// 熱熔膠條之夜 — first-person desk, 嬤嬤 behind the door.
+// 熱熔膠條之夜 — first-person desk, 媽媽 behind the door.
 // Units: 1 = 25 cm (so the shared ink outlines are the right thickness).
 // Game logic (catch, anger, mood) is plain code; nothing here is random
-// about the rules, only about 嬤嬤's timing.
+// about the rules, only about 媽媽's timing.
 // ============================================================
 const ROUND = 150;                 // real seconds from 8:00 to 10:00
 const $ = id => document.getElementById(id);
@@ -325,53 +337,22 @@ crack.rotation.x = -Math.PI / 2; crack.position.set(DOOR_X0 + DOOR_W / 2, 0.04, 
 const feet = new THREE.Group(); feet.position.set(DOOR_X0 + DOOR_W / 2, 0.06, BACK_Z - 0.38); scene.add(feet);
 for (const fx of [-0.45, 0.45]){ const f = plane(0.6, 0.45, new THREE.MeshBasicMaterial({ color: 0x2a1a12, transparent: true, opacity: 0 })); f.rotation.x = -Math.PI / 2; f.position.x = fx; feet.add(f); }
 
-// ---------- 嬤嬤 ----------
-function grandmaFace(){
-  return canvasTex(256, 256, (x) => {
-    x.fillStyle = '#f2cfae'; x.beginPath(); x.ellipse(128, 132, 116, 112, 0, 0, Math.PI * 2); x.fill();
-    x.lineWidth = 8; x.strokeStyle = '#5b3a29'; x.stroke();
-    x.strokeStyle = '#3b2a20'; x.lineWidth = 10; x.lineCap = 'round';
-    x.beginPath(); x.moveTo(58, 78); x.lineTo(104, 96); x.moveTo(198, 78); x.lineTo(152, 96); x.stroke();         // angry brows
-    x.lineWidth = 7; for (const cx of [86, 170]){ x.beginPath(); x.arc(cx, 124, 30, 0, Math.PI * 2); x.stroke(); }  // round glasses
-    x.beginPath(); x.moveTo(116, 124); x.lineTo(140, 124); x.stroke();
-    x.fillStyle = '#2a1a12'; for (const cx of [86, 170]){ x.beginPath(); x.arc(cx, 126, 9, 0, Math.PI * 2); x.fill(); }
-    x.strokeStyle = 'rgba(91,58,41,.5)'; x.lineWidth = 4; for (const cx of [40, 216]){ x.beginPath(); x.arc(cx, 150, 14, -0.6, 0.6); x.stroke(); }
-    x.strokeStyle = '#7a2a24'; x.lineWidth = 9; x.beginPath(); x.arc(128, 214, 36, 1.15 * Math.PI, 1.85 * Math.PI); x.stroke();   // frown
-  });
-}
-function floralTex(){
-  return canvasTex(256, 256, (x) => {
-    x.fillStyle = '#8a4fa0'; x.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 26; i++){
-      const cx = Math.random() * 256, cy = Math.random() * 256, r = 9 + Math.random() * 7;
-      x.fillStyle = pick(['#ffcf5a', '#ff9fb0', '#fff8ec']);
-      for (let k = 0; k < 5; k++){ const a = k / 5 * Math.PI * 2; x.beginPath(); x.arc(cx + Math.cos(a) * r * .7, cy + Math.sin(a) * r * .7, r * .5, 0, Math.PI * 2); x.fill(); }
-      x.fillStyle = '#e8a317'; x.beginPath(); x.arc(cx, cy, r * .35, 0, Math.PI * 2); x.fill();
-    }
-  });
-}
-function makeGrandma(){
-  const g = new THREE.Group(), u = g.userData;
-  const skin = LM(0xf2cfae), pants = LM(0x4a4f6a), top = new THREE.MeshLambertMaterial({ map: floralTex().t });
-  for (const sx of [-1, 1]){ const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.3, 2.3, 10), pants); leg.position.set(sx * 0.42, 1.15, 0); g.add(leg); sbOutline(leg, 0.05);
-    const shoe = box(0.55, 0.3, 0.85, LM(0x2a2a30), 0.1); shoe.position.set(sx * 0.42, 0.15, 0.15); g.add(shoe); }
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.2, 2.5, 18), top); body.position.y = 3.4; g.add(body); sbOutline(body, 0.06);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(1.0, 20, 14), skin); head.position.y = 5.6; g.add(head); sbOutline(head, 0.06);
-  const face = new THREE.Mesh(new THREE.CircleGeometry(0.9, 32), new THREE.MeshBasicMaterial({ map: grandmaFace().t })); face.position.set(0, 5.55, 0.98); g.add(face);
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(1.08, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), LM(0xb9b4ad)); hair.position.set(0, 5.68, -0.06); hair.rotation.x = -0.25; g.add(hair); sbOutline(hair, 0.05);
-  const bun = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), LM(0xb9b4ad)); bun.position.set(0, 6.55, -0.55); g.add(bun);
-  for (const sx of [-1, 1]){
-    const arm = new THREE.Group(); arm.position.set(sx * 1.15, 4.4, 0);
-    const a = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.24, 1.9, 10), top); a.position.y = -0.95; arm.add(a);
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), skin); hand.position.y = -2.0; arm.add(hand);
-    if (sx > 0){ const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.4, 12), LM(0xfff1c8));
-      stick.position.set(0, -2.1, 1.5); stick.rotation.x = Math.PI / 2; arm.add(stick); }
-    sbOutline(arm, 0.05);
-    g.add(arm); u[sx < 0 ? 'armL' : 'armR'] = arm;
-  }
+// ---------- 媽媽 (shared model from island.html) ----------
+// buildMom faces -z; this wrapper turns her to +z like the old model, and the
+// scene turns the wrapper to face the desk. Three weapons, one per visit.
+const WEAPONS = {
+  glue:   { name: '熱熔膠條', icon: '🩹', anger: 20, lines: ['熱熔膠一條十塊錢！', '你是豬嗎，這樣的問題也不會'] },
+  hand:   { name: '愛的小手', icon: '🖐', anger: 14, lines: ['愛的小手來了！', '手伸出來！'] },
+  hanger: { name: '衣架',     icon: '🧥', anger: 28, lines: ['衣架拿來！', '又在玩！拿來！', '給我認真點好嗎！'] },
+};
+function makeMomActor(){
+  const g = new THREE.Group(), m = buildMom();
+  m.g.rotation.y = Math.PI; m.g.scale.setScalar(1.6); g.add(m.g);
+  g.userData.mom = m; g.userData.armR = m.arms[1];
   return g;
 }
-const gma = makeGrandma(); gma.rotation.y = Math.PI; gma.position.set(DOOR_X0 + DOOR_W / 2, 0, 22); scene.add(gma);
+const gma = makeMomActor(); gma.rotation.y = Math.PI; gma.position.set(DOOR_X0 + DOOR_W * 0.74, 0, 22); scene.add(gma);   // on the open side of the doorway, clear of the door panel
+const mom = gma.userData.mom;
 
 // ---------- things to sneak-play with ----------
 // rate = mood per second while out, stow = seconds to hide it again
@@ -470,17 +451,17 @@ const sfx = (() => {
 const LINES = {
   first: '我又買了一整包熱熔條了，你自己小心點～',
   look: ['功課寫完了沒？', '嗯……這樣才乖。', '坐好，背挺直！', '明天要考試知不知道？'],
-  caught: ['你是豬嗎，這樣的問題也不會', '熱熔膠一條十塊錢！', '給我認真點好嗎！', '又在玩！拿來！'],
+  caught: ['你是豬嗎，這樣的問題也不會'],
   idle: '你那頁看多久了？',
   guard: '我今天就坐在這裡看你寫！',
 };
 let S;
 function newState(){
   return {
-    running: false, t: 0, mood: 0, anger: 0, hits: 0, streak: 0, firstLook: true,
+    running: false, t: 0, mood: 0, anger: 0, hits: 0, hitsBy: { glue: 0, hand: 0, hanger: 0 }, streak: 0, firstLook: true,
     cur: -1, itemState: 'hidden', itemT: 0,   // hidden | rising | out | stowing
     pageIdle: 0, flipT: -1,
-    g: { st: 'away', t: rand(3, 5), dur: 0, fake: false, caught: false, idleWarned: false, guard: 0, stepT: 0, stepN: 0 },
+    g: { st: 'away', weapon: 'glue', t: rand(3, 5), dur: 0, fake: false, caught: false, idleWarned: false, guard: 0, stepT: 0, stepN: 0 },
     shake: 0, sayT: 0,
   };
 }
@@ -490,7 +471,7 @@ for (const it of ITEMS) it.mins = 0;
 function difficulty(){ return clamp(S.t / ROUND, 0, 1); }
 function say(text, secs, kid){ const el = $('say'); el.textContent = text; el.classList.toggle('kid', !!kid); el.hidden = false; S.sayT = secs || 2.2; }
 
-// --- 嬤嬤's loop: away → omen → (fake: retreat) | open → look → close → away
+// --- 媽媽's loop: away → omen → (fake: retreat) | open → look → close → away
 function gmaNext(){
   const g = S.g, d = difficulty();
   if (g.st === 'away'){
@@ -498,7 +479,7 @@ function gmaNext(){
     g.fake = !S.firstLook && Math.random() < 0.18 + 0.32 * d; g.stepT = 0; g.stepN = 0;
   } else if (g.st === 'omen'){
     if (g.fake){ g.st = 'retreat'; g.t = 0.9; }
-    else { g.st = 'open'; g.t = 0.32; sfx.knob(); }
+    else { g.st = 'open'; g.t = 0.32; sfx.knob(); g.weapon = pick(Object.keys(WEAPONS)); mom.setWeapon(g.weapon); }
   } else if (g.st === 'retreat'){
     g.st = 'away'; g.t = rand(1.2, 3.0) * (1 - 0.4 * d);
   } else if (g.st === 'open'){
@@ -523,10 +504,12 @@ function itemExposed(){
 }
 function caught(){
   const g = S.g; g.caught = true; S.hits++; S.streak++;
-  S.anger = clamp(S.anger + (g.guard > 0 ? 26 : 20), 0, 100);
+  const W = WEAPONS[g.weapon || 'glue'];
+  S.anger = clamp(S.anger + W.anger + (g.guard > 0 ? 6 : 0), 0, 100);
   S.mood = Math.max(0, S.mood - 6);
-  say(pick(LINES.caught), 2.4);
-  const w = $('whip'); w.classList.remove('go'); void w.offsetWidth; w.classList.add('go');
+  S.hitsBy[g.weapon || 'glue']++;
+  say(pick(W.lines), 2.4);
+  const w = $('whip'); w.dataset.w = g.weapon || 'glue'; w.classList.remove('go'); void w.offsetWidth; w.classList.add('go');
   sfx.whip(); setTimeout(() => { S.shake = 0.45; try { navigator.vibrate && navigator.vibrate([30, 40, 140]); } catch (e) {} }, 270);
   // grab the toy away
   if (S.cur >= 0){ S.itemState = 'stowing'; S.itemT = 0.01; }
@@ -593,7 +576,7 @@ function update(dt){
     if (S.itemState === 'hidden' || S.cur === 0) S.pageIdle += dt;
 
     S.anger = Math.max(0, S.anger - 0.35 * dt);
-    // 嬤嬤 is looking: anything showing gets you whipped
+    // 媽媽 is looking: anything showing gets you whipped
     const sees = g.st === 'look' || (g.st === 'open' && g.t < 0.16);   // door half open = she can see you
     if (sees && !g.caught && itemExposed()) caught();
     if (g.st === 'look' && !g.idleWarned && !g.caught && S.pageIdle > 16){
@@ -619,7 +602,7 @@ function update(dt){
 const _v = new THREE.Vector3();
 function animate(dt){
   const g = S.g;
-  // door + 嬤嬤 + light under the door
+  // door + 媽媽 + light under the door
   const doorTarget = g.st === 'open' || g.st === 'look' ? (g.guard > 0 ? 1.35 : 1.0) : 0;
   doorHinge.rotation.y += (doorTarget - doorHinge.rotation.y) * Math.min(1, dt * (doorTarget > doorHinge.rotation.y ? 14 : 8));
   let gz = 22, near = 0;
@@ -629,9 +612,16 @@ function animate(dt){
   else if (g.st === 'close'){ near = 0.8; gz = BACK_Z + 1.5; }
   gma.position.z += (gz - gma.position.z) * Math.min(1, dt * 9);
   gma.rotation.x = g.st === 'look' ? 0.1 : 0;
-  const arm = gma.userData.armR;
-  if (g.st === 'look' && g.caught){ const k = (tt * 9) % 2; arm.rotation.x = k < 1 ? -2.6 + k * 3 : 0.4 - (k - 1) * 3; }
-  else arm.rotation.x += ((g.st === 'look' ? -2.3 : -0.2) - arm.rotation.x) * Math.min(1, dt * 8);
+  const arm = mom.arms[1], elb = arm.userData.elbow, armL = mom.arms[0];
+  if (g.st === 'look' && g.caught){ mom.whipPose((tt * 1.1) % 0.9); mom.face.set('yell'); }
+  else {
+    const up = g.st === 'look' || g.st === 'open';
+    arm.rotation.x += ((up ? 2.5 : 0.1) - arm.rotation.x) * Math.min(1, dt * 8);
+    elb.rotation.x += ((up ? 0.9 : 0.25) - elb.rotation.x) * Math.min(1, dt * 8);
+    mom.face.set(up ? (g.guard > 0 ? 'angry' : 'suspicious') : 'smile');
+  }
+  armL.rotation.z = g.st === 'look' ? -0.75 : -0.12; armL.userData.elbow.rotation.z = g.st === 'look' ? 1.9 : 0;   // fist on the hip
+  mom.head.rotation.y = g.st === 'look' && !g.caught ? Math.sin(tt * 1.4) * 0.25 : 0;
   const feetOn = g.st === 'omen' ? clamp(near * 1.6 - 0.3, 0, 1) : g.st === 'retreat' ? clamp(near * 1.4 - 0.4, 0, 1) : (g.st === 'close' ? 0.6 : 0);
   feet.children.forEach(f => f.material.opacity = feetOn * 0.9);
   crack.material.opacity = 0.85 - feetOn * 0.35;
@@ -678,7 +668,7 @@ function hud(){
   let txt = '🤫 走廊很安靜', cls = '', sc = 1;
   if (g.st === 'omen'){ const p = 1 - g.t / g.dur; txt = p < 0.45 ? '👣 有腳步聲……' : '👣👣 越來越近！'; cls = p < 0.45 ? '' : 'near'; sc = 1 + p * 0.35; }
   else if (g.st === 'retreat') txt = '👣 ……走掉了？';
-  else if (g.st === 'open' || g.st === 'look'){ txt = g.guard > 0 ? '👀 嬤嬤守在門口！' : '👀 嬤嬤在看！'; cls = 'look'; }
+  else if (g.st === 'open' || g.st === 'look'){ txt = g.guard > 0 ? '👀 媽媽守在門口！' : '👀 媽媽在看！'; cls = 'look'; }
   else if (g.st === 'close') txt = '🚪 門關上了';
   st.style.setProperty('--sc', sc);
   st.textContent = txt; st.className = cls;
@@ -709,7 +699,7 @@ function start(){
   spread = 0; paintSpread(); lastMin = -1; doorHinge.rotation.y = 0; gma.position.z = 22;
   $('startCard').hidden = true; $('endCard').hidden = true; $('say').hidden = true;
   S.running = true; updateButtons();
-  say('（八點了，嬤嬤剛走出去……）', 2.2, true);
+  say('（八點了，媽媽剛走出去……）', 2.2, true);
 }
 function readBest(){ try { return +localStorage.getItem('gluenight.best') || 0; } catch (e) { return 0; } }
 function endGame(win){
@@ -717,13 +707,13 @@ function endGame(win){
   const bonus = win ? 20 : 0, coins = Math.floor(S.mood) + bonus;
   const best = Math.max(readBest(), coins);
   try { localStorage.setItem('gluenight.best', String(best)); } catch (e) {}
-  $('endTitle').textContent = win ? '撐到十點了！' : '嬤嬤爆炸了';
-  $('endSub').textContent = win ? '嬤嬤去睡了，今晚你贏' : (Math.floor(8 + S.t / ROUND * 2) + ' 點多被沒收全部');
+  $('endTitle').textContent = win ? '撐到十點了！' : '媽媽爆炸了';
+  $('endSub').textContent = win ? '媽媽去睡了，今晚你贏' : (Math.floor(8 + S.t / ROUND * 2) + ' 點多被沒收全部');
   const row = (k, v) => '<span>' + k + '</span><b>' + v + '</b>';
   $('endStat').innerHTML =
     row('✏️ 課本上畫畫', Math.round(ITEMS[0].mins) + ' 分鐘') + row('📖 偷看漫畫', Math.round(ITEMS[1].mins) + ' 分鐘') +
     row('📱 偷看 YouTube', Math.round(ITEMS[2].mins) + ' 分鐘') + row('🎮 偷打電動', Math.round(ITEMS[3].mins) + ' 分鐘') +
-    row('🩹 被熱熔膠條抽', S.hits + ' 下') + row('😤 嬤嬤怒氣', Math.round(S.anger) + '%') +
+    row('🩹 被抽', S.hits + ' 下（膠條 ' + S.hitsBy.glue + '／小手 ' + S.hitsBy.hand + '／衣架 ' + S.hitsBy.hanger + '）') + row('😤 媽媽怒氣', Math.round(S.anger) + '%') +
     row('🪙 心情換金幣', coins + (bonus ? '（含過關 +20）' : ''));
   $('endLine').textContent = S.hits === 0 ? '一下都沒被抽到，你是忍者嗎？' : S.hits >= 5 ? '「' + LINES.caught[0] + '」' : '截圖丟家族群，看誰今晚最皮。';
   $('bestLine').textContent = '這台裝置最高：' + best + ' 金幣　（金幣入帳、排行榜之後接海嘯島帳號）';
