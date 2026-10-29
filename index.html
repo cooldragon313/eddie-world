@@ -1349,32 +1349,61 @@ const FURN = {
 };
 // ---------- the toy shelf: Eddie's favourite toys, found in the levels ----------
 // Content is a placeholder for now; a toy you haven't found is a black silhouette with ??? under it.
+// Eddie picked these (2026-10-30). Where each one hides in the levels: ask Bernie first.
 const TOYS = [
-  { id: 'train', name: '小火車' }, { id: 'robot', name: '機器人' }, { id: 'dino', name: '恐龍' },
-  { id: 'kite', name: '風箏' }, { id: 'top', name: '陀螺' }, { id: 'duck', name: '小鴨' },
+  { id: 'bey', name: '爆破貝利亞' }, { id: 'ipad', name: 'iPad' }, { id: 'paddle', name: '乒乓球拍' },
+  { id: 'cards', name: '寶可夢卡冊' }, { id: 'piggy', name: '存錢小豬公' }, { id: 'cd', name: 'JJ CD' },
 ];
 function foundToys(){ try { return JSON.parse(localStorage.getItem('etfm-toys') || '[]'); } catch (e) { return []; } }
 const SHADOW = new THREE.MeshBasicMaterial({ color: 0x2a1d18 });
+function buildBey(m, part, RB){
+  const g = new THREE.Group();
+  // tip + base
+  part(g, new THREE.ConeGeometry(0.07, 0.12, 10), m(0x2a2a30), 0, 0.06, 0).rotation.x = Math.PI;
+  part(g, new THREE.CylinderGeometry(0.2, 0.14, 0.08, 18), m(0x2a2a30), 0, 0.15, 0);
+  // the black disc with six curved blades (red, white tips)
+  part(g, new THREE.CylinderGeometry(0.42, 0.42, 0.07, 24), m(0x1c1a1d), 0, 0.22, 0);
+  for (let i = 0; i < 6; i++){
+    const a = i / 6 * Math.PI * 2, b = new THREE.Group(); b.rotation.y = a; b.position.y = 0.22; g.add(b);
+    const blade = part(b, new THREE.BoxGeometry(0.28, 0.06, 0.12), m(i % 2 ? 0xc8202a : 0x1c1a1d), 0.44, 0, 0.05); blade.rotation.y = -0.6;
+    part(b, new THREE.ConeGeometry(0.05, 0.16, 6), m(0xf4f4f4), 0.56, 0, 0.12).rotation.z = -Math.PI / 2;
+  }
+  // gold toothed ring
+  part(g, new THREE.CylinderGeometry(0.36, 0.38, 0.08, 12), m(0xe2b33c), 0, 0.29, 0);
+  for (let i = 0; i < 12; i++){ const a = i / 12 * Math.PI * 2; part(g, new THREE.ConeGeometry(0.035, 0.1, 4), m(0xf2c84a), Math.cos(a) * 0.37, 0.33, Math.sin(a) * 0.37); }
+  // dark silver core with red wings and a gold crown + blue gem
+  part(g, new THREE.CylinderGeometry(0.24, 0.26, 0.07, 20), m(0x5a5f66), 0, 0.35, 0);
+  for (const s of [-1, 1]){ const w = part(g, new THREE.BoxGeometry(0.2, 0.04, 0.08), m(0xc8202a), s * 0.1, 0.4, 0.04); w.rotation.y = s * 0.5; }
+  for (const [x, z, h] of [[-0.09, -0.02, 0.14], [0, -0.06, 0.18], [0.09, -0.02, 0.14]]) part(g, new THREE.ConeGeometry(0.035, h, 4), m(0xf2c84a), x, 0.4 + h / 2, z);
+  part(g, new THREE.OctahedronGeometry(0.045), m(0x3aa0ff), 0, 0.43, 0.04);
+  return g;
+}
 function buildToy(id, found){
   const g = new THREE.Group(), m = c => found ? LM(c) : SHADOW;
-  if (id === 'train'){ part(g, RB(0.5, 0.25, 0.26), m(0xe0584a), 0, 0.2, 0); part(g, RB(0.22, 0.2, 0.24), m(0x3a7bc8), -0.12, 0.42, 0); part(g, new THREE.CylinderGeometry(0.05, 0.05, 0.14, 8), m(0x2a2a30), 0.16, 0.4, 0);
-    for (const x of [-0.16, 0.16]) for (const z of [-0.13, 0.13]){ const w = part(g, new THREE.CylinderGeometry(0.07, 0.07, 0.04, 12), m(0x2a2a30), x, 0.07, z); w.rotation.x = Math.PI / 2; } }
-  else if (id === 'robot'){ part(g, RB(0.3, 0.32, 0.22), m(0xb8c0c8), 0, 0.3, 0); part(g, RB(0.24, 0.2, 0.2), m(0xb8c0c8), 0, 0.58, 0); part(g, new THREE.CylinderGeometry(0.015, 0.015, 0.12, 6), m(0x888888), 0, 0.74, 0);
-    part(g, new THREE.SphereGeometry(0.035, 8, 6), m(0xe0584a), 0, 0.81, 0); for (const s of [-1, 1]){ part(g, RB(0.08, 0.14, 0.08), m(0x8a939c), s * 0.08, 0.07, 0); part(g, RB(0.07, 0.22, 0.07), m(0x8a939c), s * 0.2, 0.32, 0); } }
-  else if (id === 'dino'){ const b = part(g, new THREE.SphereGeometry(0.2, 14, 10), m(0x7cc79a), 0, 0.25, 0); b.scale.set(1.4, 1, 0.9); part(g, new THREE.SphereGeometry(0.12, 12, 8), m(0x7cc79a), 0.26, 0.45, 0);
-    const tail = part(g, new THREE.ConeGeometry(0.08, 0.32, 8), m(0x7cc79a), -0.32, 0.22, 0); tail.rotation.z = Math.PI / 2; for (let i = 0; i < 3; i++) part(g, new THREE.ConeGeometry(0.04, 0.1, 6), m(0xffcf5a), -0.1 + i * 0.1, 0.45, 0);
-    for (const x of [-0.12, 0.12]) part(g, RB(0.08, 0.12, 0.08), m(0x6aae86), x, 0.06, 0); }
-  else if (id === 'kite'){ const k = part(g, new THREE.CylinderGeometry(0.0, 0.26, 0.5, 4, 1), m(0xff8fb0), 0, 0.5, 0); k.rotation.z = 0.2; k.scale.z = 0.15; const k2 = part(g, new THREE.CylinderGeometry(0.26, 0.0, 0.25, 4, 1), m(0xff8fb0), 0.04, 0.13, 0); k2.rotation.z = 0.2; k2.scale.z = 0.15;
-    part(g, new THREE.CylinderGeometry(0.01, 0.01, 0.4, 4), m(0x5b3a29), 0.1, -0.1, 0); }
-  else if (id === 'top'){ part(g, new THREE.ConeGeometry(0.2, 0.25, 16), m(0xffcf5a), 0, 0.18, 0).rotation.x = Math.PI; part(g, new THREE.CylinderGeometry(0.21, 0.21, 0.08, 16), m(0x6fb3e0), 0, 0.34, 0); part(g, new THREE.CylinderGeometry(0.03, 0.03, 0.15, 8), m(0xe0584a), 0, 0.45, 0); }
-  else { const b = part(g, new THREE.SphereGeometry(0.17, 14, 10), m(0xffd84a), 0, 0.18, 0); b.scale.set(1.3, 0.9, 1); part(g, new THREE.SphereGeometry(0.11, 12, 8), m(0xffd84a), 0.12, 0.36, 0);
-    const beak = part(g, new THREE.ConeGeometry(0.04, 0.1, 8), m(0xff8a2a), 0.25, 0.35, 0); beak.rotation.z = -Math.PI / 2; }
+  if (id === 'bey'){ const b = buildBey(m, part, RB); b.scale.setScalar(0.72); b.rotation.x = 1.15; b.position.set(0, 0.4, -0.05); /* face out: you see the gold crown */ g.add(b); g.userData.spin = b; }
+  else if (id === 'ipad'){ const t = part(g, RB(0.62, 0.46, 0.04, 0.04), m(0x2a2a30), 0, 0.3, 0); t.rotation.x = -0.25;
+    const sc = part(g, new THREE.PlaneGeometry(0.54, 0.38), found ? new THREE.MeshBasicMaterial({ color: 0x8fd3ff }) : SHADOW, 0, 0.3, 0.025); sc.rotation.x = -0.25; sc.userData.noLine = true;
+    part(g, RB(0.3, 0.04, 0.2), m(0x9aa3ad), 0, 0.03, 0.05); }
+  else if (id === 'paddle'){ const f = part(g, new THREE.CylinderGeometry(0.22, 0.22, 0.04, 24), m(0xd8323a), -0.05, 0.42, 0); f.rotation.x = Math.PI / 2; f.rotation.z = 0.3;
+    const h = part(g, RB(0.07, 0.24, 0.05), m(0xc98a4a), 0.04, 0.14, 0); h.rotation.z = 0.3; part(g, new THREE.SphereGeometry(0.06, 12, 8), m(0xffffff), 0.24, 0.06, 0.05); }
+  else if (id === 'cards'){ part(g, RB(0.6, 0.06, 0.42), m(0x2f5fb0), 0, 0.05, 0);
+    for (let i = 0; i < 6; i++){ const c = part(g, RB(0.16, 0.02, 0.17), m([0xffcf5a, 0xe0584a, 0x7cc79a, 0x6fb3e0, 0xff8fb0, 0xc58cf0][i]), -0.19 + (i % 3) * 0.19, 0.09, -0.09 + Math.floor(i / 3) * 0.19); c.userData.noLine = true; } }
+  else if (id === 'piggy'){ const b = part(g, new THREE.SphereGeometry(0.22, 16, 12), m(0xff9fb8), 0, 0.24, 0); b.scale.set(1.3, 1, 1);
+    part(g, new THREE.CylinderGeometry(0.08, 0.08, 0.06, 14), m(0xff7fa0), 0.28, 0.24, 0).rotation.z = Math.PI / 2;
+    for (const z of [-0.1, 0.1]) part(g, new THREE.ConeGeometry(0.05, 0.1, 8), m(0xff7fa0), 0.12, 0.44, z);
+    for (const [x, z] of [[-0.14, -0.1], [-0.14, 0.1], [0.14, -0.1], [0.14, 0.1]]) part(g, new THREE.CylinderGeometry(0.04, 0.04, 0.08, 8), m(0xff7fa0), x, 0.04, z);
+    part(g, RB(0.12, 0.02, 0.03), m(0x5b3a29), 0, 0.46, 0); }
+  else { const c = part(g, RB(0.5, 0.5, 0.06, 0.02), m(0x9fd3ff), 0, 0.27, 0); c.rotation.x = -0.15;
+    if (found){ const t = new THREE.CanvasTexture((() => { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d'); x.fillStyle = '#2a2a30'; x.fillRect(0, 0, 64, 64);
+      x.fillStyle = '#ffcf5a'; x.font = '900 30px Fredoka, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('JJ', 32, 26); x.fillStyle = '#fff'; x.font = '700 14px sans-serif'; x.fillText('♪', 32, 50); return cv; })());
+      const cover = part(g, new THREE.PlaneGeometry(0.44, 0.44), new THREE.MeshBasicMaterial({ map: t }), 0, 0.27, 0.035); cover.rotation.x = -0.15; cover.userData.noLine = true; }
+    const disc = part(g, new THREE.CylinderGeometry(0.2, 0.2, 0.02, 24), m(0xdfe4ea), 0.22, 0.2, -0.05); disc.rotation.x = Math.PI / 2; }
   return g;
 }
 function labelTex(text){
   const c = document.createElement('canvas'); c.width = 128; c.height = 48; const x = c.getContext('2d');
   x.fillStyle = '#fff8ec'; x.fillRect(4, 4, 120, 40); x.strokeStyle = '#5b3a29'; x.lineWidth = 4; x.strokeRect(4, 4, 120, 40);
-  x.fillStyle = '#5b3a29'; x.font = 'bold 26px "Noto Sans TC", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 64, 26);
+  x.fillStyle = '#5b3a29'; x.font = 'bold ' + (text.length > 4 ? 19 : 26) + 'px "Noto Sans TC", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 64, 26);
   return new THREE.CanvasTexture(c);
 }
 function buildFurniture(id){
@@ -1566,7 +1595,7 @@ function openShelf(o){
   $('shelfUI').hidden = false; $('tr').hidden = true; $('title').hidden = true;
   const n = foundToys().filter(id => TOYS.some(t => t.id === id)).length;
   $('shelfCount').textContent = n + ' / ' + TOYS.length;
-  $('shelfSay').textContent = n ? '這裡都是我最愛的玩具！還有 ' + (TOYS.length - n) + ' 個沒找回來…' : '這裡都是我最愛的玩具！……可是都不見了，要去關卡裡找回來！';
+  $('shelfSay').textContent = n >= TOYS.length ? '全部找回來了！這裡都是我最愛的玩具～' : n ? '這裡都是我最愛的玩具！還有 ' + (TOYS.length - n) + ' 個沒找回來…' : '這裡都是我最愛的玩具！……可是都不見了，要去關卡裡找回來！';
 }
 function closeShelf(){ shelfView = null; mode = 'walk'; $('shelfUI').hidden = true; $('tr').hidden = false; $('title').hidden = false; }
 let holding = null;    // { data, group, uid|null (new), fromInv }
@@ -1775,6 +1804,7 @@ function frame(now){
   const atDoor = Math.floor((pos.x + HALF) / CELL) === DOOR_CELL.x && Math.floor((pos.z + HALF) / CELL) === DOOR_CELL.z;
   if (atDoor && mode === 'walk'){ nearDoorT += dt; if (nearDoorT > 0.35 && nearDoorT < 1 && $('goCard').hidden){ openGo(); nearDoorT = 1; } }
   else nearDoorT = 0;
+  for (const [, o] of placedObjs) if (o.data.id === 'toyshelf') o.group.traverse(c => { if (c.userData.spin) c.userData.spin.rotation.y += dt * 6; });
   if (mode === 'shelf' && shelfView){
     // close-up straight in front of the shelf (its front is +z before it's turned)
     const g = shelfView.group, a = g.rotation.y, fx2 = Math.sin(a), fz2 = Math.cos(a);
