@@ -43,6 +43,8 @@
   .tr{top:calc(8px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));flex-direction:column;align-items:flex-end}
   .chip{background:rgba(255,248,236,.94);border:2px solid var(--sb-ink);border-radius:999px;padding:2px 12px;font-weight:700;font-size:14px;box-shadow:0 3px 0 rgba(91,58,41,.25);font-variant-numeric:tabular-nums}
   .chip b{font-size:17px}
+  .chip.hot{background:#ffd9d2;border-color:#c0392b;color:#c0392b}
+  .chip.hot::after{content:' 👻追他'}
   .chip.sec{background:var(--sb-ink);color:var(--sb-paper)}
   .lbl{font-size:12px;font-weight:700;background:rgba(255,248,236,.94);border-radius:6px;padding:0 6px}
   .meter{width:min(42vw,240px);height:13px;border:2px solid var(--sb-ink);border-radius:999px;background:var(--sb-paper);overflow:hidden;position:relative}
@@ -203,6 +205,7 @@
   <span class="chip">⏱ <b id="hTime">0.0</b> 秒</span>
   <span class="chip">📍 <b id="hDist">0</b> / <span id="hFinish">530</span> m</span>
   <span class="chip">🪙 <b id="hCoins">0</b></span>
+  <span class="chip" id="hDrankChip" hidden>🍺 酒鬼喝了 <b id="hDrank">0</b> / <span id="hBottles">10</span></span>
   <button id="restartBtn" type="button" hidden>🔄 重來</button>
 </div>
 <div class="hud tr">
@@ -759,14 +762,14 @@ const BODY_H = 2.2, CROUCH_H = 1.1, CROUCH_SPEED = 0.55;
 const LEVEL1 = {
   id: 1, name: '第一關 家庭聚會', short: '家庭聚會',
   blurb: '酒鬼大叔從背後追上來！撞倒路上的酒、躲開鬼媽媽的熱熔膠條、衝過火焰怪，終點還有小屁孩大魔王。',
-  drunk: true,
+  drunk: true, leash: 26,   // the drunk hangs further back than the spike wall did
   finish: 530, end: 560, finishBonus: 15, scenery: 'canyon', lateral: 0.8, camFollow: 0.6,
   clampX: L1_LANE - 0.5,
   checkpoints: [[0, 0], [30, 0], [130, 0], [230, 0], [330, 0], [430, 0]],
   sections: [
     { from: 0, name: '起跑區', wall: 9 }, { from: 30, name: '① 地坑道', wall: 9 },
     { from: 130, name: '② 荊棘地', wall: 9.5 }, { from: 230, name: '③ 落石谷', wall: 10 },
-    { from: 330, name: '④ 機關牆', wall: 10.5 }, { from: 430, name: '⑤ 小屁孩客廳', wall: 11 },
+    { from: 330, name: '④ 機關牆', wall: 10.5 }, { from: 430, name: '⑤ 小屁孩客廳', wall: 9.4 },
   ],
   floors: [[-40, 560, -L1_LANE, L1_LANE]],
   holes: [[44,48,-8,8],[60,64,-8,0],[70,74,0,8],[88,93,-8,8],[104,108,-8,8],[118,122,-8,2]],
@@ -786,18 +789,20 @@ const LEVEL1 = {
     { id: 'perfect',  name: '👑 完美過關',     desc: '一次都沒失誤',               test: s => s.misses === 0 },
     { id: 'flash',    name: '⚡ 閃電俠',       desc: '65 秒內跑完',                test: s => s.t < 65 },
     { id: 'untouch',  name: '🙅 酒鬼摸不到',   desc: '整場沒被酒鬼抱到',           test: s => s.caught === 0 },
-    { id: 'sweeper',  name: '🍾 掃酒王',       desc: '路上的酒全部撞倒',           test: s => s.knocked >= 16 },
+    { id: 'sweeper',  name: '🍾 掃酒王',       desc: '路上的酒全部撞倒',           test: s => s.knocked >= 10 },
     { id: 'crybaby',  name: '😭 把小屁孩打哭', desc: '用遙控器打中大魔王',         test: s => s.bossCried > 0 },
     { id: 'homerun',  name: '⚾ 全壘打王',     desc: '打回去 3 個遙控器或火球',     test: s => s.reflected >= 3 },
     { id: 'shopper',  name: '🛍 逛街掩護',     desc: '鬼媽媽一下都沒抽到你',       test: s => s.whipped === 0 },
     { id: 'rich',     name: '💰 撿錢達人',     desc: '撿到 30 個金幣',             test: s => s.coins >= 30 },
     { id: 'iron',     name: '🪨 鐵頭',         desc: '被石頭砸 4 次以上',          test: s => s.rocked >= 4 },
     { id: 'glue',     name: '💢 熱熔膠收藏家', desc: '被鬼媽媽抽 3 下以上',        test: s => s.whipped >= 3 },
-    { id: 'tipsy',    name: '🥴 酒鬼喝到飽',   desc: '讓酒鬼喝了 8 瓶以上',        test: s => s.drank >= 8 },
+    { id: 'tipsy',    name: '🥴 酒鬼喝到飽',   desc: '讓酒鬼喝超過一半的酒',       test: s => s.drank > 5 },
     { id: 'buddy',    name: '🍺 酒鬼的好麻吉', desc: '被酒鬼抱了 3 次以上',        test: s => s.caught >= 3 },
+    { id: 'snitch',   name: '😈 借刀殺人',     desc: '讓鬼媽媽抽酒鬼 2 次以上',     test: s => s.drunkWhipped >= 2 },
   ],
   // bottles on the road: knock them over, or the drunk drinks them and speeds up
-  bottles: [[20,-3],[36,4],[56,5],[80,-5],[100,3],[128,-2],[150,5],[178,-5],[240,3],[262,-4],[300,5],[340,-3],[365,4],[410,-4],[445,5],[490,-5]],
+  // 10 bottles; if the drunk gets more than half, the ghost moms go after him instead of you
+  bottles: [[20,-3],[36,4],[56,5],[80,-5],[100,3],[128,-2],[150,5],[178,-5],[205,4],[240,3]],
   // ghost mom patrols an O or an upright 8 and whips you with a glue stick;
   // while she's shopping on her phone she doesn't look (safe to pass)
   ghostMoms: [{ m: 252, x: 0, path: 'O', r: 5, speed: 1.1 }, { m: 300, x: 0, path: '8', w: 4.5, h: 7, speed: 0.9 },
@@ -1164,6 +1169,7 @@ const HINTS = {
   ghost:  '👻 鬼媽媽看到你會衝過來抽，抽到會跌坐、變慢喔！等她低頭逛網拍再衝過去',
   kids:   '👶 小屁孩會丟遙控器跟小車，被砸到會被撞退、變慢；按揮棒把遙控器打回去！',
   boss:   '🧸 打回去的遙控器砸中大魔王，他會哭著暈 2.5 秒',
+  ghostDrunk: '👻 酒鬼喝超過一半的酒了！鬼媽媽會改去抽他！',
 };
 let hintTimer = 0;
 function hint(key){
@@ -1347,6 +1353,7 @@ function buildLevel(level){
   }
   add(chaser); chaser.userData.x = 0;
   $('chaserLbl').textContent = level.drunk ? '酒鬼距離' : '刺牆距離';
+  $('hDrankChip').hidden = !level.drunk; $('hBottles').textContent = (level.bottles || []).length;
   bottles = (level.bottles || []).map(([m, x], i) => { const g = makeBottle(i); g.position.set(x, 0, -m); add(g); return { m, x, g, state: 'up', t: 0 }; });
   ghosts = (level.ghostMoms || []).map((gm, i) => {
     const g = makeGhostMom(); add(g);
@@ -1384,7 +1391,7 @@ const S = { phase: 'menu', time: 0 };
 function reset(){
   Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, knockX: 0, slowUntil: 0, downUntil: 0,
     swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, cpX: 0, time: 0, caught: 0, pits: 0, shot: 0, hits: 0, rockNext: 0,
-    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99, knocked: 0, drank: 0, whipped: 0, reflected: 0, bossCried: 0, hinted: {} });
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99, knocked: 0, drank: 0, whipped: 0, reflected: 0, bossCried: 0, hinted: {}, drunkStunUntil: 0, drunkWhipped: 0 });
   for (const f of flying) world.remove(f.mesh); flying.length = 0;
   for (const sp of spears){ sp.next = 0; sp.armed = true; }
   for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
@@ -1701,6 +1708,7 @@ function step(dt){
     if (S.m > 222) hint('rock');
     if (S.m > 428) hint('kids');
     if (boss && S.m > boss.from) hint('boss');
+    if (S.drank > bottles.length / 2) hint('ghostDrunk');
   }
   // caught by the drunk: held for a moment (hug from behind, then he throws up)
   if (S.heldUntil){
@@ -1709,7 +1717,7 @@ function step(dt){
       if (!S.puked && S.time > S.heldUntil - 0.75){ S.puked = true; puke(); say(chaser, '嘔～～', 1, { name: '酒鬼大叔', y: 4.6 }); impact('噁～', '#9ccf4a', 0.3); }
       return;
     }
-    S.heldUntil = 0; S.wallM = S.m - 14; S.downUntil = 0;
+    S.heldUntil = 0; S.wallM = S.m - 18; S.downUntil = 0;
     say(chaser, '喝三杯先……', 2, { name: '酒鬼大叔', y: 4.6 });
   }
   const down = S.time < S.downUntil;
@@ -1841,15 +1849,32 @@ function step(dt){
     if (gh.mm - S.m > 30) gh.warned = false;
     const watching = gh.state === 'watch';
     const ahead = gh.mm - S.m;                                    // > 0: she's in front of you
-    if (watching && !gh.warned && ahead > 0 && ahead < 14){ gh.warned = true; say(gh.g, '皮在癢了嗎？', 2, { name: '鬼媽媽', y: 3.7 }); }
-    if (watching && ahead > -2 && ahead < 12 && S.time > gh.rushCd){ gh.rushUntil = S.time + 1.4; gh.rushCd = S.time + 2.6; }
-    const rushing = watching && S.time < gh.rushUntil;
-    // offset from her loop: chase you while rushing, drift back otherwise
-    const tx = rushing ? S.x - pos.x : 0, tm = rushing ? S.m - pos.m : 0;
+    // the drunk: when he's had 3+ bottles and comes past, she goes after HIM
+    const drX = L.drunk ? chaser.userData.x : 0, drM = S.wallM;
+    const huntDrunk = L.drunk && watching && S.drank > bottles.length / 2 && Math.abs(gh.mm - drM) < 26 && !S.heldUntil;
+    if (huntDrunk && !gh.hunting){ gh.hunting = true; say(gh.g, '喝那麼多！給我過來！', 2, { name: '鬼媽媽', y: 3.7 }); }
+    if (!huntDrunk) gh.hunting = false;
+    if (!huntDrunk && watching && !gh.warned && ahead > 0 && ahead < 14){ gh.warned = true; say(gh.g, '皮在癢了嗎？', 2, { name: '鬼媽媽', y: 3.7 }); }
+    if (!huntDrunk && watching && ahead > -2 && ahead < 12 && S.time > gh.rushCd){ gh.rushUntil = S.time + 1.4; gh.rushCd = S.time + 2.6; }
+    const rushing = watching && (huntDrunk || S.time < gh.rushUntil);
+    // offset from her loop: chase her target while rushing, drift back otherwise
+    const aimX = huntDrunk ? drX : S.x, aimM = huntDrunk ? drM : S.m;
+    const tx = rushing ? aimX - pos.x : 0, tm = rushing ? aimM - pos.m : 0;
     const rate = rushing ? 13 : 5, dxo = tx - gh.ox, dmo = tm - gh.om, dd = Math.hypot(dxo, dmo);
     if (dd > 0.01){ const k = Math.min(1, rate * dt / dd); gh.ox += dxo * k; gh.om += dmo * k; }
     gh.xx = pos.x + gh.ox; gh.mm = pos.m + gh.om;
     if (!watching) continue;
+    // whip the drunk if he's in reach (any time she's looking; that's the point of hunting him)
+    // hunting him: a real beating; just passing by: an occasional swat
+    const reach = huntDrunk ? 3.2 : 2.4;
+    if (L.drunk && !S.heldUntil && S.time > S.drunkStunUntil && S.time > gh.whipCd && S.time > (gh.drunkCd || 0) && Math.hypot(drX - gh.xx, drM - gh.mm) < reach){
+      gh.whipT = S.time; gh.whipCd = S.time + 1.2; gh.hitDone = true; gh.drunkCd = S.time + (huntDrunk ? 1.5 : 4);
+      S.wallM -= huntDrunk ? 9 : 5; S.drunkStunUntil = S.time + (huntDrunk ? 1.6 : 1.0); S.boost = Math.max(0, S.boost - (huntDrunk ? 2 : 1)); S.drunkWhipped++;
+      say(gh.g, '熱熔膠一條十塊錢！', 1.8, { name: '鬼媽媽', y: 3.7 }); say(chaser, '痛痛痛～', 1.6, { name: '酒鬼大叔', y: 4.6 });
+      flash('👻 鬼媽媽去抽酒鬼了！'); gh.rushUntil = 0;
+      continue;
+    }
+    if (huntDrunk) continue;                                      // busy with him: leaves you alone
     const d = Math.hypot(S.x - gh.xx, S.m - gh.mm);
     if (d < 3.6 && S.time > gh.whipCd){ gh.whipT = S.time; gh.whipCd = S.time + 1.2; gh.hitDone = false; }
     if (!gh.hitDone && S.time > gh.whipT + 0.3){
@@ -2008,7 +2033,8 @@ function step(dt){
   const gapNow = S.m - S.wallM;
   const holdWall = L.gate && S.m >= sectionStart('⑤') && !S.gatePassed;
   if (holdWall) S.wallM = Math.min(S.wallM, L.gate.wallBarrier);
-  else S.wallM += (gapNow > WALL_LEASH ? WALL_CATCHUP : sectionAt(S.m).wall + S.boost * 0.45) * dt;
+  else if (S.time < S.drunkStunUntil){ /* whipped by a ghost mom: rubbing his butt */ }
+  else S.wallM += (gapNow > (L.leash || WALL_LEASH) ? WALL_CATCHUP : sectionAt(S.m).wall + Math.min(4, S.boost) * 0.3) * dt;   // each bottle a bit faster, never faster than you running
   if (L.drunk){
     if (gapNow < 6 && S.time - S.nearSaidAt > 7){ S.nearSaidAt = S.time; say(chaser, '你出現啦，我好高興！！', 2, { name: '酒鬼大叔', y: 4.6 }); }
     // bottles: knock them over; the ones you leave, he drinks (and gets faster)
@@ -2029,7 +2055,8 @@ function step(dt){
   if (S.m >= L.finish) finish();
   // HUD
   $('hSec').textContent = sectionAt(S.m).name; $('hTime').textContent = S.time.toFixed(1);
-  $('hDist').textContent = Math.max(0, Math.floor(S.m)); $('hCoins').textContent = S.coins; $('hCaught').textContent = S.caught;
+  $('hDist').textContent = Math.max(0, Math.floor(S.m)); $('hCoins').textContent = S.coins;
+  if (L.drunk){ $('hDrank').textContent = S.drank; $('hDrankChip').classList.toggle('hot', S.drank > bottles.length / 2); } $('hCaught').textContent = S.caught;
   const gap = holdWall ? 30 : S.m - S.wallM, meter = $('meter');
   $('meterBar').style.width = Math.max(4, Math.min(100, gap / 30 * 100)) + '%';
   meter.classList.toggle('warn', gap < 14); meter.classList.toggle('danger', gap < 8);
@@ -2095,10 +2122,11 @@ function render(dt, clock){
     const cu = chaser.userData, held = running && S.heldUntil;
     cu.x += ((S.x || 0) - cu.x) * Math.min(1, dt * (held ? 20 : 2.5));
     chaser.position.set(cu.x, 0, -(S.wallM || -WALL_START_GAP));
-    const ph = t * 9, sw = held ? 0 : Math.sin(ph) * 0.8;
+    const sore = running && S.time < S.drunkStunUntil;
+    const ph = t * 9, sw = held || sore ? 0 : Math.sin(ph) * 0.8;
     cu.legL.rotation.x = sw; cu.legR.rotation.x = -sw;
     cu.armL.rotation.x = held ? -1.5 : -sw * 0.7; cu.armR.rotation.x = held ? -1.5 : sw * 0.7;   // arms forward = the hug
-    chaser.rotation.z = Math.sin(t * 2.3) * 0.12;                                                // staggering
+    chaser.rotation.z = sore ? 0.35 + Math.sin(t * 14) * 0.08 : Math.sin(t * 2.3) * 0.12;          // staggering / ouch
     chaser.position.y = held ? 0 : Math.abs(Math.sin(ph)) * 0.25;
     const see = running && !held && (S.m - S.wallM) < 7;             // see-through when he's right behind you
     for (const m of cu.mats){ m.opacity = see ? 0.35 : 1; m.depthWrite = !see; }
