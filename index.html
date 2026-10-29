@@ -88,6 +88,19 @@
   #startCard h1{display:none}
   body.menu .hud, body.menu #touch, body.menu #restartBtn{display:none!important}
   .logo{text-align:center;pointer-events:none;user-select:none}
+  #intro{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:12;display:flex;justify-content:center;padding:0 12px;pointer-events:none}
+  #intro[hidden]{display:none}
+  .introCard{pointer-events:auto;background:var(--sb-paper);border:3px solid var(--sb-ink);border-radius:20px;padding:12px 18px;max-width:560px;width:100%;
+    box-shadow:0 6px 0 rgba(91,58,41,.3);animation:introIn .35s ease-out}
+  @keyframes introIn{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+  .introTitle{font:900 24px var(--sb-font);color:#e9822c;-webkit-text-stroke:1px var(--sb-ink)}
+  .introText{font:600 16px/1.55 var(--sb-font);color:var(--sb-ink);margin:6px 0 8px}
+  .introNav{display:flex;align-items:center;gap:8px}
+  .introNav .btn{margin:0}
+  .introNav #introNext{margin-left:auto}
+  .introDots{font-size:12px;color:var(--sb-muted);letter-spacing:3px}
+  #howBtn{font-size:13px;padding:4px 14px;margin-top:8px}
+  @media (max-height:520px){ .introCard{padding:8px 12px;max-width:min(560px,70vw)} .introTitle{font-size:18px} .introText{font-size:13px;margin:3px 0 5px} }
   .logo .planet{width:120px;height:80px;display:block;margin:0 auto -18px;filter:drop-shadow(0 4px 0 rgba(91,58,41,.35));animation:bob 3.2s ease-in-out infinite}
   .logoText{font:900 76px/1.05 var(--sb-font);letter-spacing:4px;color:#ffcf5a;-webkit-text-stroke:5px #5b3a29;paint-order:stroke fill;
     text-shadow:0 7px 0 #5b3a29,0 12px 18px rgba(0,0,0,.35);transform:rotate(-3deg)}
@@ -224,6 +237,14 @@
 <div id="lineHint" hidden>LINE 裡不能全螢幕：點右上角 ⋯ 選「用預設瀏覽器開啟」<button type="button" id="lineHintX">知道了</button></div>
 <div class="big" id="count" hidden></div>
 
+<div id="intro" hidden>
+  <div class="introCard">
+    <div class="introTitle" id="introTitle"></div>
+    <div class="introText" id="introText"></div>
+    <div class="introNav"><span class="introDots" id="introDots"></span>
+      <button type="button" class="btn ghost" id="introSkip">跳過</button><button type="button" class="btn" id="introNext">下一個 ▶</button></div>
+  </div>
+</div>
 <div class="card" id="startCard">
 <header class="logo">
   <svg class="planet" viewBox="0 0 120 80" aria-hidden="true">
@@ -249,6 +270,7 @@
   </form>
   <p class="keys"><kbd>WASD</kbd> 移動 <kbd>空白</kbd> 跳 <kbd>Shift</kbd> 衝 <kbd>C</kbd> 蹲 <kbd>F</kbd> 揮棒 <kbd>R</kbd> 重來</p>
   <div id="levelBtns" class="lvls"></div>
+  <button class="btn ghost" id="howBtn" type="button">❓ 怎麼玩</button>
 </div></div>
 
 <div class="card" id="endCard" hidden><div>
@@ -1239,6 +1261,7 @@ function impact(text, color, shake){
 const HINTS = {
   bottle: '🍾 撞倒路上的酒！沒撞到的會被酒鬼喝掉，他會越跑越快喔',
   thorn:  '🌵 地刺會冒出來又縮回去，看準縮下去的時候衝',
+  spear:  '🎋 牆上的洞發紅＝要射竹箭了！低的「跳」過去、高的按住「蹲」',
   rock:   '🪨 看地上的影子，石頭會砸在那裡',
   ghost:  '👻 鬼媽媽看到你會衝過來抽，抽到會跌坐、變慢喔！等她低頭逛網拍再衝過去',
   kids:   '👶 小屁孩會丟遙控器跟小車，被砸到會被撞退、變慢；按揮棒把遙控器打回去！',
@@ -1588,7 +1611,7 @@ function renderLevelButtons(){
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn lvl';
     const best = bestTime(lv);
     b.innerHTML = `▶ 開始跑<small>${best ? '我的最佳 ' + best + ' 秒' : lv.short}</small>`;
-    b.onclick = () => startRun(lv);
+    b.onclick = () => playWithIntro(lv);
     card.appendChild(b);
     card.insertAdjacentHTML('beforeend', boardHtml(boards[lv.id], myName));
     wrap.appendChild(card);
@@ -1603,6 +1626,40 @@ async function loadBoards(){
   if (S.phase === 'menu') renderLevelButtons();
 }
 renderLevelButtons(); loadBoards();
+// ---------- first-time intro: the camera visits each character, a card says what they do ----------
+const INTRO = [
+  { at: 'drunk',  title: '🍺 酒鬼大叔', text: '他一直在後面追你。被他從後面抱住會被定住，還會吐你一身！' },
+  { at: 'bottle', title: '🍾 路上的酒', text: '撞倒加金幣。漏掉的會被酒鬼喝掉，他會越跑越快——左上角看他喝了幾瓶。' },
+  { at: 'ghost',  title: '👻 鬼媽媽',   text: '看到你就衝過來抽熱熔膠條，抽到會跌坐、變慢。等她低頭逛網拍再衝過去！酒鬼喝超過一半，她會改去抽酒鬼。' },
+  { at: 'kid',    title: '🧸 小屁孩',   text: '坐在地上丟遙控器跟小車。按「揮棒」把遙控器打回去！終點的小屁孩大魔王被打中會哭。' },
+  { at: 'all',    title: '⚠️ 路上的機關', text: '🕳 地坑要跳過　🌵 地刺會冒出又縮回　🪨 看地上的影子躲落石　🎋 牆洞發紅會射竹箭：低的「跳」、高的按住「蹲」' },
+  { at: 'all',    title: '🎮 怎麼操作', text: isTouch ? '左邊搖桿移動；右邊「跳」（空中再按一次＝二段跳）、「衝刺」、「蹲」、「揮棒」；左上「重來」。'
+                                                  : 'WASD 移動・空白鍵跳（空中再按＝二段跳）・Shift 衝刺・C 蹲・F 揮棒・R 重來' },
+];
+let introStep = -1, introThen = null;
+function showIntro(then){
+  introThen = then || null; introStep = 0;
+  $('startCard').hidden = true; $('intro').hidden = false; drawIntro();
+}
+function drawIntro(){
+  const it = INTRO[introStep];
+  $('introTitle').textContent = it.title; $('introText').textContent = it.text;
+  $('introDots').textContent = INTRO.map((_, i) => i === introStep ? '●' : '○').join('');
+  $('introNext').textContent = introStep < INTRO.length - 1 ? '下一個 ▶' : (introThen ? '開跑！' : '知道了');
+  const card = document.querySelector('.introCard'); card.style.animation = 'none'; void card.offsetWidth; card.style.animation = '';
+}
+function endIntro(){
+  introStep = -1; $('intro').hidden = true;
+  try { localStorage.setItem('etfm-intro-seen', '1'); } catch(_){}
+  if (introThen){ const f = introThen; introThen = null; f(); } else $('startCard').hidden = false;
+}
+$('introNext').onclick = () => { if (introStep < INTRO.length - 1){ introStep++; drawIntro(); } else endIntro(); };
+$('introSkip').onclick = endIntro;
+$('howBtn').onclick = () => showIntro(null);
+function playWithIntro(lv){
+  let seen = false; try { seen = !!localStorage.getItem('etfm-intro-seen'); } catch(_){}
+  if (!seen && lv.drunk && coverGroup && !needLogin()) showIntro(() => startRun(lv)); else startRun(lv);
+}
 function needLogin(){ return !!API && !authToken; }
 function startRun(level){
   if (needLogin()){ showAuth(); return; }
@@ -1778,6 +1835,7 @@ function step(dt){
   if (L.drunk){
     if (S.time > 1.2) hint('bottle');
     if (S.m > 132) hint('thorn');
+    if (S.m > 144) hint('spear');
     if (ghosts.some(g => g.mm - S.m > 0 && g.mm - S.m < 26)) hint('ghost');
     if (S.m > 222) hint('rock');
     if (S.m > 428) hint('kids');
@@ -2142,7 +2200,9 @@ function step(dt){
 }
 function sectionStart(prefix){ const s = L.sections.find(s => s.name.startsWith(prefix)); return s ? s.from : Infinity; }
 
-const _camTarget = new THREE.Vector3();
+const _camTarget = new THREE.Vector3(), _camLook = new THREE.Vector3(0, 2.6, 1.2), _camLookTarget = new THREE.Vector3();
+// where the intro camera looks on the cover: [x, unused, z, height]
+const INTRO_FOCUS = { drunk: [-1.9, 0, 3.4, 2.6], bottle: [1.6, 0, -2.4, 0.9], ghost: [3.6, 0, 1.8, 2.4], kid: [-3.4, 0, -1.2, 1.6] };
 function render(dt, clock){
   const g = me.group, running = S.phase === 'run', t = running ? S.time : clock;
   g.position.set(S.x || 0, Math.max(-6, S.y || 0), -(S.m || 0));
@@ -2235,17 +2295,26 @@ function render(dt, clock){
     cg.gm.position.y = 0.25 + Math.sin(t * 2.2) * 0.2; cg.gm.userData.armR.rotation.x = -1.2 - Math.sin(t * 3) * 1.0;
     cg.kid.userData.armR.rotation.x = -1.2 - Math.sin(t * 6) * 1.1; cg.kid.userData.armL.rotation.x = -1.2 + Math.sin(t * 6) * 1.1;
     const beat = Math.floor(t / 2.6) % 3;
-    if (beat !== cg.beat){
+    if (beat !== cg.beat && introStep < 0){
       cg.beat = beat;
       if (beat === 0) say(chaser, '你先跑我再追～', 2.2, { y: 4.6 });
       else if (beat === 1) say(cg.gm, '皮在癢了嗎？', 2.2, { y: 3.7 });
       else say(cg.kid, '咻咻咻！', 2.2, { y: 3.3 });
     }
     const wide = innerWidth >= 860 || (innerWidth >= 600 && innerWidth > innerHeight);
-    if (wide){ _camTarget.set(Math.sin(t * 0.18) * 2.2 - 2.5, 3.0, -10.5); }
-    else { _camTarget.set(Math.sin(t * 0.18) * 1.2, 4.0, -17.5); }      // upright/narrow: back off so the whole family fits
-    camera.position.lerp(_camTarget, Math.min(1, dt * 2));
-    if (wide) camera.lookAt(-2.4, 2.6, 2); else camera.lookAt(0, 2.6, 1.2);
+    const focus = introStep >= 0 ? INTRO_FOCUS[INTRO[introStep].at] : null;
+    if (focus){
+      // intro: close-up on that character, a little lower and from the front
+      const portrait = camera.aspect < 1;
+      _camTarget.set(focus[0] * 0.7 + Math.sin(t * 0.5) * 0.4, focus[3] + 1.2, focus[2] - (portrait ? 9 : 6));
+      _camLook.lerp(_camLookTarget.set(focus[0], focus[3] - 0.3, focus[2]), Math.min(1, dt * 4));
+    } else {
+      if (wide){ _camTarget.set(Math.sin(t * 0.18) * 2.2 - 2.5, 3.0, -10.5); _camLookTarget.set(-2.4, 2.6, 2); }
+      else { _camTarget.set(Math.sin(t * 0.18) * 1.2, 4.0, -17.5); _camLookTarget.set(0, 2.6, 1.2); }   // upright/narrow: back off so the whole family fits
+      _camLook.lerp(_camLookTarget, Math.min(1, dt * 3));
+    }
+    camera.position.lerp(_camTarget, Math.min(1, dt * (focus ? 3 : 2)));
+    camera.lookAt(_camLook);
     renderer.render(scene, camera); updateBubbles();
     return;
   }
