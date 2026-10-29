@@ -43,6 +43,8 @@
   .tr{top:calc(8px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));flex-direction:column;align-items:flex-end}
   .chip{background:rgba(255,248,236,.94);border:2px solid var(--sb-ink);border-radius:999px;padding:2px 12px;font-weight:700;font-size:14px;box-shadow:0 3px 0 rgba(91,58,41,.25);font-variant-numeric:tabular-nums}
   .chip b{font-size:17px}
+  .chip.hot{background:#ffd9d2;border-color:#c0392b;color:#c0392b}
+  .chip.hot::after{content:' 👻追他'}
   .chip.sec{background:var(--sb-ink);color:var(--sb-paper)}
   .lbl{font-size:12px;font-weight:700;background:rgba(255,248,236,.94);border-radius:6px;padding:0 6px}
   .meter{width:min(42vw,240px);height:13px;border:2px solid var(--sb-ink);border-radius:999px;background:var(--sb-paper);overflow:hidden;position:relative}
@@ -67,6 +69,16 @@
   .bubble.cap::after{display:none}
   .flash{position:fixed;left:50%;top:24%;transform:translateX(-50%);z-index:8;font-weight:900;font-size:22px;color:#fff;-webkit-text-stroke:1.5px var(--sb-ink);pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
   .flash.on{opacity:1}
+  /* phones held sideways (short screens): keep the middle clear for the action —
+     character lines go to a thin caption top-centre, hints to a strip bottom-centre
+     (between the joystick and the buttons), hit text small under the caption */
+  @media (max-height:520px){
+    .flash{top:calc(38px + env(safe-area-inset-top,0px));font-size:15px;-webkit-text-stroke:1px var(--sb-ink)}
+    .bubble{font-size:12px;padding:2px 8px;border-width:2px;border-radius:10px}
+    .bubble.cap{bottom:auto !important;top:calc(6px + env(safe-area-inset-top,0px)) !important;max-width:46vw;font-size:12px;padding:3px 10px}
+    #hint{top:auto;bottom:calc(6px + env(safe-area-inset-bottom,0px));max-width:44vw;font-size:12px;padding:4px 10px;border-width:2px;line-height:1.35}
+    #impact{font-size:46px;-webkit-text-stroke:3px var(--sb-ink);top:46%}
+  }
   .big{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9;pointer-events:none;font-size:96px;font-weight:700;color:var(--sb-paper);-webkit-text-stroke:3px var(--sb-ink)}
   .big[hidden]{display:none}
   .card{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(70,48,32,.4);padding:12px}
@@ -90,7 +102,11 @@
     #startCard>div{max-width:400px}
   }
   @media (min-width:600px) and (max-height:520px) and (orientation:landscape){
-    #startCard>div{max-width:min(400px,52vw);max-height:94vh;padding:12px 14px}
+    #startCard>div{max-width:min(340px,46vw);max-height:94vh;padding:10px 12px}
+    #startCard .who{margin:2px 0 6px}
+    .board{font-size:12px;padding:4px 6px}
+    .board li:nth-child(n+4){display:none}
+    .btn.lvl{font-size:20px;padding:8px 14px}
     #startCard .logo{top:4vh;left:3vw}
     .logo .planet{width:76px;height:50px;margin-bottom:-12px}
     .logoText{font-size:44px;-webkit-text-stroke:4px #5b3a29;text-shadow:0 5px 0 #5b3a29}
@@ -98,7 +114,7 @@
     .logoCast{display:none}
   }
   @media (max-width:859px) and (orientation:portrait), (max-width:599px){
-    #startCard{flex-direction:column;justify-content:flex-start;overflow:auto;gap:8px}
+    #startCard{flex-direction:column;justify-content:space-between;overflow:auto;gap:8px}   /* logo top, cast in the middle, panel at the bottom */
     .logo .planet{width:80px;height:54px;margin-bottom:-12px}
     .logoText{font-size:46px;-webkit-text-stroke:4px #5b3a29;text-shadow:0 5px 0 #5b3a29}
     .logoSub{font-size:15px}
@@ -118,7 +134,8 @@
   .authTabs button.on{background:var(--sb-gold-soft)}
   .authMsg{font-size:13px;color:var(--sb-muted);margin:0}
   .authMsg.err{color:#c0392b;font-weight:700}
-  .keys{font-size:13px;color:var(--sb-muted);line-height:1.9}
+  .keys{font-size:12px;color:var(--sb-muted);line-height:2;margin:4px 0}
+  body.touch .keys{display:none}
   kbd{background:#fff;border:1.5px solid var(--sb-ink);border-bottom-width:3px;border-radius:6px;padding:0 6px;font-family:var(--sb-font);font-size:12px;color:var(--sb-ink)}
   .btn{display:inline-block;font:700 18px var(--sb-font);background:var(--sb-gold-soft);color:var(--sb-ink);border:2.5px solid var(--sb-ink);border-radius:999px;padding:8px 28px;cursor:pointer;box-shadow:0 4px 0 rgba(91,58,41,.35);margin:8px 4px 0;text-decoration:none}
   .btn.ghost{background:#fff;font-size:14px;padding:6px 18px}
@@ -127,7 +144,7 @@
   .results b{font-size:19px}
   .reward{font-weight:700;color:#c27a00}
   .lvls{display:flex;flex-direction:column;gap:12px;align-items:stretch;margin:10px auto 0;max-width:360px}
-  .btn.lvl{display:flex;flex-direction:column;align-items:center;margin:0;padding:8px 18px;line-height:1.2}
+  .btn.lvl{display:flex;flex-direction:column;align-items:center;margin:0;padding:10px 18px;line-height:1.2;font-size:24px}
   .btn.lvl small{font-size:12px;font-weight:600;color:var(--sb-muted)}
   .lvlcard{display:flex;flex-direction:column;gap:4px}
   .board{list-style:none;margin:0;padding:6px 8px;background:#fff;border:2px solid var(--sb-line);border-radius:12px;font-size:13px;text-align:left}
@@ -154,7 +171,7 @@
       display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 rgba(91,58,41,.35);touch-action:none}
   .tb.on{transform:translateY(3px);box-shadow:0 1px 0 rgba(91,58,41,.35)}
   .tb.mini{width:40px;height:40px;font-size:18px}
-  #restartBtn{position:fixed;z-index:6;left:calc(12px + env(safe-area-inset-left,0px));top:calc(52px + env(safe-area-inset-top,0px));
+  #restartBtn{pointer-events:auto;margin-top:2px;
     background:rgba(255,248,236,.94);border:2px solid var(--sb-ink);border-radius:999px;padding:4px 14px;font:700 14px/1.2 var(--sb-font);color:var(--sb-ink);
     box-shadow:0 3px 0 rgba(91,58,41,.25);cursor:pointer;touch-action:manipulation}
   #restartBtn:active{transform:translateY(2px)}
@@ -169,8 +186,14 @@
   #tZoomOut{right:calc(110px + env(safe-area-inset-right,0px));top:calc(138px + env(safe-area-inset-top,0px))}
   #tZoomIn{right:calc(62px + env(safe-area-inset-right,0px));top:calc(138px + env(safe-area-inset-top,0px))}
   #tFull{right:calc(14px + env(safe-area-inset-right,0px));top:calc(138px + env(safe-area-inset-top,0px))}
+  /* portrait phones play too (some can't rotate: rotation lock, in-app viewers) —
+     just tighten the HUD so the road stays visible */
   @media (orientation: portrait) and (max-width: 600px){
-    body.touch::after{content:"📱 把手機橫過來玩";position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(255,248,236,.96);color:var(--sb-ink);font:700 22px/1.4 var(--sb-font)}
+    .chip{font-size:12px;padding:1px 9px}.chip b{font-size:14px}
+    .tr .lbl{font-size:10px}
+    #tZoomOut,#tZoomIn,#tFull{top:calc(118px + env(safe-area-inset-top,0px))}
+    .bubble.cap{bottom:auto !important;top:calc(170px + env(safe-area-inset-top,0px)) !important;font-size:13px}
+    #hint{top:auto;bottom:calc(200px + env(safe-area-inset-bottom,0px));font-size:13px}
   }
   @media (prefers-reduced-motion: reduce){.flash{transition:none}}
 </style>
@@ -182,6 +205,8 @@
   <span class="chip">⏱ <b id="hTime">0.0</b> 秒</span>
   <span class="chip">📍 <b id="hDist">0</b> / <span id="hFinish">530</span> m</span>
   <span class="chip">🪙 <b id="hCoins">0</b></span>
+  <span class="chip" id="hDrankChip" hidden>🍺 酒鬼喝了 <b id="hDrank">0</b> / <span id="hBottles">10</span></span>
+  <button id="restartBtn" type="button" hidden>🔄 重來</button>
 </div>
 <div class="hud tr">
   <span class="lbl" id="chaserLbl">刺牆距離</span>
@@ -196,7 +221,6 @@
 <div id="bubbles"></div>
 <div id="hint" hidden></div>
 <div id="impact"></div><div id="impactFlash"></div>
-<button id="restartBtn" type="button" hidden>🔄 重來</button>
 <div id="lineHint" hidden>LINE 裡不能全螢幕：點右上角 ⋯ 選「用預設瀏覽器開啟」<button type="button" id="lineHintX">知道了</button></div>
 <div class="big" id="count" hidden></div>
 
@@ -214,7 +238,6 @@
 </header>
 <div>
   <h1>🪐 逃離土星</h1>
-  <p>有人從背後追上來！選一關，撿金幣衝到終點。</p>
   <p class="who" id="who">讀取角色中…</p>
   <form id="authBox" hidden autocomplete="on">
     <div class="authTabs"><button type="button" id="tabLogin" class="on">登入</button><button type="button" id="tabReg">註冊新帳號</button></div>
@@ -222,15 +245,10 @@
     <input id="aDisp" name="nickname" placeholder="遊戲裡顯示的名字（1-16 字）" maxlength="16" hidden>
     <input id="aPass" name="password" type="password" placeholder="密碼（至少 6 字）" autocomplete="current-password" required>
     <button class="btn" id="aGo" type="submit">登入開跑</button>
-    <p class="authMsg" id="aMsg">要先登入才能跑。帳號跟海嘯島共用，金幣、造型都通用。</p>
+    <p class="authMsg" id="aMsg">要先登入才能跑。跑完的金幣會存進你的帳號。</p>
   </form>
-  <p class="keys">
-    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向鍵 移動 · <kbd>空白鍵</kbd> 跳（空中再按＝二段跳）<br>
-    <kbd>Shift</kbd> 衝刺（有體力限制）· <kbd>C</kbd> 按住蹲下（躲高的竹箭）· <kbd>F</kbd> 揮棒（可以把子彈打回去）<br>
-    手機：左邊搖桿移動，右邊按鈕跳、蹲、衝刺、揮棒；＋－ 拉近拉遠
-  </p>
+  <p class="keys"><kbd>WASD</kbd> 移動 <kbd>空白</kbd> 跳 <kbd>Shift</kbd> 衝 <kbd>C</kbd> 蹲 <kbd>F</kbd> 揮棒 <kbd>R</kbd> 重來</p>
   <div id="levelBtns" class="lvls"></div>
-  <br><a class="btn ghost" id="islandLink" href="island.html">🏝 回海嘯島：商店、換造型</a>
 </div></div>
 
 <div class="card" id="endCard" hidden><div>
@@ -247,8 +265,7 @@
   <p class="rank" id="rRank"></p>
   <div class="ach" id="rAch" hidden></div>
   <button class="btn" id="againBtn" type="button">再跑一次</button>
-  <button class="btn ghost" id="menuBtn" type="button">選別關</button>
-  <br><a class="btn ghost" id="islandLink2" href="island.html">🏝 回海嘯島花錢</a>
+  <button class="btn ghost" id="menuBtn" type="button">🏠 回封面</button>
 </div></div>
 
 <div id="touch">
@@ -745,14 +762,14 @@ const BODY_H = 2.2, CROUCH_H = 1.1, CROUCH_SPEED = 0.55;
 const LEVEL1 = {
   id: 1, name: '第一關 家庭聚會', short: '家庭聚會',
   blurb: '酒鬼大叔從背後追上來！撞倒路上的酒、躲開鬼媽媽的熱熔膠條、衝過火焰怪，終點還有小屁孩大魔王。',
-  drunk: true,
+  drunk: true, leash: 26,   // the drunk hangs further back than the spike wall did
   finish: 530, end: 560, finishBonus: 15, scenery: 'canyon', lateral: 0.8, camFollow: 0.6,
   clampX: L1_LANE - 0.5,
   checkpoints: [[0, 0], [30, 0], [130, 0], [230, 0], [330, 0], [430, 0]],
   sections: [
     { from: 0, name: '起跑區', wall: 9 }, { from: 30, name: '① 地坑道', wall: 9 },
     { from: 130, name: '② 荊棘地', wall: 9.5 }, { from: 230, name: '③ 落石谷', wall: 10 },
-    { from: 330, name: '④ 機關牆', wall: 10.5 }, { from: 430, name: '⑤ 小屁孩客廳', wall: 11 },
+    { from: 330, name: '④ 機關牆', wall: 10.5 }, { from: 430, name: '⑤ 小屁孩客廳', wall: 9.4 },
   ],
   floors: [[-40, 560, -L1_LANE, L1_LANE]],
   holes: [[44,48,-8,8],[60,64,-8,0],[70,74,0,8],[88,93,-8,8],[104,108,-8,8],[118,122,-8,2]],
@@ -772,18 +789,20 @@ const LEVEL1 = {
     { id: 'perfect',  name: '👑 完美過關',     desc: '一次都沒失誤',               test: s => s.misses === 0 },
     { id: 'flash',    name: '⚡ 閃電俠',       desc: '65 秒內跑完',                test: s => s.t < 65 },
     { id: 'untouch',  name: '🙅 酒鬼摸不到',   desc: '整場沒被酒鬼抱到',           test: s => s.caught === 0 },
-    { id: 'sweeper',  name: '🍾 掃酒王',       desc: '路上的酒全部撞倒',           test: s => s.knocked >= 16 },
+    { id: 'sweeper',  name: '🍾 掃酒王',       desc: '路上的酒全部撞倒',           test: s => s.knocked >= 10 },
     { id: 'crybaby',  name: '😭 把小屁孩打哭', desc: '用遙控器打中大魔王',         test: s => s.bossCried > 0 },
     { id: 'homerun',  name: '⚾ 全壘打王',     desc: '打回去 3 個遙控器或火球',     test: s => s.reflected >= 3 },
     { id: 'shopper',  name: '🛍 逛街掩護',     desc: '鬼媽媽一下都沒抽到你',       test: s => s.whipped === 0 },
     { id: 'rich',     name: '💰 撿錢達人',     desc: '撿到 30 個金幣',             test: s => s.coins >= 30 },
     { id: 'iron',     name: '🪨 鐵頭',         desc: '被石頭砸 4 次以上',          test: s => s.rocked >= 4 },
     { id: 'glue',     name: '💢 熱熔膠收藏家', desc: '被鬼媽媽抽 3 下以上',        test: s => s.whipped >= 3 },
-    { id: 'tipsy',    name: '🥴 酒鬼喝到飽',   desc: '讓酒鬼喝了 8 瓶以上',        test: s => s.drank >= 8 },
+    { id: 'tipsy',    name: '🥴 酒鬼喝到飽',   desc: '讓酒鬼喝超過一半的酒',       test: s => s.drank > 5 },
     { id: 'buddy',    name: '🍺 酒鬼的好麻吉', desc: '被酒鬼抱了 3 次以上',        test: s => s.caught >= 3 },
+    { id: 'snitch',   name: '😈 借刀殺人',     desc: '讓鬼媽媽抽酒鬼 2 次以上',     test: s => s.drunkWhipped >= 2 },
   ],
   // bottles on the road: knock them over, or the drunk drinks them and speeds up
-  bottles: [[20,-3],[36,4],[56,5],[80,-5],[100,3],[128,-2],[150,5],[178,-5],[240,3],[262,-4],[300,5],[340,-3],[365,4],[410,-4],[445,5],[490,-5]],
+  // 10 bottles; if the drunk gets more than half, the ghost moms go after him instead of you
+  bottles: [[20,-3],[36,4],[56,5],[80,-5],[100,3],[128,-2],[150,5],[178,-5],[205,4],[240,3]],
   // ghost mom patrols an O or an upright 8 and whips you with a glue stick;
   // while she's shopping on her phone she doesn't look (safe to pass)
   ghostMoms: [{ m: 252, x: 0, path: 'O', r: 5, speed: 1.1 }, { m: 300, x: 0, path: '8', w: 4.5, h: 7, speed: 0.9 },
@@ -866,7 +885,7 @@ const LEVEL2 = {
   gate: { m: 404, x0: -6, x1: 6, switchM: 386, switchX: 38.5, open: 4.0, wallBarrier: 360 },   // ~51 m back: run 4.7 s ✗, sprint 3.5 s ✓
   coinPoints: L2.coins,
 };
-const LEVELS = [LEVEL1, LEVEL2];
+const LEVELS = [LEVEL1];   // 逃離土星 = 家庭聚會 only for now (LEVEL2 kept for later)
 let L = LEVEL1;
 
 // Server: same rule as the island — localhost talks to the local dev server,
@@ -876,9 +895,6 @@ const ON_LIVE = /github\.io$/.test(location.hostname);
 const SERVER = ON_LOCAL ? 'http://localhost:1999' : ON_LIVE ? 'https://etfm.cooldragon313.workers.dev' : '';
 const API = SERVER ? SERVER + '/parties/main/global' : '';
 let authToken = ''; try { authToken = localStorage.getItem('etfm-token') || ''; } catch(e){}
-if (!(ON_LOCAL || ON_LIVE)) document.getElementById('islandLink').hidden = true;
-// The race lives on its own site (saturnfamily); the island stays on the old one
-if (ON_LIVE) for (const id of ['islandLink', 'islandLink2']) document.getElementById(id).href = 'https://cooldragon313.github.io/escapetsunamiformoney/island.html';
 
 // ---------- three.js ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -1153,6 +1169,7 @@ const HINTS = {
   ghost:  '👻 鬼媽媽看到你會衝過來抽，抽到會跌坐、變慢喔！等她低頭逛網拍再衝過去',
   kids:   '👶 小屁孩會丟遙控器跟小車，被砸到會被撞退、變慢；按揮棒把遙控器打回去！',
   boss:   '🧸 打回去的遙控器砸中大魔王，他會哭著暈 2.5 秒',
+  ghostDrunk: '👻 酒鬼喝超過一半的酒了！鬼媽媽會改去抽他！',
 };
 let hintTimer = 0;
 function hint(key){
@@ -1320,8 +1337,8 @@ function buildLevel(level){
     }
     // the cover: the whole family lined up at the start line
     coverGroup = new THREE.Group(); add(coverGroup);
-    const gm = makeGhostMom(); gm.position.set(3.6, 0.25, 1.8); gm.rotation.y = Math.PI - 0.35; gm.userData.armR.rotation.x = -2.0; coverGroup.add(gm);
-    const kid = makeKid(false); kid.scale.setScalar(0.42); kid.position.set(-3.4, 0, -1.2); kid.rotation.y = Math.PI + 0.3; kid.userData.armR.rotation.x = -2.2; coverGroup.add(kid);
+    const gm = makeGhostMom(); gm.position.set(3.6, 0.25, 1.8); gm.rotation.y = Math.PI - 0.35; gm.userData.armR.rotation.x = -2.0; coverGroup.add(gm); coverGroup.userData.gm = gm;
+    const kid = makeKid(false); kid.scale.setScalar(0.42); kid.position.set(-3.4, 0, -1.2); kid.rotation.y = Math.PI + 0.3; kid.userData.armR.rotation.x = -2.2; coverGroup.add(kid); coverGroup.userData.kid = kid;
     for (const [bx, bz, i] of [[1.6, -2.4, 0], [-1.2, -3.2, 1], [2.6, -0.6, 2]]){ const b = makeBottle(i); b.position.set(bx, 0, bz); if (i === 1) b.rotation.z = Math.PI / 2; coverGroup.add(b); }
     for (const [cx, cz] of [[-2.2, -2.4], [-4.6, 0.6]]){ const car = makeCar(); car.scale.setScalar(0.7); car.position.set(cx, 0.32, cz); car.rotation.y = cx; coverGroup.add(car); }
   }
@@ -1336,6 +1353,7 @@ function buildLevel(level){
   }
   add(chaser); chaser.userData.x = 0;
   $('chaserLbl').textContent = level.drunk ? '酒鬼距離' : '刺牆距離';
+  $('hDrankChip').hidden = !level.drunk; $('hBottles').textContent = (level.bottles || []).length;
   bottles = (level.bottles || []).map(([m, x], i) => { const g = makeBottle(i); g.position.set(x, 0, -m); add(g); return { m, x, g, state: 'up', t: 0 }; });
   ghosts = (level.ghostMoms || []).map((gm, i) => {
     const g = makeGhostMom(); add(g);
@@ -1373,7 +1391,7 @@ const S = { phase: 'menu', time: 0 };
 function reset(){
   Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, knockX: 0, slowUntil: 0, downUntil: 0,
     swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, cpX: 0, time: 0, caught: 0, pits: 0, shot: 0, hits: 0, rockNext: 0,
-    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99, knocked: 0, drank: 0, whipped: 0, reflected: 0, bossCried: 0, hinted: {} });
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99, knocked: 0, drank: 0, whipped: 0, reflected: 0, bossCried: 0, hinted: {}, drunkStunUntil: 0, drunkWhipped: 0 });
   for (const f of flying) world.remove(f.mesh); flying.length = 0;
   for (const sp of spears){ sp.next = 0; sp.armed = true; }
   for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
@@ -1495,7 +1513,7 @@ function renderLevelButtons(){
     const card = document.createElement('div'); card.className = 'lvlcard';
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn lvl';
     const best = bestTime(lv);
-    b.innerHTML = `${lv.name}<small>${best ? '我的最佳 ' + best + ' 秒' : '還沒跑過'}</small>`;
+    b.innerHTML = `▶ 開始跑<small>${best ? '我的最佳 ' + best + ' 秒' : lv.short}</small>`;
     b.onclick = () => startRun(lv);
     card.appendChild(b);
     card.insertAdjacentHTML('beforeend', boardHtml(boards[lv.id], myName));
@@ -1517,6 +1535,7 @@ function startRun(level){
   if (API) fetch(API + '/race_start', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ level: level.id, device: DEVICE }) }).catch(() => {});
   if (level !== L || !chaser) buildLevel(level);
   reset(); $('startCard').hidden = true; $('endCard').hidden = true; $('hint').hidden = true;
+  if (coverGroup) coverGroup.userData.beat = -1;
   $('gateChip').hidden = true;
   S.phase = 'count'; S.countAt = performance.now();
   if (L.drunk) say(chaser, '你先跑我再追，追到我就對你嘿嘿嘿～', 4, { name: '酒鬼大叔', y: 4.6 });
@@ -1577,7 +1596,7 @@ function finish(){
 async function claimReward(coins, time, misses){
   const el = $('rReward');
   if (!API){ el.textContent = `獎金 $${coins}（試玩版不存檔）`; return; }
-  if (!authToken){ el.textContent = `獎金 $${coins} — 先到海嘯島登入，下次跑完就會存進帳號`; return; }
+  if (!authToken){ el.textContent = `獎金 $${coins} — 先登入，下次跑完就會存進帳號`; return; }
   el.textContent = `獎金 $${coins} 存入中…`;
   try {
     const r = await fetch(API + '/race_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ coins, time, level: L.id, misses, device: DEVICE }) });
@@ -1598,7 +1617,7 @@ function setAuthMode(m){
   $('aDisp').hidden = m !== 'reg'; $('aDisp').required = m === 'reg';
   $('aPass').autocomplete = m === 'reg' ? 'new-password' : 'current-password';
   $('aGo').textContent = m === 'reg' ? '註冊並開跑' : '登入開跑';
-  authMsg(m === 'reg' ? '帳號註冊後不能改，顯示名稱是大家在排行榜看到的。' : '要先登入才能跑。帳號跟海嘯島共用，金幣、造型都通用。');
+  authMsg(m === 'reg' ? '帳號註冊後不能改，顯示名稱是大家在排行榜看到的。' : '要先登入才能跑。跑完的金幣會存進你的帳號。');
 }
 function authMsg(t, err){ const m = $('aMsg'); m.textContent = t; m.classList.toggle('err', !!err); }
 function showAuth(){
@@ -1689,6 +1708,7 @@ function step(dt){
     if (S.m > 222) hint('rock');
     if (S.m > 428) hint('kids');
     if (boss && S.m > boss.from) hint('boss');
+    if (S.drank > bottles.length / 2) hint('ghostDrunk');
   }
   // caught by the drunk: held for a moment (hug from behind, then he throws up)
   if (S.heldUntil){
@@ -1697,7 +1717,7 @@ function step(dt){
       if (!S.puked && S.time > S.heldUntil - 0.75){ S.puked = true; puke(); say(chaser, '嘔～～', 1, { name: '酒鬼大叔', y: 4.6 }); impact('噁～', '#9ccf4a', 0.3); }
       return;
     }
-    S.heldUntil = 0; S.wallM = S.m - 14; S.downUntil = 0;
+    S.heldUntil = 0; S.wallM = S.m - 18; S.downUntil = 0;
     say(chaser, '喝三杯先……', 2, { name: '酒鬼大叔', y: 4.6 });
   }
   const down = S.time < S.downUntil;
@@ -1829,15 +1849,32 @@ function step(dt){
     if (gh.mm - S.m > 30) gh.warned = false;
     const watching = gh.state === 'watch';
     const ahead = gh.mm - S.m;                                    // > 0: she's in front of you
-    if (watching && !gh.warned && ahead > 0 && ahead < 14){ gh.warned = true; say(gh.g, '皮在癢了嗎？', 2, { name: '鬼媽媽', y: 3.7 }); }
-    if (watching && ahead > -2 && ahead < 12 && S.time > gh.rushCd){ gh.rushUntil = S.time + 1.4; gh.rushCd = S.time + 2.6; }
-    const rushing = watching && S.time < gh.rushUntil;
-    // offset from her loop: chase you while rushing, drift back otherwise
-    const tx = rushing ? S.x - pos.x : 0, tm = rushing ? S.m - pos.m : 0;
+    // the drunk: when he's had 3+ bottles and comes past, she goes after HIM
+    const drX = L.drunk ? chaser.userData.x : 0, drM = S.wallM;
+    const huntDrunk = L.drunk && watching && S.drank > bottles.length / 2 && Math.abs(gh.mm - drM) < 26 && !S.heldUntil;
+    if (huntDrunk && !gh.hunting){ gh.hunting = true; say(gh.g, '喝那麼多！給我過來！', 2, { name: '鬼媽媽', y: 3.7 }); }
+    if (!huntDrunk) gh.hunting = false;
+    if (!huntDrunk && watching && !gh.warned && ahead > 0 && ahead < 14){ gh.warned = true; say(gh.g, '皮在癢了嗎？', 2, { name: '鬼媽媽', y: 3.7 }); }
+    if (!huntDrunk && watching && ahead > -2 && ahead < 12 && S.time > gh.rushCd){ gh.rushUntil = S.time + 1.4; gh.rushCd = S.time + 2.6; }
+    const rushing = watching && (huntDrunk || S.time < gh.rushUntil);
+    // offset from her loop: chase her target while rushing, drift back otherwise
+    const aimX = huntDrunk ? drX : S.x, aimM = huntDrunk ? drM : S.m;
+    const tx = rushing ? aimX - pos.x : 0, tm = rushing ? aimM - pos.m : 0;
     const rate = rushing ? 13 : 5, dxo = tx - gh.ox, dmo = tm - gh.om, dd = Math.hypot(dxo, dmo);
     if (dd > 0.01){ const k = Math.min(1, rate * dt / dd); gh.ox += dxo * k; gh.om += dmo * k; }
     gh.xx = pos.x + gh.ox; gh.mm = pos.m + gh.om;
     if (!watching) continue;
+    // whip the drunk if he's in reach (any time she's looking; that's the point of hunting him)
+    // hunting him: a real beating; just passing by: an occasional swat
+    const reach = huntDrunk ? 3.2 : 2.4;
+    if (L.drunk && !S.heldUntil && S.time > S.drunkStunUntil && S.time > gh.whipCd && S.time > (gh.drunkCd || 0) && Math.hypot(drX - gh.xx, drM - gh.mm) < reach){
+      gh.whipT = S.time; gh.whipCd = S.time + 1.2; gh.hitDone = true; gh.drunkCd = S.time + (huntDrunk ? 1.5 : 4);
+      S.wallM -= huntDrunk ? 9 : 5; S.drunkStunUntil = S.time + (huntDrunk ? 1.6 : 1.0); S.boost = Math.max(0, S.boost - (huntDrunk ? 2 : 1)); S.drunkWhipped++;
+      say(gh.g, '熱熔膠一條十塊錢！', 1.8, { name: '鬼媽媽', y: 3.7 }); say(chaser, '痛痛痛～', 1.6, { name: '酒鬼大叔', y: 4.6 });
+      flash('👻 鬼媽媽去抽酒鬼了！'); gh.rushUntil = 0;
+      continue;
+    }
+    if (huntDrunk) continue;                                      // busy with him: leaves you alone
     const d = Math.hypot(S.x - gh.xx, S.m - gh.mm);
     if (d < 3.6 && S.time > gh.whipCd){ gh.whipT = S.time; gh.whipCd = S.time + 1.2; gh.hitDone = false; }
     if (!gh.hitDone && S.time > gh.whipT + 0.3){
@@ -1996,7 +2033,8 @@ function step(dt){
   const gapNow = S.m - S.wallM;
   const holdWall = L.gate && S.m >= sectionStart('⑤') && !S.gatePassed;
   if (holdWall) S.wallM = Math.min(S.wallM, L.gate.wallBarrier);
-  else S.wallM += (gapNow > WALL_LEASH ? WALL_CATCHUP : sectionAt(S.m).wall + S.boost * 0.45) * dt;
+  else if (S.time < S.drunkStunUntil){ /* whipped by a ghost mom: rubbing his butt */ }
+  else S.wallM += (gapNow > (L.leash || WALL_LEASH) ? WALL_CATCHUP : sectionAt(S.m).wall + Math.min(4, S.boost) * 0.3) * dt;   // each bottle a bit faster, never faster than you running
   if (L.drunk){
     if (gapNow < 6 && S.time - S.nearSaidAt > 7){ S.nearSaidAt = S.time; say(chaser, '你出現啦，我好高興！！', 2, { name: '酒鬼大叔', y: 4.6 }); }
     // bottles: knock them over; the ones you leave, he drinks (and gets faster)
@@ -2017,7 +2055,8 @@ function step(dt){
   if (S.m >= L.finish) finish();
   // HUD
   $('hSec').textContent = sectionAt(S.m).name; $('hTime').textContent = S.time.toFixed(1);
-  $('hDist').textContent = Math.max(0, Math.floor(S.m)); $('hCoins').textContent = S.coins; $('hCaught').textContent = S.caught;
+  $('hDist').textContent = Math.max(0, Math.floor(S.m)); $('hCoins').textContent = S.coins;
+  if (L.drunk){ $('hDrank').textContent = S.drank; $('hDrankChip').classList.toggle('hot', S.drank > bottles.length / 2); } $('hCaught').textContent = S.caught;
   const gap = holdWall ? 30 : S.m - S.wallM, meter = $('meter');
   $('meterBar').style.width = Math.max(4, Math.min(100, gap / 30 * 100)) + '%';
   meter.classList.toggle('warn', gap < 14); meter.classList.toggle('danger', gap < 8);
@@ -2083,10 +2122,11 @@ function render(dt, clock){
     const cu = chaser.userData, held = running && S.heldUntil;
     cu.x += ((S.x || 0) - cu.x) * Math.min(1, dt * (held ? 20 : 2.5));
     chaser.position.set(cu.x, 0, -(S.wallM || -WALL_START_GAP));
-    const ph = t * 9, sw = held ? 0 : Math.sin(ph) * 0.8;
+    const sore = running && S.time < S.drunkStunUntil;
+    const ph = t * 9, sw = held || sore ? 0 : Math.sin(ph) * 0.8;
     cu.legL.rotation.x = sw; cu.legR.rotation.x = -sw;
     cu.armL.rotation.x = held ? -1.5 : -sw * 0.7; cu.armR.rotation.x = held ? -1.5 : sw * 0.7;   // arms forward = the hug
-    chaser.rotation.z = Math.sin(t * 2.3) * 0.12;                                                // staggering
+    chaser.rotation.z = sore ? 0.35 + Math.sin(t * 14) * 0.08 : Math.sin(t * 2.3) * 0.12;          // staggering / ouch
     chaser.position.y = held ? 0 : Math.abs(Math.sin(ph)) * 0.25;
     const see = running && !held && (S.m - S.wallM) < 7;             // see-through when he's right behind you
     for (const m of cu.mats){ m.opacity = see ? 0.35 : 1; m.depthWrite = !see; }
@@ -2104,7 +2144,8 @@ function render(dt, clock){
     gh.g.userData.armR.rotation.x = w < 0.7 ? -2.4 * (w / 0.7) : w < 1 ? -2.4 + 3.4 * ((w - 0.7) / 0.3) : 0;
   }
   // camera: high and behind; level 2 follows you fully sideways (the gate spur)
-  _camTarget.set((S.x || 0) * L.camFollow, 9 * camZoom, -(S.m || 0) + 8 * camZoom);
+  const pf = camera.aspect < 1 ? 1.55 : 1;                         // upright phone: pull back so the road fits
+  _camTarget.set((S.x || 0) * L.camFollow, 9 * camZoom * pf, -(S.m || 0) + 8 * camZoom * pf);
   const cover = S.phase === 'menu' && coverGroup;
   if (coverGroup) coverGroup.visible = !!cover;
   if (cover){
@@ -2113,10 +2154,22 @@ function render(dt, clock){
     cu.armL.rotation.x = cu.armR.rotation.x = -1.3; cu.legL.rotation.x = 0.4; cu.legR.rotation.x = -0.4;
     for (const m of cu.mats){ m.opacity = 1; m.depthWrite = true; }
     me.group.position.set(0, 0, 0); me.group.rotation.set(0, 0, 0);
+    // a little life on the cover: ghost floats and swings, the kid flails, lines take turns
+    const cg = coverGroup.userData;
+    cg.gm.position.y = 0.25 + Math.sin(t * 2.2) * 0.2; cg.gm.userData.armR.rotation.x = -1.2 - Math.sin(t * 3) * 1.0;
+    cg.kid.userData.armR.rotation.x = -1.2 - Math.sin(t * 6) * 1.1; cg.kid.userData.armL.rotation.x = -1.2 + Math.sin(t * 6) * 1.1;
+    const beat = Math.floor(t / 2.6) % 3;
+    if (beat !== cg.beat){
+      cg.beat = beat;
+      if (beat === 0) say(chaser, '你先跑我再追～', 2.2, { y: 4.6 });
+      else if (beat === 1) say(cg.gm, '皮在癢了嗎？', 2.2, { y: 3.7 });
+      else say(cg.kid, '咻咻咻！', 2.2, { y: 3.3 });
+    }
     const wide = innerWidth >= 860 || (innerWidth >= 600 && innerWidth > innerHeight);
-    _camTarget.set(Math.sin(t * 0.18) * 2.2 + (wide ? -2.5 : 0), 3.0, -10.5);
+    if (wide){ _camTarget.set(Math.sin(t * 0.18) * 2.2 - 2.5, 3.0, -10.5); }
+    else { _camTarget.set(Math.sin(t * 0.18) * 1.2, 4.0, -17.5); }      // upright/narrow: back off so the whole family fits
     camera.position.lerp(_camTarget, Math.min(1, dt * 2));
-    camera.lookAt(wide ? -2.4 : 0, wide ? 2.6 : 1.6, 2);
+    if (wide) camera.lookAt(-2.4, 2.6, 2); else camera.lookAt(0, 2.6, 1.2);
     renderer.render(scene, camera); updateBubbles();
     return;
   }
