@@ -27,6 +27,13 @@ const PBKDF2_ITERATIONS = 100_000;   // Cloudflare Workers caps PBKDF2 at 100k
 const RACE_MAX_REWARD = 120;         // coins per finished run, at most
 const RACE_MIN_GAP_MS = 30_000;      // a run takes ~50 s+, so 30 s between claims is generous
 const RACE_MIN_TIME_S = 25;          // faster than this isn't a real run (best-time sanity)
+// Race leaderboards (one per level): rank by time, then misses. Each player
+// keeps only their best run. Plausibility floor per level: below full sprint
+// the whole way, which stamina makes impossible (530 m / 430 m at 16.2 m/s).
+const RACE_BOARD_SIZE = 50;
+const RACE_LEVEL_MIN_TIME = { 1: 33, 2: 27 };
+const raceBetter = (a, b) => a.time < b.time || (a.time === b.time && a.misses < b.misses);
+const raceSort = (a, b) => a.time - b.time || a.misses - b.misses;
 
 // Heights kept in sync with the client; server only uses speedMul / width
 // for spawn calculations.
@@ -368,13 +375,39 @@ export default class WorldServer {
       user.profile.progress = progress;
       user.lastRaceAt = now;
       await this.room.storage.put('user:' + userId, user);
+      // leaderboard (only plausible runs on a known level)
+      const level = Math.floor(Number(body.level) || 0);
+      const misses = Math.max(0, Math.min(999, Math.floor(Number(body.misses) || 0)));
+      let rank = null, improved = false, board = null;
+      if (RACE_LEVEL_MIN_TIME[level] && Number.isFinite(time) && time >= RACE_LEVEL_MIN_TIME[level] && time < 3600){
+        const key = 'race_board_' + level;
+        board = (await this.room.storage.get(key)) || [];
+        const entry = { userId, name: user.displayName || user.username, time: +time.toFixed(1), misses,
+                        device: body.device === 'phone' ? 'phone' : 'pc', at: now };
+        const i = board.findIndex(r => r.userId === userId);
+        if (i < 0 || raceBetter(entry, board[i])){ if (i >= 0) board.splice(i, 1); board.push(entry); improved = true; }
+        board.sort(raceSort);
+        board = board.slice(0, RACE_BOARD_SIZE);
+        if (improved) await this.room.storage.put(key, board);
+        const mine = board.findIndex(r => r.userId === userId);
+        rank = mine >= 0 ? mine + 1 : null;
+        board = board.slice(0, 10).map(({ userId: _u, ...r }) => r);
+      }
       // Tell an open island session (same account) so its next save keeps the coins
       for (const [cid, p] of this.players){
         if (p.userId !== userId) continue;
         const conns = this.room.getConnections ? Array.from(this.room.getConnections()) : [];
         for (const c of conns) if (c.id === cid){ try { c.send(JSON.stringify({ type: 'race_reward', coins, money: progress.money })); } catch(e){} }
       }
-      return jsonResponse({ ok: true, coins, money: progress.money, raceBest: progress.raceBest || null });
+      return jsonResponse({ ok: true, coins, money: progress.money, raceBest: progress.raceBest || null, rank, improved, board });
+    }
+
+    // GET /race_board?level=N — top 10 (no user ids exposed)
+    if (last === 'race_board' && req.method === 'GET'){
+      const level = Math.floor(Number(url.searchParams.get('level')) || 0);
+      if (!RACE_LEVEL_MIN_TIME[level]) return jsonResponse({ error: 'bad_level' }, 400);
+      const board = (await this.room.storage.get('race_board_' + level)) || [];
+      return jsonResponse({ ok: true, level, rows: board.slice(0, 10).map(({ userId: _u, ...r }) => r) });
     }
 
     // ============================================================
@@ -465,6 +498,10 @@ export default class WorldServer {
             }
           }
           if (releasedPlots) this.plotsDirty = true;
+          for (const lv of Object.keys(RACE_LEVEL_MIN_TIME)){
+            const key = 'race_board_' + lv, b = await this.room.storage.get(key);
+            if (Array.isArray(b) && b.some(r => r.userId === targetName)) await this.room.storage.put(key, b.filter(r => r.userId !== targetName));
+          }
           // Boot any live sessions
           for (const [cid, p] of this.players){
             if (p.userId === targetName){
