@@ -37,8 +37,15 @@
   .btn.pink{background:#ffd6e8}
   .btn:disabled{background:#efe4d2;color:#b9a58a;border-color:#cdb999;box-shadow:none;cursor:not-allowed}
   .btn:focus-visible{outline:3px solid var(--sb-sky);outline-offset:2px}
-  #title{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:4;pointer-events:none;
+  #title{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:4;cursor:pointer;background:none;border:0;padding:0;
          font:900 26px var(--sb-font);color:#ffcf5a;-webkit-text-stroke:2.5px var(--sb-ink);paint-order:stroke fill;letter-spacing:2px;white-space:nowrap}
+  #title .pen{font-size:.55em;-webkit-text-stroke:0;vertical-align:middle;margin-left:4px;opacity:.85}
+  #nameBox{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(70,48,32,.45);padding:16px}
+  #nameBox[hidden]{display:none}
+  #nameBox>div{background:var(--sb-paper);border:3px solid var(--sb-ink);border-radius:18px;padding:16px 18px;width:min(92vw,340px);text-align:center;box-shadow:0 6px 0 rgba(91,58,41,.3)}
+  #nameBox b{display:block;font:900 18px var(--sb-font);color:var(--sb-ink);margin-bottom:8px}
+  #nameIn{width:100%;box-sizing:border-box;font:700 18px var(--sb-font);padding:8px 12px;border:2.5px solid var(--sb-ink);border-radius:12px;text-align:center}
+  #nameBox .row{display:flex;gap:8px;justify-content:center;margin-top:10px}
   #toast{position:fixed;left:50%;top:24%;transform:translateX(-50%);z-index:20;background:var(--sb-paper);border:2.5px solid var(--sb-ink);border-radius:14px;
          padding:7px 16px;font:700 15px var(--sb-font);color:var(--sb-ink);box-shadow:0 4px 0 rgba(91,58,41,.3);pointer-events:none;opacity:0;transition:opacity .25s}
   #toast.on{opacity:1}
@@ -90,7 +97,12 @@
 </head>
 <body>
 <div id="stage"></div>
-<div id="title">🪐 土星之家</div>
+<button id="title" type="button" aria-label="幫家取名字">🪐 <span id="homeName">土星之家</span><span class="pen">✏️</span></button>
+<div id="nameBox" hidden><div>
+  <b>幫你的家取個名字</b>
+  <input id="nameIn" maxlength="12" autocomplete="off" placeholder="例如：艾迪的秘密基地">
+  <div class="row"><button class="btn" id="nameOk" type="button">好了</button><button class="btn" id="nameCancel" type="button" style="background:#fff">算了</button></div>
+</div></div>
 <div id="tl">
   <div class="chip"><span class="coin"></span><b id="money">0</b></div>
   <div class="chip" id="who" style="font-size:12px;font-weight:600">試玩版</div>
@@ -1108,6 +1120,19 @@ if (!save){
 }
 save.money = Math.max(save.money || 0, 777);   // test build: always enough to shop
 function persist(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch(e){} }
+// the home's name: anyone can rename it (tap the title). Up to 12 characters, shown as plain text.
+const DEFAULT_HOME_NAME = '土星之家';
+function showHomeName(){ const n = save.homeName || DEFAULT_HOME_NAME; $('homeName').textContent = n; document.title = n; }
+showHomeName();
+$('title').addEventListener('click', () => { $('nameIn').value = save.homeName || DEFAULT_HOME_NAME; $('nameBox').hidden = false; $('nameIn').focus(); $('nameIn').select(); });
+function closeName(){ $('nameBox').hidden = true; }
+$('nameCancel').addEventListener('click', closeName);
+$('nameOk').addEventListener('click', () => {
+  const n = $('nameIn').value.replace(/\s+/g, ' ').trim().slice(0, 12);
+  save.homeName = n && n !== DEFAULT_HOME_NAME ? n : ''; persist(); showHomeName(); closeName();
+  toast(n ? '🏠 歡迎來到「' + (n || DEFAULT_HOME_NAME) + '」！' : '名字改回土星之家');
+});
+$('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('nameOk').click(); else if (e.key === 'Escape') closeName(); e.stopPropagation(); });
 function setMoney(){ $('money').textContent = save.money; }
 setMoney();
 
