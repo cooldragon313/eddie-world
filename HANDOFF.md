@@ -140,7 +140,7 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 試玩：逃離土星艾迪版 https://claude.ai/artifact/2r6p37955RvFwrHZZc9fP5 ／土星之家 https://claude.ai/artifact/7CVMoMJmmk3GrbZScdNTsQ ／艾迪原型 https://claude.ai/artifact/11zvrShMMHSVBgN43xA17Z
 - 舊的「逃離土星」試玩 `…1GfYgGkd…` 是艾迪之前的版本
 
-## 2026-10-29 — 逃離土星第一關後段重做（分支上、還沒上架）
+## 2026-10-29 — 逃離土星第一關後段重做（✅ 已上架 main 1f0fb7a ＋ saturnfamily dbac885）
 - 共用小屁孩 `buildKid()`（island.html AVATAR 區，照 Bernie 照片：黑短髮瀏海、白T淺藍短褲、赤腳）；原型 https://claude.ai/artifact/4KMMx6mQamrWN8R3XiNfsu
 - ⑤ 頂樓遊戲室（430–478）：小屁孩丟小車／遙控器輪流，**手上先拿著下一發**＋舉手壞笑預告；兩種都能揮棒打回去讓他哭（成就「全壘打王」）。中間的掩體拿掉了
 - ⑥ 頂樓曬衣場（478–530）：大風（先跳箭頭警告再推人）、飛襪子🧦／內褲🩲（大圖示卡）、床單、盆栽
