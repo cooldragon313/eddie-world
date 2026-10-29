@@ -132,3 +132,10 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
   - 試玩：https://claude.ai/artifact/11zvrShMMHSVBgN43xA17Z
   - 特徵：黑色短髮頭頂往上抓、兩側短、開口大笑、粗眉、白 T、軍綠短褲、白鞋黑襪、白手環、星空背包、橘色猩猩圍巾（可開關）
 - 還沒做：把艾迪放進土星之家和各關當預設角色
+
+## 2026-10-29 — 艾迪進關卡（公司 PC，分支上、還沒上架）
+- 每個關卡的玩家都是艾迪（`buildAvatar` 遇到 `custom.hero !== 'custom'` 就改用 `buildEddieAvatar`）
+- 艾迪骨架 v2：頭、手肘、膝蓋、表情（笑／大笑／嚇到／哭哭／得意＋眨眼）；共用動作 `animateEddie(A, o)`（都在 island.html 的 AVATAR 區）
+  - ⚠️ 面向 -z：膝蓋往後折＝rotation.x 負、手肘往前彎＝正（曾經寫反過）
+- 試玩：逃離土星艾迪版 https://claude.ai/artifact/2r6p37955RvFwrHZZc9fP5 ／土星之家 https://claude.ai/artifact/7CVMoMJmmk3GrbZScdNTsQ ／艾迪原型 https://claude.ai/artifact/11zvrShMMHSVBgN43xA17Z
+- 舊的「逃離土星」試玩 `…1GfYgGkd…` 是艾迪之前的版本
