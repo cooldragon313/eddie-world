@@ -1249,10 +1249,11 @@ const TYPES = {
 };
 const ROUTE = [];   // footholds + walls in climbing order (for the "next step" marker)
 const PHOTOS = [];  // the drone's hidden photo spots, 3 a segment (docs/PLAN-101跑酷.md): stand on the foothold to take it
-const photo = (id, title, hint, p, o) => { PHOTOS.push(Object.assign({ id, title, hint, plat: p, s: (p.s0 + p.s1) / 2, r: (p.s1 - p.s0) / 2 + 0.2 }, o || {})); return p; };
+const photo = (id, title, hint, p, o) => { PHOTOS.push(Object.assign({ id, title, hint, plat: p, s: (p.s0 + p.s1) / 2, r: (p.s1 - p.s0) / 2 + 0.2 }, o || {})); if (!p.ring) p.photoId = id; return p; };
+// per photo: pose = what Eddie does, cam = where the drone flies (side = along the wall, out = away from it, up; look = aim higher/lower)
 function plat(type, s0, w, y, o){ const p = Object.assign({ type, s0, s1: s0 + w, y, y0: y }, o || {}); plats.push(p); return p; }
 function wall(s0, w, y0, y1, o){ const z = Object.assign({ s0, s1: s0 + w, y0, y1, over: false }, o || {}); walls.push(z); return z; }
-photo('start', '出發前的帥照', '一切從這裡開始…', plat('street', 0, PER, 0, { ring: true, floor: 0 }), { s: 11.5, r: 0.8 });
+photo('start', '出發前的帥照', '一切從這裡開始…', plat('street', 0, PER, 0, { ring: true, floor: 0 }), { s: 11.5, r: 0.8, pose: 'v', cam: { side: 1.4, out: 8.0, up: 0.6, look: 1.2, fov: 55 } });   // from down low: 101 towers over him
 // route builder: cursor = right edge + height of the last foothold
 let cs = 7, cy = 0;
 const foot = (type, gap, rise, w, o) => { const p = plat(type, cs + gap, w, cy + rise, o); cs = p.s1; cy = p.y; ROUTE.push(p); return p; };
@@ -1279,7 +1280,7 @@ foot('ac',   1.2, 2.2, 2.2);
 foot('sill', 1.6, 2.2, 2.6);
 climb(1.2, 6.5, 2.4, { hint: true });                        // first wall: "touch it and you grab on"
 photo('wall1', '第一面牆', '第一次抓牆的感覺', ROUTE[ROUTE.length - 1]);
-photo('bento', '便當時間', '有東西好香…', branch(ROUTE[ROUTE.length - 1], -1, [['flag', 1.6, 2.0, 1.4], ['sill', 1.5, 2.1, 2.0, { item: 'bento' }]]));   // 🍱 up and left
+photo('bento', '便當時間', '有東西好香…', branch(ROUTE[ROUTE.length - 1], -1, [['flag', 1.6, 2.0, 1.4], ['sill', 1.5, 2.1, 2.0, { item: 'bento' }]]), { pose: 'eat' });   // 🍱 up and left
 foot('sill', 1.4, 2.0, 2.6);
 foot('ac',   1.6, 2.3, 2.0);
 branch(foot('sill', 1.6, 2.2, 2.4, { pigeon: true }), -1, [['ac', 2.0, 2.2, 1.6], ['flag', 2.3, 2.1, 1.1, { item: 'coin', id: 'coin1' }]]);   // 🥇 two long jumps
@@ -1290,12 +1291,12 @@ checkpoint(10);                                              // y 30
 // ---- segment 2: 11–20F — round the corner, a flagpole, a cradle, a bulging wall
 cs += 1.5;
 foot('sill', 1.0, 2.2, 2.6);
-photo('flag', '細細的旗桿', '很細很細的地方', foot('flag', 1.8, 2.0, 1.6, { line: '這根旗桿好細…' }));       // a flagpole: tiny landing
+photo('flag', '細細的旗桿', '很細很細的地方', foot('flag', 1.8, 2.0, 1.6, { line: '這根旗桿好細…' }), { pose: 'balance' });       // a flagpole: tiny landing
 foot('sill', 1.4, 2.3, 2.4);
 const cradle = foot('gondola', 1.5, 1.8, 2.6, { range: 5.0, speed: 0.4 }); // rides up 5 → reach the next sill from the top
 cy += 5.0;
 photo('cradle', '吊籃兜風', '坐車要記得跟司機打招呼', cradle, { ride: true });
-photo('news', '📺 上電視了', '有人在等你受訪', branch(foot('sill', 1.4, 2.0, 2.4), -1, [['sill', 1.6, 2.2, 2.0], ['balcony', 1.6, 2.2, 2.6, { item: 'reporter' }]]));   // 📸 the TV crew
+photo('news', '📺 上電視了', '有人在等你受訪', branch(foot('sill', 1.4, 2.0, 2.4), -1, [['sill', 1.6, 2.2, 2.0], ['balcony', 1.6, 2.2, 2.6, { item: 'reporter' }]]), { pose: 'wave', at: 0.6, cam: { side: 0.8, out: 5.2, up: 1.8 } });   // stand to the left so the crew is in it too   // 📸 the TV crew
 climb(1.0, 4.5, 2.2, { chalk: true, momWall: true });   // mom's 18F window is next to its top
 branch(foot('ac',   1.4, 2.1, 2.0), -1, [['flag', 2.0, 2.1, 1.2], ['flag', 2.2, 2.0, 1.0, { item: 'coin', id: 'coin2' }]]);   // 🥇 over mom's head
 climb(1.2, 2.5, 2.6, { over: true });                        // a small bulge: a taste of what the bamboo node (31–40F) will be
@@ -1305,19 +1306,19 @@ checkpoint(20);                                              // y 60
 // ---- segment 3: 21–30F 冷氣機森林 — dripping ACs you slide off, two short walls back to back
 cs += 1.5;
 foot('sill', 1.0, 2.2, 3.0);                                 // a breather first
-photo('pigeons', '鴿子大合照', '咕咕咕～', foot('sill', 1.2, 2.2, 2.8, { pigeon: true }));
+photo('pigeons', '鴿子大合照', '咕咕咕～', foot('sill', 1.2, 2.2, 2.8, { pigeon: true, flock: 3 }), { pose: 'squat', at: 0.6, cam: { side: 0.8, out: 4.0, up: 1.2 } });
 foot('ac',   1.4, 2.2, 2.2);
 foot('drip', 1.5, 2.2, 1.9, { slide: 1, first: true });      // first wet one: it carries you right
 const toyFrom = foot('sill', 1.4, 2.1, 2.2);
 climb(1.0, 2.6, 1.8);                                        // two short walls, one straight after the other
 climb(1.2, 2.6, 1.8);
 foot('drip', 1.4, 2.2, 1.7, { slide: -1, chain: true });     // three wet ones in a row = 冷氣機溜冰王
-photo('skate', '冷氣機溜冰', '冷氣機上有東西在看你…', foot('drip', 1.5, 2.2, 1.7, { slide: 1, chain: true }));
+photo('skate', '冷氣機溜冰', '冷氣機上有東西在看你…', foot('drip', 1.5, 2.2, 1.7, { slide: 1, chain: true }), { pose: 'skate' });
 foot('drip', 1.5, 2.2, 1.7, { slide: -1, chain: true });
 branch(foot('sill', 1.4, 2.2, 2.4, { pigeon: true }), -1, [['flag', 1.8, 2.1, 1.2], ['sill', 2.0, 2.2, 1.6, { item: 'gripup', id: 'g1' }]]);   // 💪 #1
 climb(1.0, 3.0, 2.2, { chalk: true });
 checkpoint(30);                                              // y 90
-photo('bey', '爆破貝利亞！', '最愛的玩具在高處閃閃發亮', branch(toyFrom, -1, [['ac', 1.8, 2.2, 1.6], ['drip', 2.0, 2.2, 1.4, { slide: -1 }], ['sill', 2.0, 2.1, 1.6, { item: 'toy', id: 'bey' }]]));   // 🌀 Eddie's battle top 爆破貝利亞
+photo('bey', '爆破貝利亞！', '最愛的玩具在高處閃閃發亮', branch(toyFrom, -1, [['ac', 1.8, 2.2, 1.6], ['drip', 2.0, 2.2, 1.4, { slide: -1 }], ['sill', 2.0, 2.1, 1.6, { item: 'toy', id: 'bey' }]]), { pose: 'hold' });   // 🌀 Eddie's battle top 爆破貝利亞
 // ---- segment 4: 31–40F 竹節初登場 — traverse under a lip, then the bamboo node: two walls leaning
 // out over the street (steeper = more grip), a seam to catch your breath in, and a mantle over the top
 cs += 1.5;
@@ -1339,8 +1340,8 @@ plat('net', 0, PER, cy - 0.6, { ring: true, net: true });    // a slip anywhere 
   const seam = plat('seam', lo.s0 - 0.6, 3.0, lo.y1 + 0.1, { depth: seamOut + 0.9, standOut: seamOut + 0.4, mountOnly: true });   // the seam: a ledge sticking out past the glass (a slip from above falls past it)
   const hi = wall(lo.s0 - 0.2, 2.2, lo.y1 - 0.1, NODE.y1, { node: NODE });           // upper half, straight above (a bit wider, so a jump off the seam always grabs it)
   const cap = plat('node', lo.s0 - NODE_W, hi.s1 - lo.s0 + NODE_W + NODE_WR, hi.y1 + 0.1, { depth: NODE.out1 + 0.5, standOut: 2.6, nodeTop: true });   // mantle over the top: the whole green top is walkable
-  photo('seam', '竹節上的男人', '斜斜的地方，喘口氣', seam);
-  photo('view', '全台北都在腳下', '爬上竹節頂之後，往左邊看看', cap, { s: cap.s0 + 0.9, r: 0.8 });
+  photo('seam', '竹節上的男人', '斜斜的地方，喘口氣', seam, { pose: 'v', cam: { side: 2.6, out: 3.2, up: 0.1, look: 0.5 } });   // from below and to the side: the node leans out over nothing
+  photo('view', '全台北都在腳下', '爬上竹節頂之後，往左邊看看', cap, { s: cap.s0 + 0.9, r: 0.8, pose: 'sit', cam: { side: -1.4, out: -2.4, up: 2.0, look: -0.2, fov: 72 } });   // from behind him, up by the glass: the city below
   branch(cap, -1, [['flag', 1.2, 2.0, 1.0], ['ac', 1.6, 2.2, 1.4, { item: 'drone' }]]);   // 🚁 the documentary crew's crashed drone
   ROUTE.push(lo, seam, hi, cap); cs = cap.s1; cy = cap.y; Object.assign(NODE, { s0: lo.s0, s1: hi.s1, seamY: seam.y });
 }
@@ -1363,7 +1364,7 @@ const MOM_SPOTS = walls.filter(z => z.momWall).map(z => {   // next to the top o
   return [s, y];
 });
 // 📷 the 39F mom photo is taken up on the 40F deck, standing right next to her window
-photo('mom', '跟媽媽比愛心', '媽媽心情好的時候…', plats.find(p => p.cp && p.floor === 40), { mom: 1, s: MOM_SPOTS[1][0] - 1.9, r: 1.0 });
+photo('mom', '跟媽媽比愛心', '媽媽心情好的時候…', plats.find(p => p.cp && p.floor === 40), { mom: 1, s: MOM_SPOTS[1][0] - 1.9, r: 1.0, pose: 'heart' });
 
 // ---------- build the meshes ----------
 const woodTex = canvasTex(64, 32, (x, w, h) => { x.fillStyle = '#c98a4a'; x.fillRect(0, 0, w, h); x.strokeStyle = '#a8743f'; x.lineWidth = 2; for (let i = 1; i < 3; i++){ x.beginPath(); x.moveTo(0, i * h / 3); x.lineTo(w, i * h / 3); x.stroke(); } });
@@ -1419,8 +1420,11 @@ for (const p of plats){
     const b = new THREE.Group(); const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), LM(0x9aa3ad)); body.scale.set(1.3, 1, 1); b.add(body);
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), LM(0x7e8893)); head.position.set(0.25, 0.18, 0); b.add(head);
     const beak = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 6), LM(0xffb02e)); beak.rotation.z = -Math.PI / 2; beak.position.set(0.4, 0.17, 0); b.add(beak);
-    sbOutline(b, 0.02); b.position.copy(surf(p.s1 - 0.5, 0.6, p.y + 0.22)); b.rotation.y = faceAngle(p.s0); scene.add(b);
-    p.bird = { g: b, home: b.position.clone(), fly: 0 };
+    sbOutline(b, 0.02);
+    const g = new THREE.Group(); g.add(b);
+    for (let k = 1; k < (p.flock || 1); k++){ const c = b.clone(); c.position.set(-0.55 * k, 0, (k % 2) * 0.18); c.rotation.y = k % 2 ? 0.5 : -0.3; g.add(c); }   // (a flock sits in a row)
+    g.position.copy(surf(p.s1 - 0.5, 0.6, p.y + 0.22)); g.rotation.y = faceAngle(p.s0); scene.add(g);
+    p.bird = { g, home: g.position.clone(), fly: 0 };
   }
 }
 // treasure on the side paths
@@ -1756,7 +1760,7 @@ function step(dt){
           S.dripChain = landed.chain ? (S.dripChain || 0) + 1 : 0;
           if (S.dripChain >= 3) unlock('dripking');
         } else if (landed.type !== 'gondola') S.dripChain = 0;
-        if (landed.bird && !landed.bird.fly){ landed.bird.fly = 0.001; npcSay(landed.bird.g, '咕咕！'); sfx.coo();
+        if (landed.bird && !landed.bird.fly && !(DRONE && landed.photoId && !BOOK[landed.photoId])){   // (they stay for a drone photo) landed.bird.fly = 0.001; npcSay(landed.bird.g, '咕咕！'); sfx.coo();
           if (plats.every(q => !q.bird || q.bird.fly)) unlock('pigeons'); }
       }
     }
@@ -1870,7 +1874,7 @@ const DRONE_KEY = () => 'etfm-tower2-drone-' + who(), PHOTO_KEY = () => 'etfm-to
 const hasDrone = () => { try { return !!localStorage.getItem(DRONE_KEY()); } catch (e) { return false; } };
 const loadBook = () => { try { return JSON.parse(localStorage.getItem(PHOTO_KEY()) || '{}'); } catch (e) { return {}; } };
 let DRONE = hasDrone(), BOOK = loadBook();
-const EVENT_PHOTOS = { poop: { title: '💩 鴿屎運', hint: '天上掉下來的…運氣？' }, net: { title: '🕸️ 好險有網子', hint: '掉下去也沒關係' } };
+const EVENT_PHOTOS = { poop: { title: '💩 鴿屎運', hint: '天上掉下來的…運氣？', pose: 'ptoo' }, net: { title: '🕸️ 好險有網子', hint: '掉下去也沒關係', pose: 'shock' } };
 function makeDrone(){
   const g = new THREE.Group();
   g.add(new THREE.Mesh(sbRoundBox(0.62, 0.2, 0.62, 0.08), LM(0xf2f2ee)));
@@ -1895,6 +1899,7 @@ function gotDrone(){
 // the 📷 spots: a dashed gold frame that bobs over the foothold
 const spotTex = canvasTex(128, 128, (x) => { x.strokeStyle = '#ffcf5a'; x.lineWidth = 8; x.setLineDash([16, 10]); x.strokeRect(8, 8, 112, 112);
   x.font = '48px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('📷', 64, 66); });
+for (const ph of PHOTOS) if (ph.at != null){ ph.s = ph.plat.s0 + ph.at; ph.r = 0.6; }
 for (const ph of PHOTOS){ ph.mesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: spotTex, transparent: true, depthWrite: false })); ph.mesh.scale.set(1.5, 1.5, 1); ph.mesh.visible = false; scene.add(ph.mesh); }
 const spotY = ph => ph.plat.type === 'gondola' ? (ph.plat.cur == null ? ph.plat.y0 : ph.plat.cur) : ph.plat.y;
 const segPhotos = n => PHOTOS.filter(ph => segOf(ph.plat.y) === n);
@@ -1915,7 +1920,7 @@ function updatePhotos(dt, now){
   const sh = S.snap, momShot = sh && sh.ph.mom ? MOMS[sh.ph.mom] : null;
   let want;
   if (momShot){ const mid = (P.s + momShot.s) / 2; want = surf(mid, out + 6.5, (P.y + momShot.y) / 2 + 2.0); eye.lerp(surf(mid, 0.5, (P.y + momShot.y) / 2 + 1.4), 1); }
-  else if (sh) want = surf(P.s + 0.6, out + 4.6, P.y + 1.9);
+  else if (sh){ const c = Object.assign({ side: 0.6, out: 4.6, up: 1.9, look: 0 }, sh.ph.cam); want = surf(P.s + c.side, out + c.out, P.y + c.up); eye.y += c.look; }
   else want = surf(P.s - P.face * 1.4, out + 1.6, P.y + 2.7 + Math.sin(now * 2) * 0.12);
   if (buddyPos.lengthSq() === 0) buddyPos.copy(want);
   buddyPos.lerp(want, Math.min(1, dt * (sh ? 5 : 2.5)));
@@ -1929,11 +1934,11 @@ function updatePhotos(dt, now){
     if (t > 1.4){ momShot.npc.pose(momShot.love); bigHeart.visible = false; }
   }
   if (!sh.taken && t > 0.75){ sh.taken = true; snapPhoto(sh.ph, eye); }
-  if (t > 1.4) S.snap = null;
+  if (t > 1.4){ const b = sh.ph.plat && sh.ph.plat.bird; if (b && !b.fly){ b.fly = 0.001; npcSay(b.g, '咕咕！'); sfx.coo(); } S.snap = null; }
 }
 function snapPhoto(ph, eye){
   // what the drone sees goes into the canvas for one frame (the white flash covers it), copied out as a square JPEG
-  droneCam.position.copy(buddy.position); droneCam.lookAt(eye); droneCam.aspect = camera.aspect; droneCam.updateProjectionMatrix();
+  droneCam.position.copy(buddy.position); droneCam.lookAt(eye); droneCam.fov = (ph.cam && ph.cam.fov) || 45; droneCam.aspect = camera.aspect; droneCam.updateProjectionMatrix();
   const hide = [buddy, marker, ...PHOTOS.map(q => q.mesh)], was = hide.map(o => o.visible); hide.forEach(o => { o.visible = false; });
   renderer.render(scene, droneCam); hide.forEach((o, i) => { o.visible = was[i]; });
   const src = renderer.domElement, side = Math.min(src.width, src.height), c = document.createElement('canvas'); c.width = c.height = 264;
@@ -2208,12 +2213,37 @@ $('againBtn').onclick = () => { startAt(Math.min(savedCp(), BUILT - 10)); update
   $('contBtn').hidden = !cp; $('contBtn').textContent = '從 ' + cp + 'F 繼續';
   $('loginLine').textContent = (!API ? '試玩版：金幣不會存進帳號。' : token() ? '金幣會存進你的帳號。' : '還沒登入：先到「逃離土星」登入，金幣才會存。') + '　目前開放到 ' + BUILT + 'F。'; }
 document.querySelectorAll('.homeLink').forEach(a => { if (ON_LIVE) a.href = 'https://cooldragon313.github.io/eddie-world/'; else if (!ON_LOCAL) a.hidden = true; });
-if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, get BOOK(){ return BOOK; } };   // local testing only
+if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, eventPhoto, pooped, get BOOK(){ return BOOK; } };   // local testing only
 
 // ---------- Eddie's pose ----------
 // both arms up in a big V (Q-version heads are too big to make a heart over them; a big 💖 floats between the two instead)
 function heartArms(arms){ const [l, r] = arms; l.rotation.set(0, 0, -2.4); r.rotation.set(0, 0, 2.4); l.userData.elbow.rotation.set(0.6, 0, 0); r.userData.elbow.rotation.set(0.6, 0, 0); }
 function peaceArm(arms){ arms[1].rotation.set(0, 0, 2.5); arms[1].userData.elbow.rotation.set(0, 0, -0.5); }   // ✌️ up beside his head, so it shows face-on
+let props = null;   // things he holds up for a photo (the bento, his battle top)
+function photoPose(pose, e, now){
+  const [aL, aR] = e.arms, [lL, lR] = e.legs;
+  if (!props){ props = {};
+    const bento = new THREE.Group(); bento.add(new THREE.Mesh(sbRoundBox(0.8, 0.3, 0.55, 0.06), LM(0xe0584a))); const band = new THREE.Mesh(sbRoundBox(0.12, 0.34, 0.62, 0.02), LM(0x3a7bc8)); bento.add(band);
+    const rice = new THREE.Mesh(sbRoundBox(0.7, 0.08, 0.45, 0.03), LM(0xfff8ec)); rice.position.y = 0.16; bento.add(rice); bento.position.set(0, 1.25, -0.75); props.eat = bento;
+    const bey = buildBey(c => LM(c), (pa, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); pa.add(m); return m; }, sbRoundBox); bey.scale.setScalar(1.4); bey.position.set(0.95, 2.6, -0.1); bey.rotation.x = -0.5; props.hold = bey;
+    for (const k in props){ sbOutline(props[k], 0.03); props[k].visible = false; me.group.add(props[k]); } }
+  for (const k in props) props[k].visible = k === pose;
+  e.face.set('laugh');
+  if (pose === 'v') peaceArm(e.arms);
+  else if (pose === 'heart') heartArms(e.arms);
+  else if (pose === 'shock'){ heartArms(e.arms); e.face.set('surprised'); }
+  else if (pose === 'ptoo'){ e.face.set('sad'); e.head.rotation.z = Math.sin(now * 32) * 0.3; }
+  else if (pose === 'wave'){ peaceArm(e.arms); aR.rotation.z = 2.5 + Math.sin(now * 14) * 0.3; }
+  else if (pose === 'eat'){ for (const a of [aL, aR]){ a.rotation.set(1.25, 0, 0); a.userData.elbow.rotation.set(1.1, 0, 0); } e.head.rotation.x = 0.25; }   // 大口吃
+  else if (pose === 'hold'){ aR.rotation.set(0, 0, 2.8); aR.userData.elbow.rotation.set(0, 0, -0.2); }   // the top held high
+  else if (pose === 'balance'){ aL.rotation.set(0, 0, -1.5); aR.rotation.set(0, 0, 1.5); aL.userData.elbow.rotation.set(0, 0, 0); aR.userData.elbow.rotation.set(0, 0, 0); me.group.rotation.z = Math.sin(now * 3) * 0.12; e.face.set('surprised'); }
+  else if (pose === 'skate'){ aL.rotation.set(0, 0, -1.7); aR.rotation.set(0, 0, 1.2); lR.rotation.set(-0.2, 0, 0.9); lR.userData.knee.rotation.x = -0.6; me.group.rotation.z = 0.22; }   // one leg up, leaning into it
+  else if (pose === 'squat'){ lL.rotation.x = lR.rotation.x = 1.2; lL.userData.knee.rotation.x = lR.userData.knee.rotation.x = -2.2; me.group.position.y -= 0.45; peaceArm(e.arms); }   // down at pigeon height
+  else if (pose === 'sit'){   // sitting on the edge looking out, legs swinging
+    me.group.rotation.set(0, faceAngle(P.s) + Math.PI, 0); me.group.position.y -= 0.62; me.group.position.add(softNormal(P.s).multiplyScalar(0.55));
+    lL.rotation.x = 1.45 + Math.sin(now * 5) * 0.25; lR.rotation.x = 1.45 - Math.sin(now * 5) * 0.25; lL.userData.knee.rotation.x = lR.userData.knee.rotation.x = -1.35;
+    aL.rotation.set(-0.5, 0, -0.35); aR.rotation.set(-0.5, 0, 0.35); }
+}
 function poseEddie(dt, now){
   const e = me.eddie;
   const wantOut = P.mode === 'wall' ? wallOut(P.wall, P.y + 1) + (P.wall.over ? 0.25 : 0.32) : P.on && P.on.standOut != null ? P.on.standOut : 0.75;
@@ -2240,8 +2270,10 @@ function poseEddie(dt, now){
     const sh = S.snap;
     if (sh && !sh.ph.event && now - sh.t0 > 0.35){   // posing for the drone: turn to it, ✌️ (or a big heart with mom)
       me.group.rotation.set(0, fa + Math.PI, 0); e.face.set('laugh');
-      if (sh.ph.mom) heartArms(e.arms); else peaceArm(e.arms);
+      photoPose(sh.ph.pose || 'v', e, now);
     }
+    if (sh && sh.ph.event && now - sh.t0 > 0.35){ me.group.rotation.set(0, fa + Math.PI, 0); photoPose(sh.ph.pose, e, now); }
+    if (props && !(sh && now - sh.t0 > 0.35)) for (const k in props) props[k].visible = false;
   }
   if (S.t < (S.ptooUntil || 0)){ e.head.rotation.z = Math.sin(now * 32) * 0.45; e.face.set('sad'); }    // 呸呸呸: shake it off
 }
