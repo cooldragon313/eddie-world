@@ -155,12 +155,15 @@ function buildEddie(){
   const HY = 2.25;
   // head: round, a touch wider than tall
   const head = part(body, S(0.86, 32, 22), skin, 0, HY, 0); head.scale.set(1.04, 0.98, 1);
-  for (const s of [-1, 1]){ const ear = part(body, S(0.17, 14, 10), skin, s * 0.88, HY - 0.02, 0.05); ear.scale.set(0.5, 1, 0.8); }
-  // hair: short, close on the sides, spiky on top with a little peak at the front
-  const capGeo = new THREE.SphereGeometry(0.9, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.42);
-  const cap = part(body, capGeo, hair, 0, HY + 0.03, 0.04); cap.rotation.x = 0.28; cap.scale.set(1.05, 1, 1);
-  const back = part(body, S(0.82, 24, 14), hair, 0, HY + 0.02, 0.18); back.scale.set(1.04, 0.92, 0.9);   // short back/sides
-  const top = part(body, S(0.78, 24, 14), hair, 0, HY + 0.5, 0.06); top.scale.set(1.06, 0.42, 1.04);
+  for (const s of [-1, 1]){ const ear = part(body, S(0.19, 14, 10), skin, s * 0.9, HY - 0.04, 0.05); ear.scale.set(0.5, 1, 0.8); }
+  // hair: a buzzed fade on the sides/back (grey-black stubble over skin),
+  // longer black hair only on top, spiked up and in toward the middle
+  const buzz = LM(0x8a7569);
+  const buzzGeo = new THREE.SphereGeometry(0.885, 32, 18, 0, Math.PI * 2, 0, Math.PI * 0.6);
+  const fade = part(body, buzzGeo, buzz, 0, HY + 0.01, 0.06, true); fade.rotation.x = 0.34; fade.scale.set(1.05, 1, 1.01);
+  const crownGeo = new THREE.SphereGeometry(0.9, 32, 12, 0, Math.PI * 2, 0, Math.PI * 0.3);
+  const cap = part(body, crownGeo, hair, 0, HY + 0.05, 0.02); cap.rotation.x = 0.12; cap.scale.set(0.98, 1, 1.02);
+  const top = part(body, S(0.68, 24, 14), hair, 0, HY + 0.56, 0.02); top.scale.set(1.0, 0.4, 1.08);
   const hairSpikes = [];
   const tufts = [];
   for (let row = 0; row < 3; row++){
@@ -224,14 +227,18 @@ function buildEddie(){
   bag.position.set(0, 1.08, 0.56); body.add(bag);
   // orange orangutan plush scarf (like the one from Baltimore)
   const scarf = new THREE.Group();
-  const fur = LM(0xff8a2a), fur2 = LM(0xffc83d), face = LM(0xf0c88a);
+  const fur = LM(0xff8a2a), fur2 = LM(0xffc83d), face = LM(0xffd84a);
   const ring = part(scarf, new THREE.TorusGeometry(0.42, 0.13, 10, 24), fur, 0, 0, 0); ring.rotation.x = Math.PI / 2 - 0.25;
   for (let i = 0; i < 6; i++){ const a = i / 6 * Math.PI * 2; part(scarf, S(0.1, 10, 8), fur2, Math.cos(a) * 0.42, 0.06, Math.sin(a) * 0.42); }
   for (const s of [-1, 1]){ const tail = part(scarf, S(0.11, 12, 8), s < 0 ? fur : fur2, s * 0.22, -0.4, -0.5); tail.scale.set(1, 2.2, 0.8); }
   const monkey = new THREE.Group();
   part(monkey, S(0.2, 16, 12), fur, 0, 0, 0);
   const mf = part(monkey, S(0.14, 14, 10), face, 0, -0.02, -0.12); mf.scale.set(1.15, 0.85, 0.6);
-  for (const s of [-1, 1]){ part(monkey, S(0.03, 8, 6), ink, s * 0.06, 0.03, -0.2, true); part(monkey, S(0.06, 10, 8), fur, s * 0.19, 0.02, 0); }
+  for (const s of [-1, 1]){
+    part(monkey, S(0.065, 12, 8), LM(0xffffff), s * 0.07, 0.06, -0.17, true);      // big googly eyes
+    part(monkey, S(0.035, 8, 6), ink, s * 0.07, 0.06, -0.225, true);
+    part(monkey, S(0.06, 10, 8), fur, s * 0.19, 0.02, 0);
+  }
   const hood = part(monkey, sbRoundBox(0.34, 0.3, 0.16, 0.06), fur, 0, -0.27, -0.03);
   monkey.position.set(0.08, -0.25, -0.5); scarf.add(monkey);
   scarf.position.set(0, 1.58, -0.02); body.add(scarf);
