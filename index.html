@@ -100,7 +100,11 @@
     #startCard>div{max-width:400px}
   }
   @media (min-width:600px) and (max-height:520px) and (orientation:landscape){
-    #startCard>div{max-width:min(400px,52vw);max-height:94vh;padding:12px 14px}
+    #startCard>div{max-width:min(340px,46vw);max-height:94vh;padding:10px 12px}
+    #startCard .who{margin:2px 0 6px}
+    .board{font-size:12px;padding:4px 6px}
+    .board li:nth-child(n+4){display:none}
+    .btn.lvl{font-size:20px;padding:8px 14px}
     #startCard .logo{top:4vh;left:3vw}
     .logo .planet{width:76px;height:50px;margin-bottom:-12px}
     .logoText{font-size:44px;-webkit-text-stroke:4px #5b3a29;text-shadow:0 5px 0 #5b3a29}
@@ -128,7 +132,8 @@
   .authTabs button.on{background:var(--sb-gold-soft)}
   .authMsg{font-size:13px;color:var(--sb-muted);margin:0}
   .authMsg.err{color:#c0392b;font-weight:700}
-  .keys{font-size:13px;color:var(--sb-muted);line-height:1.9}
+  .keys{font-size:12px;color:var(--sb-muted);line-height:2;margin:4px 0}
+  body.touch .keys{display:none}
   kbd{background:#fff;border:1.5px solid var(--sb-ink);border-bottom-width:3px;border-radius:6px;padding:0 6px;font-family:var(--sb-font);font-size:12px;color:var(--sb-ink)}
   .btn{display:inline-block;font:700 18px var(--sb-font);background:var(--sb-gold-soft);color:var(--sb-ink);border:2.5px solid var(--sb-ink);border-radius:999px;padding:8px 28px;cursor:pointer;box-shadow:0 4px 0 rgba(91,58,41,.35);margin:8px 4px 0;text-decoration:none}
   .btn.ghost{background:#fff;font-size:14px;padding:6px 18px}
@@ -137,7 +142,7 @@
   .results b{font-size:19px}
   .reward{font-weight:700;color:#c27a00}
   .lvls{display:flex;flex-direction:column;gap:12px;align-items:stretch;margin:10px auto 0;max-width:360px}
-  .btn.lvl{display:flex;flex-direction:column;align-items:center;margin:0;padding:8px 18px;line-height:1.2}
+  .btn.lvl{display:flex;flex-direction:column;align-items:center;margin:0;padding:10px 18px;line-height:1.2;font-size:24px}
   .btn.lvl small{font-size:12px;font-weight:600;color:var(--sb-muted)}
   .lvlcard{display:flex;flex-direction:column;gap:4px}
   .board{list-style:none;margin:0;padding:6px 8px;background:#fff;border:2px solid var(--sb-line);border-radius:12px;font-size:13px;text-align:left}
@@ -224,7 +229,6 @@
 </header>
 <div>
   <h1>🪐 逃離土星</h1>
-  <p>有人從背後追上來！選一關，撿金幣衝到終點。</p>
   <p class="who" id="who">讀取角色中…</p>
   <form id="authBox" hidden autocomplete="on">
     <div class="authTabs"><button type="button" id="tabLogin" class="on">登入</button><button type="button" id="tabReg">註冊新帳號</button></div>
@@ -234,11 +238,7 @@
     <button class="btn" id="aGo" type="submit">登入開跑</button>
     <p class="authMsg" id="aMsg">要先登入才能跑。跑完的金幣會存進你的帳號。</p>
   </form>
-  <p class="keys">
-    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向鍵 移動 · <kbd>空白鍵</kbd> 跳（空中再按＝二段跳）<br>
-    <kbd>Shift</kbd> 衝刺（有體力限制）· <kbd>C</kbd> 按住蹲下（躲高的竹箭）· <kbd>F</kbd> 揮棒（可以把子彈打回去）<br>
-    手機：左邊搖桿移動，右邊按鈕跳、蹲、衝刺、揮棒；＋－ 拉近拉遠
-  </p>
+  <p class="keys"><kbd>WASD</kbd> 移動 <kbd>空白</kbd> 跳 <kbd>Shift</kbd> 衝 <kbd>C</kbd> 蹲 <kbd>F</kbd> 揮棒 <kbd>R</kbd> 重來</p>
   <div id="levelBtns" class="lvls"></div>
 </div></div>
 
@@ -256,7 +256,7 @@
   <p class="rank" id="rRank"></p>
   <div class="ach" id="rAch" hidden></div>
   <button class="btn" id="againBtn" type="button">再跑一次</button>
-  <button class="btn ghost" id="menuBtn" type="button">選別關</button>
+  <button class="btn ghost" id="menuBtn" type="button">🏠 回封面</button>
 </div></div>
 
 <div id="touch">
@@ -874,7 +874,7 @@ const LEVEL2 = {
   gate: { m: 404, x0: -6, x1: 6, switchM: 386, switchX: 38.5, open: 4.0, wallBarrier: 360 },   // ~51 m back: run 4.7 s ✗, sprint 3.5 s ✓
   coinPoints: L2.coins,
 };
-const LEVELS = [LEVEL1, LEVEL2];
+const LEVELS = [LEVEL1];   // 逃離土星 = 家庭聚會 only for now (LEVEL2 kept for later)
 let L = LEVEL1;
 
 // Server: same rule as the island — localhost talks to the local dev server,
@@ -1500,7 +1500,7 @@ function renderLevelButtons(){
     const card = document.createElement('div'); card.className = 'lvlcard';
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn lvl';
     const best = bestTime(lv);
-    b.innerHTML = `${lv.name}<small>${best ? '我的最佳 ' + best + ' 秒' : '還沒跑過'}</small>`;
+    b.innerHTML = `▶ 開始跑<small>${best ? '我的最佳 ' + best + ' 秒' : lv.short}</small>`;
     b.onclick = () => startRun(lv);
     card.appendChild(b);
     card.insertAdjacentHTML('beforeend', boardHtml(boards[lv.id], myName));
