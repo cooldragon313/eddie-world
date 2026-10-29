@@ -57,11 +57,14 @@ const glueSort = (a, b) => b.mood - a.mood || a.hits - b.hits;
 // 土星之家 (index.html): each account's home lives here, and so do the PRICES —
 // the client only shows them. Keep in sync with home/home.src.html (FURN, FLOORS, WALLS, LEVELS).
 const HOME_FURN = { sofa: [120, 2, 1], bed: [150, 2, 1], desk: [100, 2, 1], tv: [180, 2, 1], shelf: [90, 1, 1], table: [60, 1, 1],
-                    chair: [30, 1, 1], rug: [50, 2, 2], plant: [25, 1, 1], lamp: [40, 1, 1], saturn: [70, 1, 1] };   // [price, w, d]
+                    chair: [30, 1, 1], rug: [50, 2, 2], plant: [25, 1, 1], lamp: [40, 1, 1], saturn: [70, 1, 1], toyshelf: [300, 2, 1] };   // [price, w, d]
 const HOME_FLOORS = { wood: 0, tile: 80, mint: 80, check: 120 };
 const HOME_WALLS = { cream: 0, sky: 60, pink: 60, stars: 150 };
 const HOME_LEVELS = { 1: { size: 8 }, 2: { size: 10, price: 600 } };   // next: 3 = 艾迪的房間 (two rooms)
 const HOME_GIFT = 777;               // once per account, the first time the home opens
+// 101 跑酷 (tower.html): floors 1–10 pay 1 each, 11–20 pay 2 … 91–100 pay 10 (= 550), the top pays 460 → a full climb = 1010
+const TOWER_FLOORS = 101, TOWER_TOP_BONUS = 460, TOWER_MIN_SECS_PER_FLOOR = 1.0;
+const towerCoins = (from, to) => { let c = 0; for (let f = from + 1; f <= to; f++) c += f >= TOWER_FLOORS ? TOWER_TOP_BONUS : Math.ceil(f / 10); return c; };
 function newHome(){
   return { level: 1, own: { sofa: 1, table: 1, chair: 2, plant: 1 }, floors: ['wood'], walls: ['cream'], floor: 'wood', wall: 'cream', name: '',
            placed: [{ uid: 1, id: 'sofa', x: 1, z: 1, rot: 0 }, { uid: 2, id: 'table', x: 3, z: 3, rot: 0 }, { uid: 3, id: 'chair', x: 4, z: 3, rot: 3 }, { uid: 4, id: 'plant', x: 0, z: 0, rot: 0 }] };
@@ -468,6 +471,28 @@ export default class WorldServer {
       st.lastSeenAt = now;
       await this.room.storage.put('user:' + userId, user);
       return jsonResponse({ ok: true });
+    }
+
+    // POST /tower_reward — 101 跑酷: coins for the floors climbed this run ({from, to, secs}); see towerCoins
+    if (last === 'tower_reward' && req.method === 'POST'){
+      const auth = req.headers.get('authorization') || '';
+      const userId = await verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : '', secret);
+      if (!userId) return jsonResponse({ error:'bad_token' }, 401);
+      let body; try { body = await req.json(); } catch(e){ return jsonResponse({ error:'bad_json' }, 400); }
+      const user = await this.room.storage.get('user:' + userId);
+      if (!user) return jsonResponse({ error:'no_user' }, 404);
+      const from = Math.floor(Number(body.from)), to = Math.floor(Number(body.to)), secs = Number(body.secs) || 0;
+      if (!(from >= 0 && to > from && to <= TOWER_FLOORS)) return jsonResponse({ error:'bad_floor' }, 400);
+      if (secs < (to - from) * TOWER_MIN_SECS_PER_FLOOR) return jsonResponse({ error:'too_fast', message:'爬太快了，金幣沒算' }, 400);
+      const coins = towerCoins(from, to);
+      user.profile = user.profile || { custom: null, progress: null };
+      const progress = user.profile.progress || (user.profile.progress = {});
+      progress.money = (progress.money || 0) + coins;
+      const tw = user.tower || (user.tower = { best: 0, climbs: 0 });
+      tw.best = Math.max(tw.best || 0, to); if (to === TOWER_FLOORS) tw.climbs = (tw.climbs || 0) + 1;
+      await this.room.storage.put('user:' + userId, user);
+      await this.logActivity(user, 'tower', { from, to });
+      return jsonResponse({ ok: true, coins, money: progress.money, best: tw.best });
     }
 
     // ---------- 土星之家 ----------

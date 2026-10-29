@@ -170,3 +170,10 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 程式裡寫死的網址都改 eddie-world；海嘯島的逃離土星按鈕改用相對路徑 race.html（不再連 saturnfamily）
 - **saturnfamily 不再需要每次複製**；之後舊網址只放跳轉頁
 - 排行榜（/glue_score、全成就👑）在分支上，要先 `cd cloudflare && npx wrangler deploy` 才能上架
+
+## 2026-10-29 — 土星之家擴建 E1+E2（✅ 已上架 eddie-world main 23537d3；伺服器已 deploy）
+- 家＋錢接上帳號：`GET /home`（第一次送 777 一次）、`POST /home_buy`（furn/floor/wall/expand，價格在 server.js `HOME_FURN/HOME_FLOORS/HOME_WALLS/HOME_LEVELS`）、`POST /home_save`（只收擺設，伺服器檢查有沒有買、有沒有超出房間）
+- ⚠️ 改家具／地板／壁紙價格或新增家具：**home.src.html 和 server.js 兩邊都要改**，再 wrangler deploy
+- 擴建 Lv2 大客廳 10×10（$600），Lv3–5 顯示「施工規劃中」；施工動畫＝圍籬＋鎚子＋敲打聲＋彩帶
+- 試玩版（claude.ai 預覽）仍是本機 777 測試屋；正式網址沒登入不能買
+- 下一個：101 跑酷（docs/PLAN-101跑酷.md，艾迪提案）
