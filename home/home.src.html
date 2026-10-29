@@ -394,7 +394,7 @@ function nudgeOutOfFurniture(){
 function syncSave(){ save.placed = [...placedObjs.values()].map(o => o.data); persist(); }
 
 // ---------- me ----------
-let me = buildAvatar(DEFAULT_CUSTOM);
+let me = buildEddieAvatar(DEFAULT_CUSTOM, { bat: false });   // at home Eddie doesn't carry the bat
 const pos = new THREE.Vector3(cellCenter(4, 5).x, 0, cellCenter(4, 5).z);
 me.group.position.copy(pos); me.group.rotation.y = Math.PI * 0.85; scene.add(me.group);   // face the camera
 let target = null, walkPhase = 0;
