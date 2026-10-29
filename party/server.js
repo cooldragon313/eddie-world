@@ -61,9 +61,10 @@ const HOME_FURN = { sofa: [120, 2, 1], bed: [150, 2, 1], desk: [100, 2, 1], tv: 
 const HOME_FLOORS = { wood: 0, tile: 80, mint: 80, check: 120 };
 const HOME_WALLS = { cream: 0, sky: 60, pink: 60, stars: 150 };
 const HOME_LEVELS = { 1: { size: 8 }, 2: { size: 10, price: 600 } };   // next: 3 = 艾迪的房間 (two rooms)
-const HOME_GIFT = 777;
-// 101 跑酷 (tower.html): +10 per floor, no faster than ~1.2 s a floor
-const TOWER_FLOORS = 101, TOWER_COINS_PER_FLOOR = 10, TOWER_MIN_SECS_PER_FLOOR = 1.2;               // once per account, the first time the home opens
+const HOME_GIFT = 777;               // once per account, the first time the home opens
+// 101 跑酷 (tower.html): floors 1–10 pay 1 each, 11–20 pay 2 … 91–100 pay 10 (= 550), the top pays 460 → a full climb = 1010
+const TOWER_FLOORS = 101, TOWER_TOP_BONUS = 460, TOWER_MIN_SECS_PER_FLOOR = 1.0;
+const towerCoins = (from, to) => { let c = 0; for (let f = from + 1; f <= to; f++) c += f >= TOWER_FLOORS ? TOWER_TOP_BONUS : Math.ceil(f / 10); return c; };
 function newHome(){
   return { level: 1, own: { sofa: 1, table: 1, chair: 2, plant: 1 }, floors: ['wood'], walls: ['cream'], floor: 'wood', wall: 'cream', name: '',
            placed: [{ uid: 1, id: 'sofa', x: 1, z: 1, rot: 0 }, { uid: 2, id: 'table', x: 3, z: 3, rot: 0 }, { uid: 3, id: 'chair', x: 4, z: 3, rot: 3 }, { uid: 4, id: 'plant', x: 0, z: 0, rot: 0 }] };
@@ -472,7 +473,7 @@ export default class WorldServer {
       return jsonResponse({ ok: true });
     }
 
-    // POST /tower_reward — 101 跑酷: +10 coins per new floor climbed this run ({from, to, secs})
+    // POST /tower_reward — 101 跑酷: coins for the floors climbed this run ({from, to, secs}); see towerCoins
     if (last === 'tower_reward' && req.method === 'POST'){
       const auth = req.headers.get('authorization') || '';
       const userId = await verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : '', secret);
@@ -483,7 +484,7 @@ export default class WorldServer {
       const from = Math.floor(Number(body.from)), to = Math.floor(Number(body.to)), secs = Number(body.secs) || 0;
       if (!(from >= 0 && to > from && to <= TOWER_FLOORS)) return jsonResponse({ error:'bad_floor' }, 400);
       if (secs < (to - from) * TOWER_MIN_SECS_PER_FLOOR) return jsonResponse({ error:'too_fast', message:'爬太快了，金幣沒算' }, 400);
-      const coins = (to - from) * TOWER_COINS_PER_FLOOR;
+      const coins = towerCoins(from, to);
       user.profile = user.profile || { custom: null, progress: null };
       const progress = user.profile.progress || (user.profile.progress = {});
       progress.money = (progress.money || 0) + coins;
