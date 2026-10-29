@@ -154,7 +154,7 @@
       display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 rgba(91,58,41,.35);touch-action:none}
   .tb.on{transform:translateY(3px);box-shadow:0 1px 0 rgba(91,58,41,.35)}
   .tb.mini{width:40px;height:40px;font-size:18px}
-  #restartBtn{position:fixed;z-index:6;left:calc(12px + env(safe-area-inset-left,0px));top:calc(52px + env(safe-area-inset-top,0px));
+  #restartBtn{pointer-events:auto;margin-top:2px;
     background:rgba(255,248,236,.94);border:2px solid var(--sb-ink);border-radius:999px;padding:4px 14px;font:700 14px/1.2 var(--sb-font);color:var(--sb-ink);
     box-shadow:0 3px 0 rgba(91,58,41,.25);cursor:pointer;touch-action:manipulation}
   #restartBtn:active{transform:translateY(2px)}
@@ -182,6 +182,7 @@
   <span class="chip">⏱ <b id="hTime">0.0</b> 秒</span>
   <span class="chip">📍 <b id="hDist">0</b> / <span id="hFinish">530</span> m</span>
   <span class="chip">🪙 <b id="hCoins">0</b></span>
+  <button id="restartBtn" type="button" hidden>🔄 重來</button>
 </div>
 <div class="hud tr">
   <span class="lbl" id="chaserLbl">刺牆距離</span>
@@ -196,7 +197,6 @@
 <div id="bubbles"></div>
 <div id="hint" hidden></div>
 <div id="impact"></div><div id="impactFlash"></div>
-<button id="restartBtn" type="button" hidden>🔄 重來</button>
 <div id="lineHint" hidden>LINE 裡不能全螢幕：點右上角 ⋯ 選「用預設瀏覽器開啟」<button type="button" id="lineHintX">知道了</button></div>
 <div class="big" id="count" hidden></div>
 
@@ -222,7 +222,7 @@
     <input id="aDisp" name="nickname" placeholder="遊戲裡顯示的名字（1-16 字）" maxlength="16" hidden>
     <input id="aPass" name="password" type="password" placeholder="密碼（至少 6 字）" autocomplete="current-password" required>
     <button class="btn" id="aGo" type="submit">登入開跑</button>
-    <p class="authMsg" id="aMsg">要先登入才能跑。帳號跟海嘯島共用，金幣、造型都通用。</p>
+    <p class="authMsg" id="aMsg">要先登入才能跑。跑完的金幣會存進你的帳號。</p>
   </form>
   <p class="keys">
     <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向鍵 移動 · <kbd>空白鍵</kbd> 跳（空中再按＝二段跳）<br>
@@ -230,7 +230,6 @@
     手機：左邊搖桿移動，右邊按鈕跳、蹲、衝刺、揮棒；＋－ 拉近拉遠
   </p>
   <div id="levelBtns" class="lvls"></div>
-  <br><a class="btn ghost" id="islandLink" href="island.html">🏝 回海嘯島：商店、換造型</a>
 </div></div>
 
 <div class="card" id="endCard" hidden><div>
@@ -248,7 +247,6 @@
   <div class="ach" id="rAch" hidden></div>
   <button class="btn" id="againBtn" type="button">再跑一次</button>
   <button class="btn ghost" id="menuBtn" type="button">選別關</button>
-  <br><a class="btn ghost" id="islandLink2" href="island.html">🏝 回海嘯島花錢</a>
 </div></div>
 
 <div id="touch">
@@ -876,9 +874,6 @@ const ON_LIVE = /github\.io$/.test(location.hostname);
 const SERVER = ON_LOCAL ? 'http://localhost:1999' : ON_LIVE ? 'https://etfm.cooldragon313.workers.dev' : '';
 const API = SERVER ? SERVER + '/parties/main/global' : '';
 let authToken = ''; try { authToken = localStorage.getItem('etfm-token') || ''; } catch(e){}
-if (!(ON_LOCAL || ON_LIVE)) document.getElementById('islandLink').hidden = true;
-// The race lives on its own site (saturnfamily); the island stays on the old one
-if (ON_LIVE) for (const id of ['islandLink', 'islandLink2']) document.getElementById(id).href = 'https://cooldragon313.github.io/escapetsunamiformoney/island.html';
 
 // ---------- three.js ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -1577,7 +1572,7 @@ function finish(){
 async function claimReward(coins, time, misses){
   const el = $('rReward');
   if (!API){ el.textContent = `獎金 $${coins}（試玩版不存檔）`; return; }
-  if (!authToken){ el.textContent = `獎金 $${coins} — 先到海嘯島登入，下次跑完就會存進帳號`; return; }
+  if (!authToken){ el.textContent = `獎金 $${coins} — 先登入，下次跑完就會存進帳號`; return; }
   el.textContent = `獎金 $${coins} 存入中…`;
   try {
     const r = await fetch(API + '/race_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ coins, time, level: L.id, misses, device: DEVICE }) });
@@ -1598,7 +1593,7 @@ function setAuthMode(m){
   $('aDisp').hidden = m !== 'reg'; $('aDisp').required = m === 'reg';
   $('aPass').autocomplete = m === 'reg' ? 'new-password' : 'current-password';
   $('aGo').textContent = m === 'reg' ? '註冊並開跑' : '登入開跑';
-  authMsg(m === 'reg' ? '帳號註冊後不能改，顯示名稱是大家在排行榜看到的。' : '要先登入才能跑。帳號跟海嘯島共用，金幣、造型都通用。');
+  authMsg(m === 'reg' ? '帳號註冊後不能改，顯示名稱是大家在排行榜看到的。' : '要先登入才能跑。跑完的金幣會存進你的帳號。');
 }
 function authMsg(t, err){ const m = $('aMsg'); m.textContent = t; m.classList.toggle('err', !!err); }
 function showAuth(){
