@@ -3,7 +3,7 @@
 第三人稱 voxel 跑酷網頁遊戲，靈感來自 Roblox《Escape Tsunami For Brainrots!》。
 撿金幣、躲海嘯、回基地存款 / 升級 / 蓋房子 / 換造型，再衝更深。
 
-**直接玩**：https://cooldragon313.github.io/escapetsunamiformoney/
+**直接玩**：https://cooldragon313.github.io/eddie-world/
 
 純前端，瀏覽器打開就玩、手機 / 平板自動切觸控介面。多人世界，最多 100 人共用一個跑道。
 

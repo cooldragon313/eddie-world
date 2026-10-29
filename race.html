@@ -2436,9 +2436,9 @@ function startRun(level, easy){
   if (L.drunk) say(chaser, '你先跑我再追，追到我就對你嘿嘿嘿～', 4, { name: '酒鬼大叔', y: 4.6 });
 }
 $('againBtn').onclick = () => startRun(L, S.easy);
-// 🏠 back to 土星之家 (the hub is the front page of the main site; the race also lives on saturnfamily)
+// 🏠 back to 土星之家 (the hub is the front page of eddie-world)
 { const h = document.querySelectorAll('.homeLink'), live = /github\.io$/.test(location.hostname), local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-  h.forEach(a => { if (live) a.href = 'https://cooldragon313.github.io/escapetsunamiformoney/'; else if (!local) a.hidden = true; }); }
+  h.forEach(a => { if (live) a.href = 'https://cooldragon313.github.io/eddie-world/'; else if (!local) a.hidden = true; }); }
 
 $('soundBtn').textContent = sfx.on ? '🔊' : '🔇';
 $('soundBtn').addEventListener('click', e => { e.preventDefault(); $('soundBtn').blur(); $('soundBtn').textContent = sfx.toggle() ? '🔊' : '🔇'; });
