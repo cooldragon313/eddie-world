@@ -43,6 +43,9 @@
   <button class="btn" id="bWave">👋 揮手</button>
   <button class="btn" id="bRun">🏃 跑步</button>
   <button class="btn" id="bJump">⬆ 跳</button>
+  <button class="btn" id="bDance">🕺 勝利舞</button>
+  <button class="btn" id="bHit">💥 被打到</button>
+  <button class="btn" id="bFace">😄 笑</button>
   <button class="btn" id="bSpin">🔄 轉一圈</button>
   <button class="btn" id="bScarf" aria-pressed="true">🦧 猩猩圍巾</button>
   <button class="btn" id="bBag" aria-pressed="true">🎒 背包</button>
@@ -413,10 +416,12 @@ const buildEddie = (() => {
   function buildEddie(){
     const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
     const skin = LM(SKIN), hair = LM(HAIR), tee = LM(0xf7f6f0), shorts = LM(0x6e7046), sock = LM(0x2a2a2a), shoe = LM(0xf2f2ee), sole = LM(0xc9c9c2);
-    const HY = 2.25;
+    const HY = 2.25, NECK = 1.55;
+    const headG = new THREE.Group(); headG.position.y = NECK; body.add(headG);
+    const partH = (geo, mat, x, y, z, nl) => part(headG, geo, mat, x, y - NECK, z, nl);
     // head: round, a touch wider than tall
-    const head = part(body, S(0.86, 32, 22), skin, 0, HY, 0); head.scale.set(1.04, 0.98, 1);
-    for (const s of [-1, 1]){ const ear = part(body, S(0.19, 14, 10), skin, s * 0.9, HY - 0.04, 0.05); ear.scale.set(0.5, 1, 0.8); }
+    const head = partH(S(0.86, 32, 22), skin, 0, HY, 0); head.scale.set(1.04, 0.98, 1);
+    for (const s of [-1, 1]){ const ear = partH(S(0.19, 14, 10), skin, s * 0.9, HY - 0.04, 0.05); ear.scale.set(0.5, 1, 0.8); }
     // hair: one black shell hugging the head (no second layer = no hat brim);
     // short on the sides just by being skin-tight, length only from the tufts on top
     const shellGeo = new THREE.SphereGeometry(0.875, 40, 20, 0, Math.PI * 2, 0, Math.PI * 0.56);
@@ -433,7 +438,7 @@ const buildEddie = (() => {
       }
       shellGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
     }
-    const shell = part(body, shellGeo, LM(0xffffff, { vertexColors: true }), 0, HY + 0.0, 0.04); shell.rotation.x = 0.32; shell.scale.set(1.045, 0.99, 1.01);
+    const shell = partH(shellGeo, LM(0xffffff, { vertexColors: true }), 0, HY + 0.0, 0.04); shell.rotation.x = 0.32; shell.scale.set(1.045, 0.99, 1.01);
     const hairSpikes = [];
     const tufts = [];
     for (let row = 0; row < 3; row++){
@@ -446,25 +451,55 @@ const buildEddie = (() => {
       }
     }
     for (const [x, y, z, r, h, tilt] of tufts){
-      const pivot = new THREE.Group(); pivot.position.set(x, HY + y - 0.12, z); pivot.rotation.x = tilt; pivot.rotation.z = x * 0.75;
+      const pivot = new THREE.Group(); pivot.position.set(x, HY + y - 0.12 - NECK, z); pivot.rotation.x = tilt; pivot.rotation.z = x * 0.75;
       part(pivot, new THREE.ConeGeometry(r, h, 8), hair, 0, h / 2 - 0.06, 0, true);
-      body.add(pivot); hairSpikes.push(pivot);
+      headG.add(pivot); hairSpikes.push(pivot);
     }
     // face
     const ink = flat(0x22180f), white = flat(0xffffff);
+    const eyes = [], brows = [], glints = [];
     for (const s of [-1, 1]){
-      const brow = part(body, sbRoundBox(0.26, 0.07, 0.05, 0.03), ink, s * 0.3, HY + 0.24, -0.79, true); brow.rotation.z = s * -0.12;
-      const eye = part(body, S(0.12, 16, 12), ink, s * 0.29, HY + 0.02, -0.78, true); eye.scale.set(1, 1.05, 0.5);
-      part(body, S(0.04, 8, 6), white, s * 0.29 - 0.04, HY + 0.07, -0.84, true);
-      const cheek = part(body, S(0.11, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffb3a8, transparent: true, opacity: 0.8 }), s * 0.52, HY - 0.15, -0.66, true);
+      const brow = partH(sbRoundBox(0.26, 0.07, 0.05, 0.03), ink, s * 0.3, HY + 0.24, -0.79, true); brow.rotation.z = s * -0.12;
+      const eye = partH(S(0.12, 16, 12), ink, s * 0.29, HY + 0.02, -0.78, true); eye.scale.set(1, 1.05, 0.5);
+      const gl = partH(S(0.04, 8, 6), white, s * 0.29 - 0.04, HY + 0.07, -0.84, true);
+      eyes.push(eye); brows.push(brow); glints.push(gl);
+      const cheek = partH(S(0.11, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffb3a8, transparent: true, opacity: 0.8 }), s * 0.52, HY - 0.15, -0.66, true);
       cheek.scale.set(1, 0.55, 0.35);
     }
-    part(body, S(0.06, 10, 8), LM(0xe8b48f), 0, HY - 0.1, -0.85, true);                 // nose
-    const mouth = part(body, new THREE.CircleGeometry(0.17, 20, Math.PI, Math.PI), flat(0x7a2a2a), 0, HY - 0.26, -0.845, true);   // big open smile
+    partH(S(0.06, 10, 8), LM(0xe8b48f), 0, HY - 0.1, -0.85, true);                 // nose
+    const mouth = partH(new THREE.CircleGeometry(0.17, 20, Math.PI, Math.PI), flat(0x7a2a2a), 0, HY - 0.26, -0.845, true);   // big open smile
     mouth.scale.set(1.15, 0.95, 1); mouth.rotation.y = Math.PI;
-    part(body, new THREE.PlaneGeometry(0.3, 0.06), white, 0, HY - 0.275, -0.85, true).rotation.y = Math.PI;    // top teeth
-    const tongue = part(body, new THREE.CircleGeometry(0.07, 14, Math.PI, Math.PI), flat(0xf08a8a), 0, HY - 0.38, -0.849, true);
+    const teeth = partH(new THREE.PlaneGeometry(0.3, 0.06), white, 0, HY - 0.275, -0.85, true); teeth.rotation.y = Math.PI;    // top teeth
+    const tongue = partH(new THREE.CircleGeometry(0.07, 14, Math.PI, Math.PI), flat(0xf08a8a), 0, HY - 0.38, -0.849, true);
     tongue.scale.set(1.3, 0.8, 1); tongue.rotation.y = Math.PI;
+    // other expressions, hidden until used
+    const mouthO = partH(new THREE.CircleGeometry(0.1, 18), flat(0x7a2a2a), 0, HY - 0.3, -0.845, true); mouthO.rotation.y = Math.PI; mouthO.scale.set(0.9, 1.25, 1);
+    const mouthSad = partH(new THREE.TorusGeometry(0.11, 0.025, 6, 14, Math.PI), flat(0x7a2a2a), 0, HY - 0.33, -0.84, true);
+    const mouthSmug = partH(new THREE.TorusGeometry(0.1, 0.025, 6, 14, Math.PI * 0.7), flat(0x7a2a2a), 0.06, HY - 0.24, -0.845, true); mouthSmug.rotation.z = Math.PI * 1.15;
+    const happyEyes = [-1, 1].map(s => { const m = partH(new THREE.TorusGeometry(0.09, 0.028, 6, 14, Math.PI), ink, s * 0.29, HY - 0.0, -0.8, true); return m; });
+    const tears = [-1, 1].map(s => { const m = partH(S(0.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0x8fd0f0 }), s * 0.34, HY - 0.1, -0.8, true); m.scale.set(0.8, 1.4, 0.5); return m; });
+    for (const m of [mouthO, mouthSad, mouthSmug, ...happyEyes, ...tears]) m.visible = false;
+    const smileSet = [mouth, teeth, tongue];
+    let expr = 'smile', blinkK = 0;
+    function applyEyes(){
+      const happy = expr === 'laugh', smug = expr === 'smug', surprised = expr === 'surprised';
+      eyes.forEach(e => { e.visible = !happy; e.scale.set(surprised ? 1.15 : 1, (smug ? 0.5 : surprised ? 1.3 : 1.05) * (1 - blinkK * 0.92), 0.5); });
+      glints.forEach(gl => gl.visible = !happy && blinkK < 0.5);
+      happyEyes.forEach(m => m.visible = happy);
+      brows.forEach((b, i) => { const s = i ? 1 : -1; b.position.y = HY + 0.24 - NECK + (surprised ? 0.07 : smug ? (s > 0 ? 0.05 : 0) : expr === 'sad' ? -0.02 : 0); b.rotation.z = s * (expr === 'sad' ? 0.25 : -0.12); });
+    }
+    const faceCtl = {
+      set(name){
+        expr = name;
+        smileSet.forEach(m => m.visible = name === 'smile' || name === 'laugh');
+        mouthO.visible = name === 'surprised'; mouthSad.visible = name === 'sad'; mouthSmug.visible = name === 'smug';
+        tears.forEach(m => m.visible = name === 'sad');
+        applyEyes();
+      },
+      blink(k){ blinkK = k; applyEyes(); },
+      get name(){ return expr; },
+      tears,
+    };
     // body: white tee
     const torso = part(body, S(0.6, 24, 16), tee, 0, 1.0, 0); torso.scale.set(1.0, 1.08, 0.88);
     part(body, new THREE.CylinderGeometry(0.2, 0.24, 0.12, 16), tee, 0, 1.6, 0);          // collar
@@ -474,19 +509,24 @@ const buildEddie = (() => {
     const arms = [-1, 1].map(s => {
       const a = new THREE.Group(); a.position.set(s * 0.6, 1.34, 0); body.add(a);
       part(a, S(0.22, 14, 10), tee, 0, -0.06, 0);
-      const arm = part(a, S(0.15, 14, 10), skin, 0, -0.34, 0); arm.scale.set(1, 1.9, 1);
-      part(a, S(0.13, 12, 10), skin, 0, -0.62, 0);   // hand
-      if (s < 0){ const band = part(a, new THREE.TorusGeometry(0.13, 0.04, 8, 16), LM(0xffffff), 0, -0.5, 0); band.rotation.x = Math.PI / 2; }
+      const upper = part(a, S(0.15, 14, 10), skin, 0, -0.2, 0); upper.scale.set(1, 1.15, 1);
+      const elbow = new THREE.Group(); elbow.position.y = -0.34; a.add(elbow);
+      const fore = part(elbow, S(0.14, 14, 10), skin, 0, -0.13, 0); fore.scale.set(1, 1.15, 1);
+      part(elbow, S(0.13, 12, 10), skin, 0, -0.29, 0);   // hand
+      if (s < 0){ const band = part(elbow, new THREE.TorusGeometry(0.13, 0.04, 8, 16), LM(0xffffff), 0, -0.17, 0); band.rotation.x = Math.PI / 2; }
+      a.userData.elbow = elbow;
       return a;
     });
     // legs: shorts → shin → black sock → white sneaker
     const legs = [-1, 1].map(s => {
       const l = new THREE.Group(); l.position.set(s * 0.25, 0.66, 0); body.add(l);
       const thigh = part(l, S(0.24, 14, 10), shorts, 0, -0.1, 0); thigh.scale.set(1, 1.15, 1);
-      const shin = part(l, S(0.15, 14, 10), skin, 0, -0.3, 0); shin.scale.set(1, 1.2, 1);
-      part(l, new THREE.CylinderGeometry(0.14, 0.14, 0.1, 14), sock, 0, -0.46, 0);
-      const sh = part(l, S(0.22, 16, 10), shoe, 0, -0.55, -0.07); sh.scale.set(1.1, 0.6, 1.4);
-      const so = part(l, new THREE.CylinderGeometry(0.23, 0.23, 0.05, 18), sole, 0, -0.63, -0.07); so.scale.set(1.05, 1, 1.35);
+      const knee = new THREE.Group(); knee.position.y = -0.24; l.add(knee);
+      const shin = part(knee, S(0.15, 14, 10), skin, 0, -0.06, 0); shin.scale.set(1, 1.2, 1);
+      part(knee, new THREE.CylinderGeometry(0.14, 0.14, 0.1, 14), sock, 0, -0.22, 0);
+      const sh = part(knee, S(0.22, 16, 10), shoe, 0, -0.31, -0.07); sh.scale.set(1.1, 0.6, 1.4);
+      const so = part(knee, new THREE.CylinderGeometry(0.23, 0.23, 0.05, 18), sole, 0, -0.39, -0.07); so.scale.set(1.05, 1, 1.35);
+      l.userData.knee = knee;
       return l;
     });
     // galaxy backpack
@@ -514,7 +554,7 @@ const buildEddie = (() => {
     scarf.position.set(0, 1.58, -0.02); body.add(scarf);
 
     sbOutline(g, 0.035);
-    return { g, body, arms, legs, scarf, bag, hairSpikes };
+    return { g, body, arms, legs, scarf, bag, hairSpikes, head: headG, torso, face: faceCtl };
   }
 
   return buildEddie;
@@ -530,7 +570,7 @@ function buildEddieAvatar(custom, opts){
   if (cos.accessory) e.scarf.visible = false;              // a necklace/cape replaces the monkey scarf
   if (opts.bat !== false){
     const bat = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.08, 0.95, 12), new THREE.MeshLambertMaterial({ color: 0xc08a4a }));
-    bat.position.set(0, -0.95, -0.05); bat.rotation.x = 0.15; e.arms[1].add(bat);
+    bat.position.set(0, -0.61, -0.05); bat.rotation.x = 0.15; (e.arms[1].userData.elbow || e.arms[1]).add(bat);
   }
   attachCosmetics(e.body, cos);
   sbOutline(e.g, 0.035);
@@ -669,12 +709,20 @@ const S = (r, w, h) => new THREE.SphereGeometry(r, w || 24, h || 16);
 // Eddie comes from the shared AVATAR block (island.html)
 const ed = buildEddie(); scene.add(ed.g);
 
-// ---------- poses ----------
-let yaw = 0, spin = 0, act = null, actT = 0, running = false, jumpT = -1, t = 0;
+// ---------- poses (v2 rig: head, elbows, knees, face) ----------
+// Everything is procedural: a few sine waves per move plus eased one-shots.
+let yaw = 0, spin = 0, t = 0;
+let running = false, act = null, actT = 0, jumpT = -1;
+let blinkAt = 2, blinkT = -1, lookAt = 3, lookT = -1, lookDir = 0;
+let exprIdx = 0;
+const EXPRS = [['smile', '😄 笑'], ['laugh', '😆 大笑'], ['surprised', '😮 嚇到'], ['sad', '😢 哭哭'], ['smug', '😏 得意']];
 const btn = (id, on) => $(id).addEventListener('click', on);
 btn('bWave', () => { act = 'wave'; actT = 0; });
 btn('bRun', () => { running = !running; $('bRun').setAttribute('aria-pressed', String(running)); });
 btn('bJump', () => { if (jumpT < 0) jumpT = 0; });
+btn('bDance', () => { act = 'dance'; actT = 0; ed.face.set('laugh'); });
+btn('bHit', () => { act = 'hit'; actT = 0; ed.face.set('surprised'); });
+btn('bFace', () => { exprIdx = (exprIdx + 1) % EXPRS.length; ed.face.set(EXPRS[exprIdx][0]); $('bFace').textContent = EXPRS[exprIdx][1]; });
 btn('bSpin', () => { spin = Math.PI * 2; });
 btn('bScarf', () => { ed.scarf.visible = !ed.scarf.visible; $('bScarf').setAttribute('aria-pressed', String(ed.scarf.visible)); });
 btn('bBag', () => { ed.bag.visible = !ed.bag.visible; $('bBag').setAttribute('aria-pressed', String(ed.bag.visible)); });
@@ -683,31 +731,105 @@ renderer.domElement.addEventListener('pointerdown', e => { drag = e.clientX; });
 addEventListener('pointermove', e => { if (drag === null) return; yaw += (e.clientX - drag) * 0.01; drag = e.clientX; });
 addEventListener('pointerup', () => { drag = null; });
 
+const ease = k => k * k * (3 - 2 * k);
+const [armL, armR] = ed.arms, [legL, legR] = ed.legs;
+const elbowL = armL.userData.elbow, elbowR = armR.userData.elbow, kneeL = legL.userData.knee, kneeR = legR.userData.knee;
+function reset(){
+  for (const o of [armL, armR, legL, legR, elbowL, elbowR, kneeL, kneeR, ed.head, ed.body]) o.rotation.set(0, 0, 0);
+  ed.body.position.set(0, 0, 0); ed.body.scale.set(1, 1, 1); ed.torso.scale.set(1, 1.08, 0.88);
+}
 let last = 0;
 function frame(now){
   requestAnimationFrame(frame);
   const dt = last ? Math.min(0.05, Math.max(0, (now - last) / 1000)) : 0.016; last = now; t += dt;
   if (spin > 0){ const s = Math.min(spin, dt * 6); spin -= s; yaw += s; }
-  ed.g.rotation.y = yaw;     // model faces -z, the camera sits on -z
-  // limbs
-  for (const l of [...ed.arms, ...ed.legs]){ l.rotation.x = 0; l.rotation.z = 0; }
-  let bob = Math.sin(t * 2.2) * 0.03;
+  ed.g.rotation.y = yaw;
+  reset();
+
+  // idle: breathing, slight sway, relaxed bent elbows
+  const breath = Math.sin(t * 2.1);
+  ed.torso.scale.set(1 + breath * 0.012, 1.08 + breath * 0.02, 0.88 + breath * 0.01);
+  armL.rotation.z = -0.14 - breath * 0.02; armR.rotation.z = 0.14 + breath * 0.02;
+  elbowL.rotation.x = -0.25; elbowR.rotation.x = -0.25;
+  ed.body.rotation.z = Math.sin(t * 0.9) * 0.02;
+
+  // blink every few seconds
+  blinkAt -= dt;
+  if (blinkAt <= 0 && blinkT < 0){ blinkT = 0; blinkAt = 2.5 + Math.random() * 3; }
+  if (blinkT >= 0){ blinkT += dt; ed.face.blink(Math.sin(Math.min(1, blinkT / 0.16) * Math.PI)); if (blinkT > 0.16){ blinkT = -1; ed.face.blink(0); } }
+  // look around now and then
+  lookAt -= dt;
+  if (lookAt <= 0 && lookT < 0 && !running && !act){ lookT = 0; lookDir = Math.random() < 0.5 ? -1 : 1; lookAt = 4 + Math.random() * 4; }
+  if (lookT >= 0){ lookT += dt; const k = lookT < 0.4 ? ease(lookT / 0.4) : lookT < 1.4 ? 1 : 1 - ease(Math.min(1, (lookT - 1.4) / 0.4)); ed.head.rotation.y = lookDir * 0.55 * k; ed.head.rotation.z = -lookDir * 0.08 * k; if (lookT > 1.8) lookT = -1; }
+
   if (running){
-    const p = t * 11, sw = Math.sin(p) * 0.8;
-    ed.legs[0].rotation.x = sw; ed.legs[1].rotation.x = -sw; ed.arms[0].rotation.x = -sw * 0.8; ed.arms[1].rotation.x = sw * 0.8;
-    bob = Math.abs(Math.sin(p)) * 0.12;
+    const p = t * 10, sw = Math.sin(p);
+    legL.rotation.x = sw * 0.9; legR.rotation.x = -sw * 0.9;
+    kneeL.rotation.x = Math.max(0, -Math.cos(p)) * 1.3 + 0.1;        // the leg swinging back folds at the knee
+    kneeR.rotation.x = Math.max(0, Math.cos(p)) * 1.3 + 0.1;
+    armL.rotation.x = -sw * 0.9; armR.rotation.x = sw * 0.9;
+    elbowL.rotation.x = -1.2; elbowR.rotation.x = -1.2;                 // pumping, bent arms
+    ed.body.rotation.x = -0.18;                                         // lean into the run
+    ed.body.rotation.y = sw * 0.12;                                     // shoulders twist against the hips
+    ed.head.rotation.x = 0.12; ed.head.rotation.y = -sw * 0.06;          // head stays steady-ish
+    ed.body.position.y = Math.abs(Math.cos(p)) * 0.14;
+    for (const [i, s] of ed.hairSpikes.entries()) s.rotation.y = Math.sin(t * 9 + i) * 0.1;
   }
+
   if (act === 'wave'){
     actT += dt;
-    ed.arms[1].rotation.z = 2.6; ed.arms[1].rotation.x = -0.2 + Math.sin(actT * 14) * 0.35;
-    if (actT > 1.6) act = null;
-  } else {
-    ed.arms[0].rotation.z = -0.12; ed.arms[1].rotation.z = 0.12;
+    const k = ease(Math.min(1, actT / 0.25)) * (actT > 1.7 ? 1 - ease(Math.min(1, (actT - 1.7) / 0.25)) : 1);
+    armR.rotation.z = 0.14 + 2.5 * k; armR.rotation.x = -0.25 * k;
+    elbowR.rotation.z = Math.sin(actT * 13) * 0.55 * k;                  // the forearm waves from the elbow
+    elbowR.rotation.x = -0.5 * k;
+    ed.head.rotation.z = -0.12 * k; ed.body.rotation.z = -0.05 * k;
+    if (actT > 1.95) act = null;
+  } else if (act === 'dance'){
+    actT += dt;
+    const b = Math.sin(actT * 9), up = Math.abs(Math.sin(actT * 4.5));
+    armL.rotation.z = -2.4 - b * 0.3; armR.rotation.z = 2.4 - b * 0.3;   // hands up, pumping
+    elbowL.rotation.x = -0.6; elbowR.rotation.x = -0.6;
+    ed.body.rotation.z = b * 0.15; ed.head.rotation.z = -b * 0.18;
+    legL.rotation.z = -0.15; legR.rotation.z = 0.15;
+    kneeL.rotation.x = up * 0.6; kneeR.rotation.x = (1 - up) * 0.6;
+    ed.body.position.y = up * 0.25;
+    if (actT > 2.6){ act = null; ed.face.set(EXPRS[exprIdx][0]); }
+  } else if (act === 'hit'){
+    actT += dt;
+    const k = actT < 0.12 ? ease(actT / 0.12) : 1 - ease(Math.min(1, (actT - 0.12) / 0.8));
+    ed.body.rotation.x = 0.35 * k;                                     // knocked back
+    ed.head.rotation.x = -0.3 * k;
+    armL.rotation.z = -1.3 * k; armR.rotation.z = 1.3 * k; armL.rotation.x = armR.rotation.x = -0.6 * k;
+    elbowL.rotation.x = elbowR.rotation.x = -0.9 * k;
+    legL.rotation.x = -0.3 * k; kneeL.rotation.x = 0.6 * k;
+    ed.body.position.z = 0.3 * k;
+    if (actT > 1.0){ act = null; ed.face.set(EXPRS[exprIdx][0]); }
   }
-  let jy = 0;
-  if (jumpT >= 0){ jumpT += dt; jy = Math.max(0, 6 * jumpT - 13 * jumpT * jumpT); if (jumpT > 0.5){ jumpT = -1; } ed.arms[0].rotation.z = -1; ed.arms[1].rotation.z = 1; }
-  ed.body.position.y = bob + jy;
-  for (const [i, s] of ed.hairSpikes.entries()) s.rotation.y = Math.sin(t * 3 + i) * (running ? 0.08 : 0.02);
+
+  // jump: crouch (anticipation) → stretch in the air → squash on landing
+  if (jumpT >= 0){
+    jumpT += dt;
+    const C = 0.18, AIR = 0.55, L = 0.2;
+    if (jumpT < C){
+      const k = ease(jumpT / C);
+      kneeL.rotation.x = kneeR.rotation.x = 1.0 * k; legL.rotation.x = legR.rotation.x = -0.5 * k;
+      ed.body.position.y = -0.22 * k; ed.body.scale.set(1 + 0.08 * k, 1 - 0.1 * k, 1 + 0.08 * k);
+      armL.rotation.x = armR.rotation.x = 0.6 * k;
+    } else if (jumpT < C + AIR){
+      const u = (jumpT - C) / AIR, y = 4 * u * (1 - u) * 1.6;
+      ed.body.position.y = y;
+      const st = 1 + 0.08 * (1 - u);
+      ed.body.scale.set(1 / Math.sqrt(st), st, 1 / Math.sqrt(st));
+      armL.rotation.z = -2.2; armR.rotation.z = 2.2; elbowL.rotation.x = elbowR.rotation.x = -0.4;
+      kneeL.rotation.x = 0.9 * u; kneeR.rotation.x = 0.4 + 0.5 * u;     // tuck the legs
+      legL.rotation.x = -0.4 * u; legR.rotation.x = 0.2;
+    } else if (jumpT < C + AIR + L){
+      const k = 1 - ease((jumpT - C - AIR) / L);
+      ed.body.scale.set(1 + 0.12 * k, 1 - 0.14 * k, 1 + 0.12 * k);
+      ed.body.position.y = -0.18 * k; kneeL.rotation.x = kneeR.rotation.x = 0.8 * k;
+    } else jumpT = -1;
+  }
+
   const mobile = innerWidth < innerHeight;
   camera.position.set(0, 2.1, mobile ? -12 : -10.5);
   camera.lookAt(0, 1.6, 0);
