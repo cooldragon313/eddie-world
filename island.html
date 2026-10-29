@@ -665,7 +665,7 @@
     <button id="title-continue">開始冒險 →</button>
     <a id="title-race" href="index.html" style="display:block; margin: 10px auto 0; width: max-content; padding: 9px 22px;
        border-radius: 999px; border: 2.5px solid #5b3a29; background: #e6d4f2; color: #5b3a29; font-weight: 700;
-       text-decoration: none; box-shadow: 0 3px 0 rgba(91,58,41,0.3);">🦔 刺牆賽跑（新！）</a>
+       text-decoration: none; box-shadow: 0 3px 0 rgba(91,58,41,0.3);">🪐 逃離土星（新！）</a>
     <div id="title-account-info" style="color:#888; font-size:11px; margin-top:10px; letter-spacing:1px;"></div>
     <button id="title-switch" type="button"
             style="background: transparent; border: 1px dashed #555;
@@ -5354,7 +5354,7 @@ function mpHandleMessage(raw){
     // open: add them here too, so our next save doesn't write the old total back.
     state.money += Math.max(0, msg.coins | 0);
     updateHUD(); saveProgress();
-    toast(`🦔 刺牆賽跑獎金 +$${msg.coins}`);
+    toast(`🪐 逃離土星獎金 +$${msg.coins}`);
   } else if (msg.type === 'chat'){
     receiveChat({ id: msg.id, name: msg.name, text: msg.text });
   } else if (msg.type === 'scoreboard_update'){
