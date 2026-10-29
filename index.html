@@ -647,10 +647,11 @@ const L2 = { floors: [], movers: [], bars: [], hammers: [], coins: [] };
   const F = (m0, m1, x0, x1) => L2.floors.push([m0, m1, x0, x1]);
   // start pad
   F(-40, 22, -6, 6);
-  // ① 石柱跳跳 — square pillars, gaps grow; the 9 m ones need the double jump
-  const pillars = [[28,0],[35,2.5],[42,-1],[50,1.5],[58,-2],[67,0],[78,3],[89,-1],[97,2],[106,0]];
+  // ① 石柱跳跳 — square pillars zig-zagging; every gap is a single jump
+  // (Bernie: forced double jumps were a chore). The double jump is the safety net.
+  const pillars = [[28,0],[35,2.5],[42,-1],[50,1.5],[58,-2],[66,0],[74,3],[82,-1],[90,2],[98,0],[106,-1.5]];
   for (const [m, x] of pillars) F(m - 1.6, m + 1.6, x - 1.6, x + 1.6);
-  L2.coins.push([35,2.5],[58,-2],[78,3],[89,-1]);
+  L2.coins.push([35,2.5],[58,-2],[74,3],[90,2]);
   F(110, 124, -5, 5);                                   // landing pad (checkpoint)
   // ② 之字窄橋 — 3 m wide, switching sides
   F(124, 138, -6.5, -3.5); F(138, 141, -6.5, 6.5); F(141, 155, 3.5, 6.5); F(155, 158, -6.5, 6.5);
@@ -922,7 +923,7 @@ const S = { phase: 'menu', time: 0 };
 function reset(){
   Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, knockX: 0, slowUntil: 0, downUntil: 0,
     swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, cpX: 0, time: 0, caught: 0, pits: 0, shot: 0, hits: 0, rockNext: 0,
-    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null });
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false });
   for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
   for (const b of bullets) world.remove(b.mesh); bullets.length = 0;
   for (const c of coins){ c.taken = false; c.mesh.visible = true; }
@@ -1123,15 +1124,18 @@ function step(dt){
   S.x = Math.max(-L.clampX, Math.min(L.clampX, S.x));
   S.m = Math.max(-30, S.m);
   S.side = side;
-  // jump: hold = hop on landing; double jump needs a fresh press
+  // jump: hold = hop on landing. Double jump = a fresh press during a jump
+  // YOU started, while you're still at or above the height you jumped from -
+  // not after walking off an edge, being knocked into the air, or once you're
+  // already falling below the platform (Bernie: 跳起來再跳一次, no mid-fall saves).
   const fresh = keys.Space && !S.jumpHeld; S.jumpHeld = !!keys.Space;
   if (!down){
-    if (keys.Space && S.onGround){ S.vy = JUMP_V; S.onGround = false; }
-    else if (fresh && !S.onGround && !S.djUsed){ S.vy = DJ_V; S.djUsed = true; S.flipT = 0.0001; }
+    if (keys.Space && S.onGround){ S.vy = JUMP_V; S.onGround = false; S.jumped = true; }
+    else if (fresh && !S.onGround && S.jumped && !S.djUsed && S.y > -0.2){ S.vy = DJ_V; S.djUsed = true; S.flipT = 0.0001; }
   }
   S.vy -= GRAV * dt; S.y += S.vy * dt;
   const g = groundAt(S.m, S.x);
-  if (g && S.y <= 0 && S.y > -0.8){ S.y = 0; S.vy = 0; S.onGround = true; S.djUsed = false; S.onMover = g.mover || null; }
+  if (g && S.y <= 0 && S.y > -0.8){ S.y = 0; S.vy = 0; S.onGround = true; S.djUsed = false; S.jumped = false; S.onMover = g.mover || null; }
   else if (!g || S.y < 0){ S.onGround = false; if (!g) S.onMover = null; }
   if (S.y < -5){ S.pits++; respawn(L.scenery === 'sky' ? '掉下去了！回檢查點' : '掉坑了！回檢查點'); return; }
 
