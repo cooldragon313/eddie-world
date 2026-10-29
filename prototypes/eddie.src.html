@@ -120,7 +120,7 @@ function frame(now){
   const breath = Math.sin(t * 2.1);
   ed.torso.scale.set(1 + breath * 0.012, 1.08 + breath * 0.02, 0.88 + breath * 0.01);
   armL.rotation.z = -0.14 - breath * 0.02; armR.rotation.z = 0.14 + breath * 0.02;
-  elbowL.rotation.x = -0.25; elbowR.rotation.x = -0.25;
+  elbowL.rotation.x = -(-0.25); elbowR.rotation.x = -(-0.25);
   ed.body.rotation.z = Math.sin(t * 0.9) * 0.02;
 
   // blink every few seconds
@@ -135,10 +135,10 @@ function frame(now){
   if (running){
     const p = t * 10, sw = Math.sin(p);
     legL.rotation.x = sw * 0.9; legR.rotation.x = -sw * 0.9;
-    kneeL.rotation.x = Math.max(0, -Math.cos(p)) * 1.3 + 0.1;        // the leg swinging back folds at the knee
-    kneeR.rotation.x = Math.max(0, Math.cos(p)) * 1.3 + 0.1;
+    kneeL.rotation.x = -(Math.max(0, Math.cos(p)) * 1.3 + 0.1);         // the leg swinging forward folds at the knee
+    kneeR.rotation.x = -(Math.max(0, -Math.cos(p)) * 1.3 + 0.1);
     armL.rotation.x = -sw * 0.9; armR.rotation.x = sw * 0.9;
-    elbowL.rotation.x = -1.2; elbowR.rotation.x = -1.2;                 // pumping, bent arms
+    elbowL.rotation.x = -(-1.2); elbowR.rotation.x = -(-1.2);                 // pumping, bent arms
     ed.body.rotation.x = -0.18;                                         // lean into the run
     ed.body.rotation.y = sw * 0.12;                                     // shoulders twist against the hips
     ed.head.rotation.x = 0.12; ed.head.rotation.y = -sw * 0.06;          // head stays steady-ish
@@ -151,17 +151,17 @@ function frame(now){
     const k = ease(Math.min(1, actT / 0.25)) * (actT > 1.7 ? 1 - ease(Math.min(1, (actT - 1.7) / 0.25)) : 1);
     armR.rotation.z = 0.14 + 2.5 * k; armR.rotation.x = -0.25 * k;
     elbowR.rotation.z = Math.sin(actT * 13) * 0.55 * k;                  // the forearm waves from the elbow
-    elbowR.rotation.x = -0.5 * k;
+    elbowR.rotation.x = -(-0.5 * k);
     ed.head.rotation.z = -0.12 * k; ed.body.rotation.z = -0.05 * k;
     if (actT > 1.95) act = null;
   } else if (act === 'dance'){
     actT += dt;
     const b = Math.sin(actT * 9), up = Math.abs(Math.sin(actT * 4.5));
     armL.rotation.z = -2.4 - b * 0.3; armR.rotation.z = 2.4 - b * 0.3;   // hands up, pumping
-    elbowL.rotation.x = -0.6; elbowR.rotation.x = -0.6;
+    elbowL.rotation.x = -(-0.6); elbowR.rotation.x = -(-0.6);
     ed.body.rotation.z = b * 0.15; ed.head.rotation.z = -b * 0.18;
     legL.rotation.z = -0.15; legR.rotation.z = 0.15;
-    kneeL.rotation.x = up * 0.6; kneeR.rotation.x = (1 - up) * 0.6;
+    kneeL.rotation.x = -(up * 0.6); kneeR.rotation.x = -((1 - up) * 0.6);
     ed.body.position.y = up * 0.25;
     if (actT > 2.6){ act = null; ed.face.set(EXPRS[exprIdx][0]); }
   } else if (act === 'hit'){
@@ -170,8 +170,8 @@ function frame(now){
     ed.body.rotation.x = 0.35 * k;                                     // knocked back
     ed.head.rotation.x = -0.3 * k;
     armL.rotation.z = -1.3 * k; armR.rotation.z = 1.3 * k; armL.rotation.x = armR.rotation.x = -0.6 * k;
-    elbowL.rotation.x = elbowR.rotation.x = -0.9 * k;
-    legL.rotation.x = -0.3 * k; kneeL.rotation.x = 0.6 * k;
+    elbowL.rotation.x = elbowR.rotation.x = -(-0.9 * k);
+    legL.rotation.x = 0.3 * k; kneeL.rotation.x = -(0.6 * k);
     ed.body.position.z = 0.3 * k;
     if (actT > 1.0){ act = null; ed.face.set(EXPRS[exprIdx][0]); }
   }
@@ -182,7 +182,7 @@ function frame(now){
     const C = 0.18, AIR = 0.55, L = 0.2;
     if (jumpT < C){
       const k = ease(jumpT / C);
-      kneeL.rotation.x = kneeR.rotation.x = 1.0 * k; legL.rotation.x = legR.rotation.x = -0.5 * k;
+      kneeL.rotation.x = kneeR.rotation.x = -(1.0 * k); legL.rotation.x = legR.rotation.x = 0.5 * k;
       ed.body.position.y = -0.22 * k; ed.body.scale.set(1 + 0.08 * k, 1 - 0.1 * k, 1 + 0.08 * k);
       armL.rotation.x = armR.rotation.x = 0.6 * k;
     } else if (jumpT < C + AIR){
@@ -190,13 +190,13 @@ function frame(now){
       ed.body.position.y = y;
       const st = 1 + 0.08 * (1 - u);
       ed.body.scale.set(1 / Math.sqrt(st), st, 1 / Math.sqrt(st));
-      armL.rotation.z = -2.2; armR.rotation.z = 2.2; elbowL.rotation.x = elbowR.rotation.x = -0.4;
-      kneeL.rotation.x = 0.9 * u; kneeR.rotation.x = 0.4 + 0.5 * u;     // tuck the legs
-      legL.rotation.x = -0.4 * u; legR.rotation.x = 0.2;
+      armL.rotation.z = -2.2; armR.rotation.z = 2.2; elbowL.rotation.x = elbowR.rotation.x = -(-0.4);
+      kneeL.rotation.x = -(0.9 * u); kneeR.rotation.x = -(0.4 + 0.5 * u);     // tuck the legs
+      legL.rotation.x = 0.4 * u; legR.rotation.x = 0.25;
     } else if (jumpT < C + AIR + L){
       const k = 1 - ease((jumpT - C - AIR) / L);
       ed.body.scale.set(1 + 0.12 * k, 1 - 0.14 * k, 1 + 0.12 * k);
-      ed.body.position.y = -0.18 * k; kneeL.rotation.x = kneeR.rotation.x = 0.8 * k;
+      ed.body.position.y = -0.18 * k; kneeL.rotation.x = kneeR.rotation.x = -(0.8 * k);
     } else jumpT = -1;
   }
 
