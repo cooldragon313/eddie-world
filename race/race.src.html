@@ -71,6 +71,39 @@
   .card{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(70,48,32,.4);padding:12px}
   .card[hidden]{display:none!important}
   .card>div{background:var(--sb-paper);border:3px solid var(--sb-ink);border-radius:22px;padding:18px 22px;max-width:460px;width:100%;max-height:92vh;overflow:auto;text-align:center;box-shadow:0 8px 0 rgba(91,58,41,.25)}
+  #startCard{background:radial-gradient(ellipse at 35% 45%,rgba(40,20,50,0) 35%,rgba(40,20,50,.5))}
+  #startCard h1{display:none}
+  body.menu .hud, body.menu #touch, body.menu #restartBtn{display:none!important}
+  .logo{text-align:center;pointer-events:none;user-select:none}
+  .logo .planet{width:120px;height:80px;display:block;margin:0 auto -18px;filter:drop-shadow(0 4px 0 rgba(91,58,41,.35));animation:bob 3.2s ease-in-out infinite}
+  .logoText{font:900 76px/1.05 var(--sb-font);letter-spacing:4px;color:#ffcf5a;-webkit-text-stroke:5px #5b3a29;paint-order:stroke fill;
+    text-shadow:0 7px 0 #5b3a29,0 12px 18px rgba(0,0,0,.35);transform:rotate(-3deg)}
+  .logoSub{display:inline-block;margin-top:10px;background:#e0584a;color:#fff;font:900 20px var(--sb-font);padding:4px 18px;border:3px solid #5b3a29;border-radius:999px;
+    box-shadow:0 4px 0 rgba(91,58,41,.4);transform:rotate(2deg)}
+  .logoCast{display:flex;flex-direction:column;gap:6px;margin-top:14px;align-items:center}
+  .logoCast span{background:rgba(255,248,236,.92);border:2px solid #5b3a29;border-radius:999px;padding:2px 12px;font:800 14px var(--sb-font);color:#5b3a29}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-6px) rotate(4deg)}}
+  @media (min-width:860px), (min-width:600px) and (orientation:landscape){
+    #startCard{justify-content:flex-end;padding-right:4vw}
+    #startCard .logo{position:absolute;left:5vw;top:7vh}
+    #startCard>div{max-width:400px}
+  }
+  @media (min-width:600px) and (max-height:520px) and (orientation:landscape){
+    #startCard>div{max-width:min(400px,52vw);max-height:94vh;padding:12px 14px}
+    #startCard .logo{top:4vh;left:3vw}
+    .logo .planet{width:76px;height:50px;margin-bottom:-12px}
+    .logoText{font-size:44px;-webkit-text-stroke:4px #5b3a29;text-shadow:0 5px 0 #5b3a29}
+    .logoSub{font-size:14px}
+    .logoCast{display:none}
+  }
+  @media (max-width:859px) and (orientation:portrait), (max-width:599px){
+    #startCard{flex-direction:column;justify-content:flex-start;overflow:auto;gap:8px}
+    .logo .planet{width:80px;height:54px;margin-bottom:-12px}
+    .logoText{font-size:46px;-webkit-text-stroke:4px #5b3a29;text-shadow:0 5px 0 #5b3a29}
+    .logoSub{font-size:15px}
+    .logoCast{display:none}
+    #startCard>div{flex-shrink:0}
+  }
   .card h1{font-size:34px;margin:0;color:#e9822c;-webkit-text-stroke:1.5px var(--sb-ink);line-height:1.1}
   .card p{margin:8px 0;font-size:15px}
   .who{font-size:13px;color:var(--sb-muted)}
@@ -166,7 +199,19 @@
 <div id="lineHint" hidden>LINE 裡不能全螢幕：點右上角 ⋯ 選「用預設瀏覽器開啟」<button type="button" id="lineHintX">知道了</button></div>
 <div class="big" id="count" hidden></div>
 
-<div class="card" id="startCard"><div>
+<div class="card" id="startCard">
+<header class="logo">
+  <svg class="planet" viewBox="0 0 120 80" aria-hidden="true">
+    <ellipse cx="60" cy="44" rx="56" ry="13" fill="none" stroke="#5b3a29" stroke-width="9"/>
+    <circle cx="60" cy="40" r="27" fill="#f2c46d" stroke="#5b3a29" stroke-width="4"/>
+    <path d="M36 32 Q60 26 84 32 M34 44 Q60 38 86 44" stroke="#d9984a" stroke-width="5" fill="none"/>
+    <path d="M6 44 Q60 66 114 44" fill="none" stroke="#ffe7a8" stroke-width="5"/>
+  </svg>
+  <div class="logoText">逃離土星</div>
+  <div class="logoSub">第一關・家庭聚會</div>
+  <div class="logoCast"><span>🍺 酒鬼大叔在後面追</span><span>👻 鬼媽媽揮熱熔膠條</span><span>🧸 小屁孩大魔王</span></div>
+</header>
+<div>
   <h1>🪐 逃離土星</h1>
   <p>有人從背後追上來！選一關，撿金幣衝到終點。</p>
   <p class="who" id="who">讀取角色中…</p>
@@ -602,6 +647,20 @@ function makeCar(){
   return g;
 }
 function makeBarrel(){ return makeCar(); }
+function makeSaturn(){
+  const g = new THREE.Group();
+  const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x = c.getContext('2d');
+  const bands = ['#f2c46d', '#e8b05a', '#f6d89a', '#d9984a', '#f2c46d', '#e9bd78', '#f6d89a'];
+  for (let i = 0; i < 128; i += 8){ x.fillStyle = bands[(i / 8) % bands.length]; x.fillRect(0, i, 64, 8); }
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(26, 32, 20), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), fog: false }));
+  g.add(ball);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(34, 52, 64), new THREE.MeshBasicMaterial({ color: 0xe6c483, side: THREE.DoubleSide, transparent: true, opacity: 0.85, fog: false }));
+  ring.rotation.x = Math.PI / 2 - 0.35; ring.rotation.y = 0.25; g.add(ring);
+  const inner = new THREE.Mesh(new THREE.RingGeometry(29, 33, 64), new THREE.MeshBasicMaterial({ color: 0xc89a5a, side: THREE.DoubleSide, transparent: true, opacity: 0.6, fog: false }));
+  inner.rotation.copy(ring.rotation); g.add(inner);
+  g.rotation.z = 0.25;
+  return g;
+}
 function makeRemote(){
   const g = new THREE.Group();
   const b = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.95), mats.remote); g.add(b);
@@ -653,7 +712,7 @@ function hurt(kind, text, knock){
 // ---------- build a level ----------
 let walls = [], covers = [], turrets = [], coins = [], bars = [], hammers = [], movers = [], gateObj = null, spears = [];
 const flying = [];   // bamboo spears in the air
-let thornObjs = [], minions = [], boss = null, ghosts = [], bottles = [];
+let thornObjs = [], minions = [], boss = null, ghosts = [], bottles = [], coverGroup = null;
 const pukes = [];
 const fireballs = [], barrels = [];
 const chaserMat = new THREE.MeshLambertMaterial({ color: 0x8a3fa0, transparent: true, opacity: 1 });
@@ -789,6 +848,20 @@ function buildLevel(level){
     if (!groundAt(m, x) && !(level.movers || []).some(mv => m >= mv.m0 && m <= mv.m1)) continue;
     const mesh = new THREE.Mesh(coinGeo, mats.coin); mesh.userData.sharedGeo = true; mesh.rotation.x = Math.PI / 2; mesh.position.set(x, 1, -m); add(mesh);
     coins.push({ m, x, mesh, taken: false });
+  }
+  // 逃離土星: Saturn hangs in the sky — one behind the start (seen on the cover),
+  // one far ahead (seen while you run)
+  coverGroup = null;
+  if (level.drunk){
+    for (const [z, y, sc] of [[170, 52, 1], [-(level.end + 170), 60, 1.15]]){
+      const sat = makeSaturn(); sat.position.set(z > 0 ? -30 : 25, y, z); sat.scale.setScalar(sc); add(sat);
+    }
+    // the cover: the whole family lined up at the start line
+    coverGroup = new THREE.Group(); add(coverGroup);
+    const gm = makeGhostMom(); gm.position.set(3.6, 0.25, 1.8); gm.rotation.y = Math.PI - 0.35; gm.userData.armR.rotation.x = -2.0; coverGroup.add(gm);
+    const kid = makeKid(false); kid.scale.setScalar(0.42); kid.position.set(-3.4, 0, -1.2); kid.rotation.y = Math.PI + 0.3; kid.userData.armR.rotation.x = -2.2; coverGroup.add(kid);
+    for (const [bx, bz, i] of [[1.6, -2.4, 0], [-1.2, -3.2, 1], [2.6, -0.6, 2]]){ const b = makeBottle(i); b.position.set(bx, 0, bz); if (i === 1) b.rotation.z = Math.PI / 2; coverGroup.add(b); }
+    for (const [cx, cz] of [[-2.2, -2.4], [-4.6, 0.6]]){ const car = makeCar(); car.scale.setScalar(0.7); car.position.set(cx, 0.32, cz); car.rotation.y = cx; coverGroup.add(car); }
   }
   // the chaser: a drunk uncle in level 1, the spike wall elsewhere
   if (level.drunk){ chaser = makeDrunk(); }
@@ -1117,6 +1190,7 @@ loadMe();
 // ---------- game loop ----------
 let last = 0;
 function frame(now){
+  document.body.classList.toggle('menu', S.phase === 'menu');
   $('restartBtn').hidden = !(S.phase === 'run' || S.phase === 'count');
   requestAnimationFrame(frame);
   const dt = last ? Math.min(0.05, Math.max(0, (now - last) / 1000)) : 0.016;
@@ -1569,6 +1643,21 @@ function render(dt, clock){
   }
   // camera: high and behind; level 2 follows you fully sideways (the gate spur)
   _camTarget.set((S.x || 0) * L.camFollow, 9 * camZoom, -(S.m || 0) + 8 * camZoom);
+  const cover = S.phase === 'menu' && coverGroup;
+  if (coverGroup) coverGroup.visible = !!cover;
+  if (cover){
+    // drunk sneaks up behind you, arms out, on the cover
+    const cu = chaser.userData; chaser.position.set(-1.9, 0, 3.4); cu.x = -1.9; chaser.rotation.z = Math.sin(t * 2.3) * 0.1;
+    cu.armL.rotation.x = cu.armR.rotation.x = -1.3; cu.legL.rotation.x = 0.4; cu.legR.rotation.x = -0.4;
+    for (const m of cu.mats){ m.opacity = 1; m.depthWrite = true; }
+    me.group.position.set(0, 0, 0); me.group.rotation.set(0, 0, 0);
+    const wide = innerWidth >= 860 || (innerWidth >= 600 && innerWidth > innerHeight);
+    _camTarget.set(Math.sin(t * 0.18) * 2.2 + (wide ? -2.5 : 0), 3.0, -10.5);
+    camera.position.lerp(_camTarget, Math.min(1, dt * 2));
+    camera.lookAt(wide ? -2.4 : 0, wide ? 2.6 : 1.6, 2);
+    renderer.render(scene, camera); updateBubbles();
+    return;
+  }
   const hug = running && L.drunk && S.heldUntil;                    // swing round to the side to show the hug
   if (hug) _camTarget.set((S.x || 0) + 7, 4.2, -(S.m || 0) + 2);
   if (!Number.isFinite(camera.position.x + camera.position.y + camera.position.z)) camera.position.copy(_camTarget);
