@@ -3,6 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<script>
+// LINE's built-in browser can't go full screen: hand the page to the phone's
+// own browser (LINE honours openExternalBrowser=1). Once only, so no loop.
+(function(){
+  if (!/\bLine\//i.test(navigator.userAgent)) return;
+  const u = new URL(location.href);
+  if (u.searchParams.has('openExternalBrowser')) return;
+  u.searchParams.set('openExternalBrowser', '1');
+  location.replace(u.toString());
+})();
+</script>
 <title>刺牆賽跑</title>
 <!--
   SOURCE TEMPLATE — edit this file, then run:  python tools/build_race.py
@@ -75,6 +88,13 @@
       display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 rgba(91,58,41,.35);touch-action:none}
   .tb.on{transform:translateY(3px);box-shadow:0 1px 0 rgba(91,58,41,.35)}
   .tb.mini{width:40px;height:40px;font-size:18px}
+  #restartBtn{position:fixed;z-index:6;left:calc(12px + env(safe-area-inset-left,0px));top:calc(52px + env(safe-area-inset-top,0px));
+    background:rgba(255,248,236,.94);border:2px solid var(--sb-ink);border-radius:999px;padding:4px 14px;font:700 14px/1.2 var(--sb-font);color:var(--sb-ink);
+    box-shadow:0 3px 0 rgba(91,58,41,.25);cursor:pointer;touch-action:manipulation}
+  #restartBtn:active{transform:translateY(2px)}
+  #lineHint{position:fixed;z-index:40;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);max-width:92vw;
+    background:#06c755;color:#fff;border-radius:14px;padding:8px 14px;font:700 14px/1.4 var(--sb-font);box-shadow:0 4px 0 rgba(0,0,0,.2);text-align:center}
+  #lineHint button{margin-left:8px;background:#fff;color:#06c755;border:0;border-radius:999px;padding:2px 10px;font:inherit}
   #tJump{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));width:84px;height:84px;font-size:18px;background:var(--sb-gold-soft)}
   #tBat{right:calc(110px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));background:#ffc4bb}
   #tDash{right:calc(24px + env(safe-area-inset-right,0px));bottom:calc(112px + env(safe-area-inset-bottom,0px));background:#ffe0c2}
@@ -107,6 +127,8 @@
 </div>
 <div id="danger"></div>
 <div class="flash" id="flash"></div>
+<button id="restartBtn" type="button" hidden>🔄 重來</button>
+<div id="lineHint" hidden>LINE 裡不能全螢幕：點右上角 ⋯ 選「用預設瀏覽器開啟」<button type="button" id="lineHintX">知道了</button></div>
 <div class="big" id="count" hidden></div>
 
 <div class="card" id="startCard"><div>
@@ -510,6 +532,7 @@ const keys = {};
 addEventListener('keydown', e => {
   if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
   if ((e.code === 'Enter' || e.code === 'Space') && S.phase !== 'run' && S.phase !== 'count'){ e.preventDefault(); startRun(L); return; }
+  if (e.code === 'KeyR' && (S.phase === 'run' || S.phase === 'count')){ startRun(L); return; }
   keys[e.code] = true;
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
@@ -632,6 +655,9 @@ function startRun(level){
   S.phase = 'count'; S.countAt = performance.now();
 }
 $('againBtn').onclick = () => startRun(L);
+$('restartBtn').addEventListener('click', e => { e.preventDefault(); $('restartBtn').blur(); startRun(L); });
+// still inside LINE (it didn't hand over): tell them how to get full screen
+if (/\bLine\//i.test(navigator.userAgent)){ $('lineHint').hidden = false; $('lineHintX').onclick = () => { $('lineHint').hidden = true; }; }
 $('menuBtn').onclick = () => { S.phase = 'menu'; $('endCard').hidden = true; renderLevelButtons(); loadBoards(); $('startCard').hidden = false; };
 
 function respawn(reason){
@@ -692,6 +718,7 @@ async function claimReward(coins, time, misses){
 // ---------- game loop ----------
 let last = 0;
 function frame(now){
+  $('restartBtn').hidden = !(S.phase === 'run' || S.phase === 'count');
   requestAnimationFrame(frame);
   const dt = last ? Math.min(0.05, Math.max(0, (now - last) / 1000)) : 0.016;
   last = now;
