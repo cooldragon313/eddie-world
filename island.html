@@ -6146,7 +6146,7 @@ updateTitleAccountInfo();
 // The race is race.html (the site's front page is 土星之家); the claude.ai preview has no race page to link to.
 if (PREVIEW_SOLO && !SERVER_DOWN){ const r = document.getElementById('title-race'); if (r) r.hidden = true; }
 // 逃離土星 has its own site now
-if (/github\.io$/.test(location.hostname)){ const r = document.getElementById('title-race'); if (r) r.href = 'https://cooldragon313.github.io/saturnfamily/'; }
+// (the race sits next to the island on eddie-world, so the relative race.html link works everywhere)
 
 document.getElementById('title-continue').addEventListener('click', () => {
   getAudioCtx();

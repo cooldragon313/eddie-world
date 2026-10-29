@@ -173,6 +173,7 @@
   .lvlcard{display:flex;flex-direction:column;gap:4px}
   .board{list-style:none;margin:0;padding:6px 8px;background:#fff;border:2px solid var(--sb-line);border-radius:12px;font-size:13px;text-align:left}
   .board.empty{color:var(--sb-muted);text-align:center}
+  .board .nm.crown{color:#c8901a;font-weight:900;text-shadow:0 0 6px rgba(255,207,90,.7)}   /* 👑 = every achievement of this level */
   .board li{display:grid;grid-template-columns:18px 1fr auto auto 18px;gap:6px;align-items:center;padding:1px 0;font-variant-numeric:tabular-nums}
   .board li.me{font-weight:700;color:#c27a00}
   .board .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2354,7 +2355,7 @@ function boardHtml(rows, meName){
   if (!rows) return '<div class="board empty">讀取排行榜…</div>';
   if (!rows.length) return '<div class="board empty">還沒有人跑完，搶第一名！</div>';
   return '<ol class="board">' + rows.slice(0, 5).map((r, i) =>
-    `<li class="${r.name === meName ? 'me' : ''}"><span class="rk">${i + 1}</span><span class="nm">${esc(r.name)}${r.misses === 0 ? ' 👑' : ''}</span>` +
+    `<li class="${r.name === meName ? 'me' : ''}"><span class="rk">${i + 1}</span><span class="nm${r.crown ? ' crown' : ''}">${r.crown ? '👑 ' : ''}${esc(r.name)}${r.misses === 0 ? ' ✨' : ''}</span>` +
     `<span class="tm">${r.time.toFixed(1)}秒</span><span class="ms">失誤 ${r.misses}</span><span class="dv">${r.device === 'phone' ? '📱' : '💻'}</span></li>`).join('') + '</ol>';
 }
 let myName = '';
@@ -2435,9 +2436,9 @@ function startRun(level, easy){
   if (L.drunk) say(chaser, '你先跑我再追，追到我就對你嘿嘿嘿～', 4, { name: '酒鬼大叔', y: 4.6 });
 }
 $('againBtn').onclick = () => startRun(L, S.easy);
-// 🏠 back to 土星之家 (the hub is the front page of the main site; the race also lives on saturnfamily)
+// 🏠 back to 土星之家 (the hub is the front page of eddie-world)
 { const h = document.querySelectorAll('.homeLink'), live = /github\.io$/.test(location.hostname), local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-  h.forEach(a => { if (live) a.href = 'https://cooldragon313.github.io/escapetsunamiformoney/'; else if (!local) a.hidden = true; }); }
+  h.forEach(a => { if (live) a.href = 'https://cooldragon313.github.io/eddie-world/'; else if (!local) a.hidden = true; }); }
 
 $('soundBtn').textContent = sfx.on ? '🔊' : '🔇';
 $('soundBtn').addEventListener('click', e => { e.preventDefault(); $('soundBtn').blur(); $('soundBtn').textContent = sfx.toggle() ? '🔊' : '🔇'; });
@@ -2498,6 +2499,8 @@ function finish(){
   $('rRank').textContent = '';
   claimReward(reward, t, misses);
 }
+// achievements this device has for a level (the server keeps the union across devices)
+function myAch(lv){ try { return JSON.parse(localStorage.getItem('etfm-ach-' + lv.id + '-' + (localStorage.getItem('etfm-username') || 'guest')) || '[]'); } catch(_){ return []; } }
 // Coins go to the island account via POST /race_reward (adds, never overwrites)
 async function claimReward(coins, time, misses){
   const el = $('rReward');
@@ -2505,7 +2508,7 @@ async function claimReward(coins, time, misses){
   if (!authToken){ el.textContent = `獎金 $${coins} — 先登入，下次跑完就會存進帳號`; return; }
   el.textContent = `獎金 $${coins} 存入中…`;
   try {
-    const r = await fetch(API + '/race_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ coins, time, level: S.easy ? 0 : L.id, misses, device: DEVICE }) });   // level 0 = coins only, no board
+    const r = await fetch(API + '/race_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ coins, time, level: S.easy ? 0 : L.id, misses, device: DEVICE, ach: S.easy ? [] : myAch(L) }) });   // level 0 = coins only, no board
     const j = await r.json().catch(() => ({}));
     if (r.ok){
       el.textContent = `獎金 +$${j.coins} 已存入帳號（現在 $${j.money}）`;

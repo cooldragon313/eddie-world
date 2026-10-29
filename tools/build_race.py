@@ -5,7 +5,7 @@ bat swing. Instead of keeping a second copy by hand, this script lifts those
 blocks out of island.html every build, so a change on the island (a new hat,
 a tweak to the toon shading) reaches the race too.
 
-    python tools/build_race.py                      # writes race.html (saturnfamily gets a copy as its index.html)
+    python tools/build_race.py                      # writes race.html
     python tools/build_race.py --preview out.html   # also a shell-less copy for a claude.ai preview
 """
 import argparse

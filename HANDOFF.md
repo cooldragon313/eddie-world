@@ -8,7 +8,8 @@
 
 ## 🧭 這是什麼專案
 給 12 歲兒子玩的多人跑酷撿錢遊戲（靈感來自 Roblox《Escape Tsunami For Brainrots》）。
-- 正式版：https://cooldragon313.github.io/escapetsunamiformoney/ （GitHub Pages，`main` 一推就上線 → **改動一律先走分支**）
+- 正式版：**https://cooldragon313.github.io/eddie-world/** （倉庫 cooldragon313/eddie-world，GitHub Pages，`main` 一推就上線 → **改動一律先走分支**）
+- 舊網址 escapetsunamiformoney / saturnfamily：只留跳轉頁（搬家後就不再更新內容）
 - 🗺 **檔案結構（2026-10-27 起，已上架：main `283cdc6`，伺服器 Cloudflare 版本 `e981869e`）**：網址一打開＝**刺牆賽跑** `index.html`（主玩法）；**海嘯島** = `island.html`（商店、造型、蓋房子，海嘯撿錢當副玩法）
   - `index.html` 是**產生出來的**：改 `race/race.src.html` 後跑 `python tools/build_race.py`。角色／造型／繪本畫風／揮棒自動從 `island.html` 抄過去，不要手改 `index.html`
   - 賽跑跑完的金幣走伺服器 `POST /race_reward`（**加錢不覆蓋**，上限 120、30 秒一次）；島上開著會收到 `race_reward` 訊息同步
@@ -158,8 +159,14 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 難度用機器人模擬調過（反應 0.6 秒：YouTube 約 170、打電動高風險）
 - 試玩：https://claude.ai/artifact/22KEpAkE6hMkbmHdEin8Bs
 
-## 2026-10-29 — 土星之家當首頁（分支上、還沒上架）
+## 2026-10-29 — 土星之家當首頁（✅ 已上架 main 9d351fc、saturnfamily 7543e3b）
 - ⚠️ **檔名換了**：`index.html` ＝ 土星之家（`tools/build_home.py` 產出）；逃離土星改成 `race.html`（`tools/build_race.py` 產出）；`home.html` 只是跳轉到 index.html 的小頁
 - 上架 saturnfamily 時：把 **race.html** 複製成 saturnfamily 的 `index.html`（不是複製 index.html！）
 - 每關都有「🏠 回土星之家」：github.io 上連 `https://cooldragon313.github.io/escapetsunamiformoney/`，本機連 index.html，claude.ai 預覽隱藏
 - 海嘯島的「逃離土星」按鈕：本機 race.html、github.io 上照舊連 saturnfamily
+
+## 2026-10-29 — 搬家到 eddie-world
+- 新倉庫 `cooldragon313/eddie-world`（含全部歷史；Bernie 推的）。本機 `origin` 改指新倉庫，舊的留成 `old-tsunami`
+- 程式裡寫死的網址都改 eddie-world；海嘯島的逃離土星按鈕改用相對路徑 race.html（不再連 saturnfamily）
+- **saturnfamily 不再需要每次複製**；之後舊網址只放跳轉頁
+- 排行榜（/glue_score、全成就👑）在分支上，要先 `cd cloudflare && npx wrangler deploy` 才能上架

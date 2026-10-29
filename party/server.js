@@ -32,6 +32,28 @@ const RACE_MIN_TIME_S = 25;          // faster than this isn't a real run (best-
 // the whole way, which stamina makes impossible (530 m / 430 m at 16.2 m/s).
 const RACE_BOARD_SIZE = 50;
 const RACE_LEVEL_MIN_TIME = { 1: 33, 2: 27 };
+// Achievements per game (ids must match the clients). Everyone keeps the union
+// of what they've unlocked; holding ALL of a game's = a 👑 on that game's board.
+// Keep in sync: race/race.src.html LEVEL1.achievements, family/gluenight.src.html ACHIEVEMENTS.
+const ACH_IDS = {
+  race1: ['skater', 'perfect', 'flash', 'untouch', 'sweeper', 'laundry', 'homerun', 'shopper', 'rich', 'iron', 'glue', 'tipsy', 'buddy', 'snitch'],
+  glue:  ['ninja', 'artist', 'gamer', 'tuber', 'hanger', 'all3', 'max', 'saint', 'flipper', 'reader', 'manager'],
+};
+function mergeAch(user, game, ids){
+  const valid = ACH_IDS[game]; if (!valid) return false;
+  user.ach = user.ach || {};
+  const have = new Set(user.ach[game] || []);
+  for (const id of (Array.isArray(ids) ? ids : []).slice(0, 60)) if (valid.includes(id)) have.add(id);
+  user.ach[game] = [...have];
+  return valid.every(id => have.has(id));
+}
+// 恐怖考前複習夜 (gluenight.html → POST /glue_score): rank by mood, then fewer hits
+const GLUE_MAX_MOOD = 450;           // well above the best bot runs (~230)
+const GLUE_MAX_REWARD = 200;
+const GLUE_MIN_GAP_MS = 120_000;     // a night is 150 s
+const GLUE_BOARD_SIZE = 50;
+const glueBetter = (a, b) => a.mood > b.mood || (a.mood === b.mood && a.hits < b.hits);
+const glueSort = (a, b) => b.mood - a.mood || a.hits - b.hits;
 const raceBetter = (a, b) => a.time < b.time || (a.time === b.time && a.misses < b.misses);
 const raceSort = (a, b) => a.time - b.time || a.misses - b.misses;
 // Visit log for the admin page: per-user counters on the user record plus a
@@ -391,16 +413,20 @@ export default class WorldServer {
       const level = Math.floor(Number(body.level) || 0);
       const misses = Math.max(0, Math.min(999, Math.floor(Number(body.misses) || 0)));
       let rank = null, improved = false, board = null;
+      const crown = level === 1 ? mergeAch(user, 'race1', body.ach) : false;
+      if (level === 1) await this.room.storage.put('user:' + userId, user);
       if (RACE_LEVEL_MIN_TIME[level] && Number.isFinite(time) && time >= RACE_LEVEL_MIN_TIME[level] && time < 3600){
         const key = 'race_board_' + level;
         board = (await this.room.storage.get(key)) || [];
         const entry = { userId, name: user.displayName || user.username, time: +time.toFixed(1), misses,
-                        device: body.device === 'phone' ? 'phone' : 'pc', at: now };
+                        device: body.device === 'phone' ? 'phone' : 'pc', at: now, crown };
         const i = board.findIndex(r => r.userId === userId);
-        if (i < 0 || raceBetter(entry, board[i])){ if (i >= 0) board.splice(i, 1); board.push(entry); improved = true; }
+        let dirty = false;
+        if (i < 0 || raceBetter(entry, board[i])){ if (i >= 0) board.splice(i, 1); board.push(entry); improved = dirty = true; }
+        else if (crown && !board[i].crown){ board[i].crown = true; dirty = true; }   // crown earned on a slower run still shows
         board.sort(raceSort);
         board = board.slice(0, RACE_BOARD_SIZE);
-        if (improved) await this.room.storage.put(key, board);
+        if (dirty) await this.room.storage.put(key, board);
         const mine = board.findIndex(r => r.userId === userId);
         rank = mine >= 0 ? mine + 1 : null;
         board = board.slice(0, 10).map(({ userId: _u, ...r }) => r);
@@ -429,6 +455,49 @@ export default class WorldServer {
       st.lastSeenAt = now;
       await this.room.storage.put('user:' + userId, user);
       return jsonResponse({ ok: true });
+    }
+
+    // POST /glue_score — a 恐怖考前複習夜 night ended: coins + leaderboard + achievements
+    if (last === 'glue_score' && req.method === 'POST'){
+      const auth = req.headers.get('authorization') || '';
+      const userId = await verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : '', secret);
+      if (!userId) return jsonResponse({ error:'bad_token' }, 401);
+      let body; try { body = await req.json(); } catch(e){ return jsonResponse({ error:'bad_json' }, 400); }
+      const user = await this.room.storage.get('user:' + userId);
+      if (!user) return jsonResponse({ error:'no_user' }, 404);
+      const now = Date.now();
+      if (user.lastGlueAt && now - user.lastGlueAt < GLUE_MIN_GAP_MS)
+        return jsonResponse({ error:'too_soon', message:'太快了，一晚要兩分半喔' }, 429);
+      const mood = Math.floor(Number(body.mood) || 0), hits = Math.max(0, Math.min(99, Math.floor(Number(body.hits) || 0)));
+      if (mood < 0 || mood > GLUE_MAX_MOOD) return jsonResponse({ error:'bad_score' }, 400);
+      const coins = Math.max(0, Math.min(GLUE_MAX_REWARD, Math.floor(Number(body.coins) || 0)));
+      user.profile = user.profile || { custom: null, progress: null };
+      const progress = user.profile.progress || {};
+      progress.money = (progress.money || 0) + coins;
+      user.profile.progress = progress;
+      user.lastGlueAt = now;
+      const crown = mergeAch(user, 'glue', body.ach);
+      const st = user.stats || (user.stats = {}); st.glueNights = (st.glueNights || 0) + 1; st.lastSeenAt = now;
+      await this.room.storage.put('user:' + userId, user);
+      await this.logActivity(user, 'glue_finish', { mood, hits, win: !!body.win });
+      let board = (await this.room.storage.get('glue_board')) || [];
+      const entry = { userId, name: user.displayName || user.username, mood, hits, win: !!body.win,
+                      device: body.device === 'phone' ? 'phone' : 'pc', at: now, crown };
+      const i = board.findIndex(r => r.userId === userId);
+      let improved = false, dirty = false;
+      if (i < 0 || glueBetter(entry, board[i])){ if (i >= 0) board.splice(i, 1); board.push(entry); improved = dirty = true; }
+      else if (crown && !board[i].crown){ board[i].crown = true; dirty = true; }
+      board.sort(glueSort); board = board.slice(0, GLUE_BOARD_SIZE);
+      if (dirty) await this.room.storage.put('glue_board', board);
+      const mine = board.findIndex(r => r.userId === userId);
+      return jsonResponse({ ok: true, coins, money: progress.money, improved, crown, rank: mine >= 0 ? mine + 1 : null,
+                            board: board.slice(0, 10).map(({ userId: _u, ...r }) => r) });
+    }
+
+    // GET /glue_board — top 10 (no user ids exposed)
+    if (last === 'glue_board' && req.method === 'GET'){
+      const board = (await this.room.storage.get('glue_board')) || [];
+      return jsonResponse({ ok: true, rows: board.slice(0, 10).map(({ userId: _u, ...r }) => r) });
     }
 
     // GET /race_board?level=N — top 10 (no user ids exposed)

@@ -1,3 +1,5 @@
+> ⚠️ 歷史文件：伺服器已搬到 Cloudflare（etfm.cooldragon313.workers.dev），網站已搬到 eddie-world。下面的 partykit.dev 只是當時的紀錄。
+
 # 帳號系統實作交接（2026-05-13）
 
 ## 目前狀態
