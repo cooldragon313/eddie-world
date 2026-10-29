@@ -35,10 +35,11 @@
 </head>
 <body>
 <div id="stage"></div>
-<div id="head"><h1>小屁孩</h1><p>原型：土星家的小屁孩（旁邊是艾迪，比身高用）</p></div>
+<div id="head"><h1>小屁孩</h1><p>原型：土星家的小屁孩（照片版，旁邊可叫出艾迪比身高）</p></div>
 <div id="tip">手指拖曳可以轉</div>
 <div id="bar">
   <button class="btn" id="bWalk">🚼 搖搖擺擺走</button>
+  <button class="btn" id="bSit">🪑 坐地上</button>
   <button class="btn" id="bThrow">🧸 丟東西</button>
   <button class="btn" id="bClap">👏 拍手笑</button>
   <button class="btn" id="bCry">😭 大哭</button>
@@ -620,6 +621,110 @@ function animateEddie(A, o){
   if (st.blinkT >= 0){ st.blinkT += o.dt || 0.016; e.face.blink(Math.sin(Math.min(1, st.blinkT / 0.16) * Math.PI)); if (st.blinkT > 0.16){ st.blinkT = -1; e.face.blink(0); } }
 }
 
+// ============================================================
+// LITTLE KID (土星家的小屁孩) — a toddler, built from a reference photo:
+// short soft black hair with a fringe, big round eyes, white tee with a
+// light-blue print, light-blue shorts, bare feet, a toy car in hand.
+// Faces -z, about 2/3 of Eddie's height. Same rig idea as Eddie:
+// head pivot, elbows, knees, and a face controller.
+// ============================================================
+const buildKid = (() => {
+  const LM = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+  const flat = c => new THREE.MeshBasicMaterial({ color: c });
+  function part(parent, geo, mat, x, y, z, noLine){ const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); if (noLine) m.userData.noLine = true; parent.add(m); return m; }
+  const S = (r, w, h) => new THREE.SphereGeometry(r, w || 24, h || 16);
+  return function buildKid(){
+    const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+    const skin = LM(0xf2c9a8), hair = LM(0x1f1a1a), tee = LM(0xf7f6f0), blue = LM(0x9fcfe8), blueDark = LM(0x6fb3e0);
+    const NECK = 1.05, HY = 1.55;
+    const headG = new THREE.Group(); headG.position.y = NECK; body.add(headG);
+    const H = (geo, mat, x, y, z, nl) => part(headG, geo, mat, x, y - NECK, z, nl);
+    const head = H(S(0.72, 32, 22), skin, 0, HY, 0); head.scale.set(1.04, 0.98, 1);
+    for (const s of [-1, 1]){
+      const cheek = H(S(0.24, 16, 12), skin, s * 0.36, HY - 0.25, -0.44); cheek.scale.set(1, 0.85, 0.7);
+      const ear = H(S(0.15, 12, 8), skin, s * 0.74, HY - 0.04, 0.05); ear.scale.set(0.5, 1, 0.8);
+    }
+    // hair: one soft black cap that comes down low on the forehead (a fringe),
+    // with short tufts sticking up a little on top
+    const capGeo = new THREE.SphereGeometry(0.755, 36, 18, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    const cap = H(capGeo, hair, 0, HY + 0.02, 0.02); cap.rotation.x = 0.12; cap.scale.set(1.04, 1, 1.02);
+    for (let i = 0; i < 7; i++){
+      const x = (i - 3) * 0.13;
+      const tf = H(new THREE.ConeGeometry(0.09, 0.2, 8), hair, x, HY + 0.38 - Math.abs(x) * 0.25, -0.6 + Math.abs(x) * 0.12, true);
+      tf.rotation.x = -1.9; tf.rotation.z = -x * 0.6;                       // fringe tips poking down over the forehead
+    }
+    for (const [x, z] of [[-0.15, -0.1], [0.12, 0.05], [0, 0.25], [-0.25, 0.2], [0.26, -0.15]]){
+      const tf = H(new THREE.ConeGeometry(0.11, 0.24, 8), hair, x, HY + 0.72, z, true); tf.rotation.z = -x * 0.8; tf.rotation.x = z * 0.6;
+    }
+    // face
+    const ink = flat(0x22180f), white = flat(0xffffff), mouthC = flat(0x7a2a2a);
+    const eyes = [], glints = [];
+    for (const s of [-1, 1]){
+      const e = H(S(0.115, 16, 12), ink, s * 0.24, HY + 0.0, -0.7, true); e.scale.set(1, 1.2, 0.5); eyes.push(e);
+      const gl = H(S(0.045, 8, 6), white, s * 0.24 - 0.035, HY + 0.06, -0.755, true); glints.push(gl);
+      const brow = H(sbRoundBox(0.16, 0.035, 0.03, 0.015), ink, s * 0.24, HY + 0.2, -0.7, true); brow.rotation.z = s * -0.12;
+      const b = H(S(0.11, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffa8a0, transparent: true, opacity: 0.7 }), s * 0.42, HY - 0.16, -0.57, true); b.scale.set(1, 0.6, 0.35);
+    }
+    const mouthSmile = H(new THREE.CircleGeometry(0.09, 16, Math.PI, Math.PI), mouthC, 0.02, HY - 0.23, -0.715, true); mouthSmile.rotation.y = Math.PI;
+    const mouthCry = H(new THREE.CircleGeometry(0.14, 18), mouthC, 0, HY - 0.26, -0.71, true); mouthCry.rotation.y = Math.PI; mouthCry.scale.set(1.2, 0.9, 1);
+    const mouthO = H(new THREE.CircleGeometry(0.07, 16), mouthC, 0, HY - 0.24, -0.715, true); mouthO.rotation.y = Math.PI; mouthO.scale.set(0.9, 1.2, 1);
+    const mouthGrin = H(new THREE.TorusGeometry(0.1, 0.025, 6, 14, Math.PI), mouthC, 0.04, HY - 0.19, -0.72, true); mouthGrin.rotation.z = Math.PI * 1.1;
+    const happyEyes = [-1, 1].map(s => H(new THREE.TorusGeometry(0.08, 0.025, 6, 14, Math.PI), ink, s * 0.24, HY - 0.02, -0.71, true));
+    const cryEyes = [-1, 1].map(s => { const m = H(new THREE.TorusGeometry(0.08, 0.025, 6, 14, Math.PI), ink, s * 0.24, HY + 0.02, -0.71, true); m.rotation.z = Math.PI; return m; });
+    const tears = [-1, 1].map(s => { const m = H(S(0.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0x8fd0f0 }), s * 0.3, HY - 0.12, -0.68, true); m.scale.set(0.8, 1.5, 0.5); return m; });
+    const naughtyBrows = [-1, 1].map(s => { const m = H(sbRoundBox(0.2, 0.05, 0.04, 0.02), ink, s * 0.24, HY + 0.19, -0.71, true); m.rotation.z = s * 0.35; return m; });
+    // body: white tee with a light-blue print, light-blue shorts with a white stripe
+    const torso = part(body, S(0.48, 24, 16), tee, 0, 0.64, 0); torso.scale.set(1.0, 0.95, 0.9);
+    const print1 = part(body, new THREE.PlaneGeometry(0.34, 0.08), flat(0x6fb3e0), 0.04, 0.7, -0.44, true); print1.rotation.set(0, Math.PI, 0.5);
+    const print2 = part(body, new THREE.PlaneGeometry(0.3, 0.08), flat(0x6fb3e0), 0.1, 0.56, -0.43, true); print2.rotation.set(0, Math.PI, -0.4);
+    const shorts = part(body, S(0.45, 22, 14), blue, 0, 0.32, 0); shorts.scale.set(1.08, 0.6, 0.95);
+    // arms: shoulder → elbow
+    const arms = [-1, 1].map(s => {
+      const a = new THREE.Group(); a.position.set(s * 0.44, 0.88, 0); body.add(a);
+      part(a, S(0.15, 12, 10), tee, 0, -0.04, 0);
+      const up = part(a, S(0.12, 12, 10), skin, 0, -0.14, 0); up.scale.set(1, 1.1, 1);
+      const el = new THREE.Group(); el.position.y = -0.24; a.add(el);
+      const fo = part(el, S(0.11, 12, 10), skin, 0, -0.08, 0); fo.scale.set(1, 1.1, 1);
+      part(el, S(0.12, 12, 10), skin, 0, -0.2, 0);
+      a.userData.elbow = el; return a;
+    });
+    // legs: shorts leg → knee → bare foot
+    const legs = [-1, 1].map(s => {
+      const l = new THREE.Group(); l.position.set(s * 0.2, 0.26, 0); body.add(l);
+      part(l, S(0.17, 12, 10), blue, 0, -0.04, 0);
+      const stripe = part(l, new THREE.TorusGeometry(0.15, 0.025, 6, 16), LM(0xffffff), 0, -0.1, 0, true); stripe.rotation.x = Math.PI / 2;
+      const kn = new THREE.Group(); kn.position.y = -0.14; l.add(kn);
+      const shin = part(kn, S(0.12, 12, 10), skin, 0, -0.02, 0); shin.scale.set(1, 0.9, 1);
+      const foot = part(kn, S(0.14, 14, 10), skin, 0, -0.1, -0.06); foot.scale.set(1, 0.55, 1.4);
+      for (let k = 0; k < 4; k++) part(kn, S(0.03, 6, 4), skin, -0.07 + k * 0.045, -0.1, -0.24, true);   // little toes
+      l.userData.knee = kn; return l;
+    });
+    // toy car in the right hand (what he throws)
+    const toy = new THREE.Group();
+    part(toy, sbRoundBox(0.34, 0.18, 0.5, 0.06), LM(0xe0584a), 0, 0, 0);
+    part(toy, sbRoundBox(0.26, 0.14, 0.24, 0.05), LM(0x8fd0f0), 0, 0.14, 0.04);
+    for (const [x, z] of [[-0.18, -0.17], [0.18, -0.17], [-0.18, 0.17], [0.18, 0.17]]){ const w = part(toy, new THREE.CylinderGeometry(0.07, 0.07, 0.06, 12), LM(0x2a2a2a), x, -0.09, z); w.rotation.z = Math.PI / 2; }
+    toy.position.set(0, -0.3, -0.1); arms[1].userData.elbow.add(toy);
+
+    let expr = '';
+    const face = {
+      set(name){
+        if (name === expr) return; expr = name;
+        const happy = name === 'happy', cry = name === 'cry', naughty = name === 'naughty', surprised = name === 'surprised';
+        eyes.forEach(e => e.visible = !happy && !cry); glints.forEach(gl => gl.visible = !happy && !cry);
+        happyEyes.forEach(m => m.visible = happy); cryEyes.forEach(m => m.visible = cry); tears.forEach(m => m.visible = cry);
+        naughtyBrows.forEach(m => m.visible = naughty);
+        mouthSmile.visible = name === 'smile' || happy; mouthCry.visible = cry; mouthGrin.visible = naughty; mouthO.visible = surprised;
+      },
+      blink(k){ eyes.forEach(e => e.scale.y = 1.2 * (1 - k * 0.92)); },
+      get name(){ return expr; },
+    };
+    face.set('smile');
+    sbOutline(g, 0.03);
+    return { g, body, head: headG, arms, legs, torso, face, toy, tears };
+  };
+})();
+
 function buildAvatar(custom){
   custom = custom || DEFAULT_CUSTOM;
   if (custom.hero !== 'custom') return buildEddieAvatar(custom);   // everyone plays as Eddie
@@ -746,99 +851,16 @@ const flat = c => new THREE.MeshBasicMaterial({ color: c });
 function part(parent, geo, mat, x, y, z, noLine){ const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); if (noLine) m.userData.noLine = true; parent.add(m); return m; }
 const S = (r, w, h) => new THREE.SphereGeometry(r, w || 24, h || 16);
 
-// ---------- the little kid (faces -z, ~2/3 of Eddie's height) ----------
-function buildKid(){
-  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
-  const skin = LM(0xffd9c4), hair = LM(0x3a2a22), tee = LM(0xffd84a), diaper = LM(0xffffff), tape = LM(0x8fd0f0);
-  const NECK = 1.05, HY = 1.55;
-  const headG = new THREE.Group(); headG.position.y = NECK; body.add(headG);
-  const H = (geo, mat, x, y, z, nl) => part(headG, geo, mat, x, y - NECK, z, nl);
-  // big round baby head, chubby cheeks
-  const head = H(S(0.72, 32, 22), skin, 0, HY, 0); head.scale.set(1.06, 0.98, 1);
-  for (const s of [-1, 1]){
-    const cheek = H(S(0.26, 16, 12), skin, s * 0.38, HY - 0.25, -0.42); cheek.scale.set(1, 0.85, 0.7);
-    const ear = H(S(0.14, 12, 8), skin, s * 0.74, HY - 0.02, 0.05); ear.scale.set(0.5, 1, 0.8);
-  }
-  // hair: a little curl on top + a soft fringe
-  const fringe = H(new THREE.SphereGeometry(0.75, 32, 14, 0, Math.PI * 2, 0, Math.PI * 0.3), hair, 0, HY + 0.03, 0.04); fringe.rotation.x = 0.2;
-  const curl = H(new THREE.TorusGeometry(0.15, 0.06, 8, 16, Math.PI * 1.6), hair, 0, HY + 0.86, 0.02); curl.rotation.y = Math.PI / 2;
-  for (const s of [-1, 0, 1]){ const tf = H(new THREE.ConeGeometry(0.09, 0.22, 8), hair, s * 0.16, HY + 0.62, -0.42 + Math.abs(s) * 0.05); tf.rotation.x = -0.9; tf.rotation.z = -s * 0.4; }
-  // face
-  const ink = flat(0x22180f), white = flat(0xffffff);
-  const eyes = [], glints = [];
-  for (const s of [-1, 1]){
-    const e = H(S(0.115, 16, 12), ink, s * 0.24, HY + 0.02, -0.7, true); e.scale.set(1, 1.2, 0.5); eyes.push(e);
-    const gl = H(S(0.045, 8, 6), white, s * 0.24 - 0.035, HY + 0.08, -0.755, true); glints.push(gl);
-    const b = H(S(0.12, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff9fb0, transparent: true, opacity: 0.85 }), s * 0.42, HY - 0.15, -0.56, true); b.scale.set(1, 0.6, 0.35);
-  }
-  // mouths
-  const mouthSmile = H(new THREE.CircleGeometry(0.1, 16, Math.PI, Math.PI), flat(0x7a2a2a), 0, HY - 0.22, -0.715, true); mouthSmile.rotation.y = Math.PI;
-  const mouthCry = H(new THREE.CircleGeometry(0.15, 18), flat(0x7a2a2a), 0, HY - 0.26, -0.71, true); mouthCry.rotation.y = Math.PI; mouthCry.scale.set(1.2, 0.9, 1);
-  const mouthGrin = H(new THREE.TorusGeometry(0.11, 0.025, 6, 14, Math.PI), flat(0x7a2a2a), 0.04, HY - 0.18, -0.72, true); mouthGrin.rotation.z = Math.PI * 1.1;
-  const happyEyes = [-1, 1].map(s => H(new THREE.TorusGeometry(0.08, 0.025, 6, 14, Math.PI), ink, s * 0.24, HY + 0.0, -0.71, true));
-  const cryEyes = [-1, 1].map(s => { const m = H(new THREE.TorusGeometry(0.08, 0.025, 6, 14, Math.PI), ink, s * 0.24, HY + 0.04, -0.71, true); m.rotation.z = Math.PI; return m; });
-  const tears = [-1, 1].map(s => { const m = H(S(0.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0x8fd0f0 }), s * 0.3, HY - 0.1, -0.68, true); m.scale.set(0.8, 1.5, 0.5); return m; });
-  const naughtyBrows = [-1, 1].map(s => { const m = H(sbRoundBox(0.2, 0.05, 0.04, 0.02), ink, s * 0.24, HY + 0.2, -0.7, true); m.rotation.z = s * 0.35; return m; });
-  // pacifier
-  const paci = new THREE.Group();
-  part(paci, new THREE.CylinderGeometry(0.16, 0.16, 0.05, 20), LM(0x8fd0f0), 0, 0, 0).rotation.x = Math.PI / 2;
-  part(paci, new THREE.TorusGeometry(0.1, 0.025, 8, 16), LM(0xff8fb0), 0, 0, -0.06);
-  paci.position.set(0, HY - 0.24 - NECK, -0.74); headG.add(paci);
-  // body: chubby tummy in a yellow tee with a little Saturn, diaper below
-  const torso = part(body, S(0.5, 24, 16), tee, 0, 0.62, 0); torso.scale.set(1.0, 0.95, 0.9);
-  const print = part(body, new THREE.CircleGeometry(0.13, 18), flat(0xffb35c), 0, 0.68, -0.455, true); print.rotation.y = Math.PI;
-  const ringp = part(body, new THREE.TorusGeometry(0.2, 0.02, 6, 24), flat(0xd9884a), 0, 0.68, -0.46, true); ringp.scale.set(1, 0.3, 1); ringp.rotation.z = -0.3;
-  const dia = part(body, S(0.46, 22, 14), diaper, 0, 0.3, 0); dia.scale.set(1.08, 0.62, 0.95);
-  for (const s of [-1, 1]) part(body, sbRoundBox(0.12, 0.08, 0.05, 0.02), tape, s * 0.3, 0.42, -0.4, true);
-  // arms: shoulder → elbow, chubby hands
-  const arms = [-1, 1].map(s => {
-    const a = new THREE.Group(); a.position.set(s * 0.46, 0.86, 0); body.add(a);
-    part(a, S(0.15, 12, 10), tee, 0, -0.04, 0);
-    const up = part(a, S(0.12, 12, 10), skin, 0, -0.14, 0); up.scale.set(1, 1.1, 1);
-    const el = new THREE.Group(); el.position.y = -0.24; a.add(el);
-    const fo = part(el, S(0.11, 12, 10), skin, 0, -0.08, 0); fo.scale.set(1, 1.1, 1);
-    part(el, S(0.12, 12, 10), skin, 0, -0.2, 0);
-    a.userData.elbow = el; return a;
-  });
-  // legs: short and chubby, bare feet
-  const legs = [-1, 1].map(s => {
-    const l = new THREE.Group(); l.position.set(s * 0.2, 0.26, 0); body.add(l);
-    const th = part(l, S(0.16, 12, 10), skin, 0, -0.06, 0); th.scale.set(1, 1.0, 1);
-    const kn = new THREE.Group(); kn.position.y = -0.14; l.add(kn);
-    const foot = part(kn, S(0.15, 14, 10), skin, 0, -0.08, -0.06); foot.scale.set(1, 0.6, 1.35);
-    l.userData.knee = kn; return l;
-  });
-  // the toy he carries around (and throws)
-  const toy = new THREE.Group();
-  part(toy, sbRoundBox(0.34, 0.18, 0.5, 0.06), LM(0xe0584a), 0, 0, 0);
-  part(toy, sbRoundBox(0.26, 0.14, 0.24, 0.05), LM(0x8fd0f0), 0, 0.14, 0.04);
-  for (const [x, z] of [[-0.18, -0.17], [0.18, -0.17], [-0.18, 0.17], [0.18, 0.17]]){ const w = part(toy, new THREE.CylinderGeometry(0.07, 0.07, 0.06, 12), LM(0x2a2a2a), x, -0.09, z); w.rotation.z = Math.PI / 2; }
-  toy.position.set(0, -0.3, -0.1); arms[1].userData.elbow.add(toy);
-
-  const face = {
-    set(name){
-      const happy = name === 'happy', cry = name === 'cry', naughty = name === 'naughty';
-      eyes.forEach(e => e.visible = !happy && !cry); glints.forEach(g => g.visible = !happy && !cry);
-      happyEyes.forEach(m => m.visible = happy); cryEyes.forEach(m => m.visible = cry); tears.forEach(m => m.visible = cry);
-      naughtyBrows.forEach(m => m.visible = naughty);
-      mouthSmile.visible = name === 'smile' || happy; mouthCry.visible = cry; mouthGrin.visible = naughty;
-      paci.visible = name === 'smile';
-    },
-    blink(k){ eyes.forEach(e => e.scale.y = 1.2 * (1 - k * 0.92)); },
-  };
-  face.set('smile');
-  sbOutline(g, 0.03);
-  return { g, body, head: headG, arms, legs, torso, face, toy, tears };
-}
-
+// the kid comes from the shared AVATAR block (island.html)
 const kid = buildKid(); scene.add(kid.g);
 let eddie = null;
 
 // ---------- moves ----------
-let yaw = 0, t = 0, act = null, actT = 0, walking = false, blinkAt = 2, blinkT = -1;
+let yaw = 0, t = 0, act = null, actT = 0, walking = false, sitting = false, blinkAt = 2, blinkT = -1;
 const ease = k => k * k * (3 - 2 * k);
 const btn = (id, f) => $(id).addEventListener('click', f);
 btn('bWalk', () => { walking = !walking; act = null; kid.face.set(walking ? 'happy' : 'smile'); });
+btn('bSit', () => { sitting = !sitting; walking = false; });
 btn('bThrow', () => { act = 'throw'; actT = 0; walking = false; kid.face.set('naughty'); });
 btn('bClap', () => { act = 'clap'; actT = 0; walking = false; kid.face.set('happy'); });
 btn('bCry', () => { act = 'cry'; actT = 0; walking = false; kid.face.set('cry'); });
@@ -866,6 +888,7 @@ function frame(now){
   kid.torso.scale.set(1 + br * 0.02, 0.95 + br * 0.025, 0.9);
   aL.rotation.z = -0.35; aR.rotation.z = 0.35; eL.rotation.x = eR.rotation.x = 0.4;
   kid.head.rotation.z = Math.sin(t * 1.3) * 0.05;
+  if (sitting){ lL.rotation.x = lR.rotation.x = 1.45; lL.rotation.z = -0.25; lR.rotation.z = 0.25; kid.body.position.y = -0.24; }
   if (walking){
     // toddler waddle: rock side to side, short stiff steps, arms out for balance
     const p = t * 7, w = Math.sin(p);

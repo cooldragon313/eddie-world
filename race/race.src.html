@@ -264,7 +264,7 @@
   </svg>
   <div class="logoText">逃離土星</div>
   <div class="logoSub">第一關・家庭聚會</div>
-  <div class="logoCast"><span>🍺 酒鬼大叔在後面追</span><span>👻 鬼媽媽揮熱熔膠條</span><span>👕 頂樓曬衣場大風吹</span></div>
+  <div class="logoCast"><span>🍺 酒鬼大叔在後面追</span><span>👻 鬼媽媽揮熱熔膠條</span><span>🧸 小屁孩丟玩具車</span><span>👕 頂樓曬衣場大風吹</span></div>
 </header>
 <div>
   <h1>🪐 逃離土星</h1>
@@ -331,7 +331,7 @@ const BODY_H = 2.2, CROUCH_H = 1.1, CROUCH_SPEED = 0.55;
 // ---------- LEVEL 1: 荊棘峽谷 (unchanged numbers from the released version) ----------
 const LEVEL1 = {
   id: 1, name: '第一關 家庭聚會', short: '家庭聚會',
-  blurb: '從土星家的玄關一路逃上頂樓陽台！酒鬼大叔在後面追，鬼媽媽、水槍、樂高擋路，最後穿過大風吹的曬衣場。',
+  blurb: '從土星家的玄關一路逃上頂樓陽台！酒鬼大叔在後面追，鬼媽媽、水槍、樂高、小屁孩擋路，最後穿過大風吹的曬衣場。',
   drunk: true, leash: 26,   // the drunk hangs further back than the spike wall did
   finish: 530, end: 560, finishBonus: 15, scenery: 'house', lateral: 0.8, camFollow: 0.6,
   clampX: L1_LANE - 0.5,
@@ -339,11 +339,11 @@ const LEVEL1 = {
   // only for drawing — physics heights stay relative to the floor you're on.
   floorY: m => m < 125 ? 0 : m < 140 ? (m - 125) / 15 * 4 : m < 325 ? 4 : m < 340 ? 4 + (m - 325) / 15 * 4 : 8,
   stairs: [[125, 140], [325, 340]],
-  checkpoints: [[0, 0], [30, 0], [125, 0], [230, 0], [325, 0], [430, 0]],
+  checkpoints: [[0, 0], [30, 0], [125, 0], [230, 0], [325, 0], [430, 0], [478, 0]],
   sections: [
     { from: 0, name: '玄關', wall: 9 }, { from: 30, name: '① 一樓客廳', wall: 9 }, { from: 125, name: '🪜 上二樓', wall: 9 },
     { from: 140, name: '② 二樓走廊', wall: 9.5 }, { from: 230, name: '③ 二樓臥室', wall: 10 }, { from: 325, name: '🪜 上三樓', wall: 10 },
-    { from: 340, name: '④ 三樓', wall: 10.5 }, { from: 430, name: '⑤ 頂樓曬衣場', wall: 9.4 },
+    { from: 340, name: '④ 三樓', wall: 10.5 }, { from: 430, name: '⑤ 頂樓遊戲室', wall: 9.4 }, { from: 478, name: '⑥ 頂樓曬衣場', wall: 9.4 },
   ],
   floors: [[-40, 560, -L1_LANE, L1_LANE]],
   // floor holes only upstairs (fall = back to the bottom of that floor's stairs)
@@ -356,11 +356,15 @@ const LEVEL1 = {
   // meteor zones: [from, to, seconds between rocks, share aimed at where you're heading]
   rocks: [[225, 330, 0.38, 0.45], [60, 125, 0.9, 0.4]],
   slideWalls: [{ m: 345, ph: 0 }, { m: 370, ph: 1.7 }, { m: 395, ph: 3.1 }, { m: 420, ph: 4.6 }],
-  // ⑤ 頂樓曬衣場: the wind swings bedsheets along their lines across the path
-  // (too tall to jump — time the gap), and flower pots sit in between (jump them).
-  laundry: [{ m: 444, ph: 0.0, w: 5.2 }, { m: 456, ph: 2.1, w: 5.6 }, { m: 468, ph: 4.0, w: 5.0 }, { m: 481, ph: 1.0, w: 6.0 },
-            { m: 494, ph: 3.2, w: 5.4 }, { m: 507, ph: 5.1, w: 5.8 }, { m: 519, ph: 2.6, w: 6.2 }],
-  pots: [[450, -4], [450, 4.5], [462, 1], [475, -3.5], [475, 5], [488, 0], [500, -5], [500, 3], [513, -1.5], [525, 4], [525, -4.5]],
+  // ⑤ 頂樓遊戲室: little kids sitting on the floor throw toy cars and remotes —
+  // they raise the arm first (the tell), so you can dodge or bat it back.
+  minions: { from: 434, to: 472, count: 5, fireEvery: 2.6, fireSpeed: 8, carSpeed: 7, windup: 0.55 },
+  // ⑥ 頂樓曬衣場: gusts of wind (warned) shove you sideways, bedsheets swing
+  // along their lines (too tall to jump — time the gap), socks and undies fly
+  // across, flower pots sit in between (jump them).
+  laundry: [{ m: 486, ph: 0.0, w: 5.2 }, { m: 498, ph: 2.1, w: 5.8 }, { m: 510, ph: 4.0, w: 5.4 }, { m: 521, ph: 1.0, w: 6.2 }],
+  pots: [[492, -4], [492, 4.5], [504, 1], [516, -3.5], [516, 5], [526, 0]],
+  wind: { from: 480, to: 530, every: 3.2, warn: 0.9, gust: 1.2, push: 5.5, flyEvery: 0.9 },
   achievements: [
     { id: 'perfect',  name: '👑 完美過關',     desc: '一次都沒失誤',               test: s => s.misses === 0 },
     { id: 'flash',    name: '⚡ 閃電俠',       desc: '65 秒內跑完',                test: s => s.t < 65 },
@@ -749,20 +753,13 @@ function bossNameSprite(text){
 }
 function makeBoss(){ return makeKid(true); }
 function makeKid(isBoss){
-  const g = new THREE.Group();
-  const diaper = new THREE.Mesh(new THREE.SphereGeometry(2.0, 20, 14), mats.diaper); diaper.scale.y = 0.75; diaper.position.y = 1.5; g.add(diaper); sbOutline(diaper, 0.07);
-  const body = new THREE.Mesh(new THREE.SphereGeometry(1.75, 20, 14), mats.shirt); body.position.y = 2.9; g.add(body); sbOutline(body, 0.07);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(1.9, 22, 16), mats.skin); head.position.y = 5.4; g.add(head); sbOutline(head, 0.07);
-  const face = new THREE.Mesh(new THREE.CircleGeometry(1.5, 32), new THREE.MeshBasicMaterial({ map: bossFaceTexture() }));
-  face.position.set(0, 5.3, 1.95); face.rotation.x = -0.2; g.add(face);
-  const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.9, 8), mats.hairBlack); tuft.position.set(0, 7.5, 0); tuft.rotation.z = 0.4; g.add(tuft);
-  for (const sx of [-1, 1]){
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.4, 10, 8), mats.skin); ear.position.set(sx * 1.85, 5.4, 0); g.add(ear);
-    const arm = new THREE.Group(); arm.position.set(sx * 1.9, 3.6, 0.3);
-    const a = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), mats.skin); a.scale.y = 1.6; a.position.y = -0.7; arm.add(a);
-    g.add(arm); g.userData[sx < 0 ? 'armL' : 'armR'] = arm;
-    const leg = new THREE.Mesh(new THREE.SphereGeometry(0.75, 12, 10), mats.skin); leg.position.set(sx * 1.2, 0.6, 1.6); leg.scale.z = 1.4; g.add(leg);
-  }
+  // Shared toddler (faces -z) turned to face +z like the old model, scaled to
+  // the old size, sitting on the floor. userData.armL/armR keep the old API.
+  const g = new THREE.Group(), k = buildKid();
+  k.g.rotation.y = Math.PI; k.g.scale.setScalar(3.0); g.add(k.g);
+  for (const l of k.legs){ l.rotation.x = 1.45; } k.legs[0].rotation.z = -0.25; k.legs[1].rotation.z = 0.25;
+  k.body.position.y = -0.24;
+  g.userData.armL = k.arms[0]; g.userData.armR = k.arms[1]; g.userData.kid = k;
   if (!isBoss) return g;
   const name = bossNameSprite('小屁孩大魔王'); name.position.set(0, 8.8, 0); g.add(name);
   // toy pile beside him
@@ -824,7 +821,8 @@ const HINTS = {
   spear:  '💦 房門口會噴水槍！水槍頭發紅就要射了，「跳」過去，噴到會看不清楚',
   rock:   '🛏 樓上會丟枕頭、球、臉盆下來，看地上的影子閃開',
   ghost:  '👻 鬼媽媽看到你會衝過來抽，抽到會跌坐、變慢喔！等她低頭逛網拍再衝過去',
-  kids:   '👕 頂樓曬衣場：大風把床單吹過來（太高跳不過），看準空隙衝！地上的盆栽要跳過去。',
+  kids:   '👶 小屁孩丟玩具車跟遙控器！看他「舉手」就要閃，或按揮棒把遙控器打回去！',
+  laundry:'👕 頂樓曬衣場：大風會把你吹歪（看箭頭）、床單擋路、襪子內褲亂飛！盆栽要跳過去。',
   boss:   '🧸 打回去的遙控器砸中大魔王，他會哭著暈 2.5 秒',
   ghostDrunk: '👻 酒鬼喝超過一半的酒了！鬼媽媽會改去抽他！',
 };
@@ -898,6 +896,22 @@ function updateLaundry(time){
     pos.needsUpdate = true;
   }
 }
+// a sock or a pair of undies blowing across the roof at chest height
+function spawnFlyingCloth(){
+  const kind = Math.random() < 0.55 ? 'sock' : 'undies', dir = Math.random() < 0.5 ? -1 : 1;
+  const g = new THREE.Group();
+  if (kind === 'sock'){
+    const leg = new THREE.Mesh(sbRoundBox(0.32, 0.7, 0.14, 0.06), LM([0xffffff, 0xff8fb0, 0x6fb3e0][(Math.random() * 3) | 0])); g.add(leg);
+    const toe = new THREE.Mesh(sbRoundBox(0.45, 0.3, 0.14, 0.06), leg.material); toe.position.set(0.1, -0.35, 0); g.add(toe);
+  } else {
+    const u = new THREE.Mesh(sbRoundBox(0.8, 0.45, 0.12, 0.08), LM([0xffcf5a, 0x7cc79a, 0xff8fb0][(Math.random() * 3) | 0])); g.add(u);
+    const band = new THREE.Mesh(sbRoundBox(0.84, 0.1, 0.14, 0.03), LM(0xffffff)); band.position.y = 0.22; g.add(band);
+  }
+  sbOutline(g, 0.03);
+  const m = S.m + 5 + Math.random() * 9, x = -dir * (L1_LANE + 2), y = 0.8 + Math.random() * 1.2;
+  g.position.set(x, FY(m) + y, -m); add(g);
+  flyingCloth.push({ mesh: g, m, x, y, vx: dir * (6 + Math.random() * 3), kind, hit: false });
+}
 function makePot(i){
   const g = new THREE.Group();
   const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.55, 0.9, 16), LM(0xd9734a)); pot.position.y = 0.45; g.add(pot);
@@ -944,7 +958,7 @@ function buildHouse(level){
 }
 
 // ---------- build a level ----------
-let laundry = [], pots = [];
+let laundry = [], pots = [], flyingCloth = [];
 let walls = [], covers = [], turrets = [], coins = [], bars = [], hammers = [], movers = [], gateObj = null, spears = [];
 const flying = [];   // bamboo spears in the air
 let thornObjs = [], minions = [], boss = null, ghosts = [], bottles = [], coverGroup = null;
@@ -957,7 +971,7 @@ let chaser;
 
 function buildLevel(level){
   L = level; clearWorld();
-  walls = []; covers = []; laundry = []; pots = []; turrets = []; coins = []; bars = []; hammers = []; movers = []; gateObj = null; spears = [];
+  walls = []; covers = []; laundry = []; pots = []; flyingCloth = []; turrets = []; coins = []; bars = []; hammers = []; movers = []; gateObj = null; spears = [];
   flying.length = 0;
   const sky = level.scenery === 'sky';
   scene.background = new THREE.Color(sky ? 0xa9d8f2 : 0xcfe6f0);
@@ -1179,7 +1193,7 @@ const S = { phase: 'menu', time: 0 };
 function reset(){
   Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, knockX: 0, slowUntil: 0, downUntil: 0,
     swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, cpX: 0, time: 0, caught: 0, pits: 0, shot: 0, hits: 0, rockNext: 0,
-    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99, knocked: 0, drank: 0, whipped: 0, reflected: 0, bossCried: 0, sheeted: 0, potBumped: 0, hinted: {}, drunkStunUntil: 0, drunkWhipped: 0 });
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99, knocked: 0, drank: 0, whipped: 0, reflected: 0, bossCried: 0, sheeted: 0, potBumped: 0, windNext: 0, windDir: 0, windAt: 0, flyNext: 0, hinted: {}, drunkStunUntil: 0, drunkWhipped: 0 });
   for (const f of flying) world.remove(f.mesh); flying.length = 0;
   for (const sp of spears){ sp.next = 0; sp.armed = true; }
   for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
@@ -1188,7 +1202,8 @@ function reset(){
   for (const pk of pukes) world.remove(pk.sp); pukes.length = 0;
   for (const b of bottles){ b.state = 'up'; b.t = 0; b.g.visible = true; b.g.rotation.set(0, 0, 0); b.g.position.set(b.x, FY(b.m), -b.m); }
   for (const [i, gh] of ghosts.entries()){ gh.th = i * 1.3; gh.state = 'watch'; gh.until = 4 + i * 1.5; gh.whipCd = 0; gh.hitDone = true; gh.warned = false; gh.ox = gh.om = 0; gh.rushUntil = 0; gh.rushCd = 0; }
-  for (const mn of minions){ mn.m = mn.hm; mn.x = mn.hx; mn.stunUntil = 0; mn.next = 1 + Math.random() * 1.5; }
+  for (const mn of minions){ mn.m = mn.hm; mn.x = mn.hx; mn.stunUntil = 0; mn.next = 1 + Math.random() * 1.5; mn.windAt = 0; }
+  for (const fc of flyingCloth) world.remove(fc.mesh); flyingCloth.length = 0;
   if (boss){ boss.nextBarrel = 0; boss.nextFire = 1.5; boss.stunUntil = 0; }
   for (const c of coins){ c.taken = false; c.mesh.visible = true; }
   if (gateObj){ gateObj.door.position.y = 2.5; gateObj.pad.material = gateObj.post.material = mats.switchOff; }
@@ -1327,7 +1342,8 @@ const INTRO = [
   { at: 'drunk',  title: '🍺 酒鬼大叔', text: '從玄關一路逃上頂樓陽台！他一直在後面追你，被他從後面抱住會被定住，還會吐你一身！' },
   { at: 'bottle', title: '🍾 路上的酒', text: '撞倒加金幣。漏掉的會被酒鬼喝掉，他會越跑越快——左上角看他喝了幾瓶。' },
   { at: 'ghost',  title: '👻 鬼媽媽',   text: '看到你就衝過來抽熱熔膠條，抽到會跌坐、變慢。等她低頭逛網拍再衝過去！酒鬼喝超過一半，她會改去抽酒鬼。' },
-  { at: 'all',    title: '👕 頂樓曬衣場', text: '最後一段在頂樓陽台：大風把床單吹過來擋路，看準空隙衝過去；地上的盆栽要跳過去。' },
+  { at: 'kid',    title: '🧸 小屁孩',   text: '頂樓遊戲室的小屁孩坐在地上丟玩具車跟遙控器。看他舉手就閃開，或按「揮棒」把遙控器打回去！' },
+  { at: 'all',    title: '👕 頂樓曬衣場', text: '最後在頂樓陽台：大風會把你吹歪、床單擋路、襪子內褲亂飛，地上的盆栽要跳過去。' },
   { at: 'all',    title: '⚠️ 路上的機關', text: '🦶 按摩腳墊會冒凸點　🧱 樂高踩到很痛　🛏 看影子躲樓上丟的東西　💦 房門口的水槍要跳過　🕳 樓上地板破洞，掉下去要重爬樓梯' },
   { at: 'all',    title: '🎮 怎麼操作', text: isTouch ? '左邊搖桿移動；右邊「跳」（空中再按一次＝二段跳）、「衝刺」、「揮棒」；左上「重來」。'
                                                   : 'WASD 移動・空白鍵跳（空中再按＝二段跳）・Shift 衝刺・F 揮棒・R 重來' },
@@ -1542,6 +1558,7 @@ function step(dt){
     if (ghosts.some(g => g.mm - S.m > 0 && g.mm - S.m < 26)) hint('ghost');
     if (S.m > 222) hint('rock');
     if (S.m > 428) hint('kids');
+    if (S.m > 477) hint('laundry');
     if (boss && S.m > boss.from) hint('boss');
     if (S.drank > bottles.length / 2) hint('ghostDrunk');
   }
@@ -1616,6 +1633,21 @@ function step(dt){
     const before = S.m;
     block(pt.m, 0.65, pt.x - 0.75, pt.x + 0.75, 1.1);
     if (S.m !== before && !pt.bumped){ pt.bumped = true; S.potBumped++; flash('🪴 撞到盆栽了！跳過去'); }
+  }
+  // gusts: a warning arrow first, then you're shoved sideways for a moment
+  const WD = L.wind;
+  if (WD && S.m > WD.from && S.m < WD.to){
+    if (!S.windNext) S.windNext = S.time + 1.5;
+    if (!S.windDir && S.time > S.windNext - WD.warn){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; flash(S.windDir < 0 ? '⬅️ 🌬 大風要來了！' : '🌬 大風要來了！➡️'); }
+    if (S.windDir && S.time > S.windAt && S.time < S.windAt + WD.gust) S.x += S.windDir * WD.push * dt;
+    if (S.windDir && S.time > S.windAt + WD.gust){ S.windDir = 0; S.windNext = S.time + WD.every * (0.8 + Math.random() * 0.4); }
+    if (S.time > (S.flyNext || 0)){ S.flyNext = S.time + WD.flyEvery * EZ(1, 1.8); spawnFlyingCloth(); }
+  }
+  for (let i = flyingCloth.length - 1; i >= 0; i--){
+    const fc = flyingCloth[i];
+    fc.x += fc.vx * dt; fc.mesh.position.x = fc.x; fc.mesh.rotation.z += dt * 6; fc.mesh.position.y = FY(fc.m) + fc.y + Math.sin(S.time * 6 + i) * 0.2;
+    if (!fc.hit && Math.abs(S.m - fc.m) < 0.7 && Math.abs(S.x - fc.x) < 0.7 && Math.abs((S.y || 0) + 1 - fc.y) < 0.9 && hurt('hit', fc.kind === 'sock' ? '🧦 被飛來的襪子打到！' : '🩲 內褲糊臉！', 4)) fc.hit = true;
+    if (Math.abs(fc.x) > L1_LANE + 3){ world.remove(fc.mesh); flyingCloth.splice(i, 1); }
   }
   for (const L0 of laundry){
     if (S.time < L0.hitCool || S.y > SHEET_H + 0.2) continue;
@@ -1758,7 +1790,9 @@ function step(dt){
     const dm = S.m - mn.m, dx = S.x - mn.x, d = Math.hypot(dm, dx) || 1;
     if (mn.m - S.m > 22 || S.m - mn.m > 3) continue;           // only when you're coming at them
     if (d < 1.1 && S.y < 1.2 && hurt('hit', '👶 被小屁孩絆倒！', 6)) S.knockX = -dx / d * 5;
+    if (mn.m > S.m + 2 && !mn.windAt && S.time > mn.next - (MN.windup || 0)) mn.windAt = S.time;   // arm goes up: the tell
     if (mn.m > S.m + 2 && S.time > mn.next){
+      mn.windAt = 0;
       mn.next = S.time + MN.fireEvery * EZ(1, 1.7) * (0.8 + Math.random() * 0.4); mn.throwT = S.time;
       mn.car = !mn.car;
       if (mn.car){
@@ -1978,10 +2012,17 @@ function render(dt, clock){
   for (const mn of minions){
     const stun = running && S.time < mn.stunUntil;
     mn.g.position.set(mn.x, FY(mn.m), -mn.m);
-    mn.g.rotation.y = Math.atan2((S.x || 0) - mn.x, mn.m - (S.m || 0));
-    const thr = running ? S.time - (mn.throwT || -9) : 9;
-    mn.g.userData.armR.rotation.x = thr < 0.4 ? -2.4 * Math.sin(thr / 0.4 * Math.PI) : 0;
-    mn.g.rotation.z = stun ? Math.sin(t * 14) * 0.12 : 0;
+    mn.g.rotation.y = Math.atan2((S.x || 0) - mn.x, mn.m - (S.m || 0));   // the +z-facing wrapper turns toward you
+    const thr = running ? S.time - (mn.throwT || -9) : 9, wind = running && mn.windAt ? Math.min(1, (S.time - mn.windAt) / 0.3) : 0;
+    const k = mn.g.userData.kid;
+    // wind-up: arm cocked back over the head; release: snaps forward
+    mn.g.userData.armR.rotation.x = wind > 0 ? 2.6 * wind : thr < 0.35 ? 2.6 * (1 - thr / 0.35) - 1.2 * Math.sin(thr / 0.35 * Math.PI) : 0;
+    if (k){
+      k.toy.visible = !(thr < 0.6);
+      k.face.set(stun ? 'cry' : wind > 0 || thr < 0.4 ? 'naughty' : 'smile');
+      k.head.rotation.z = stun ? Math.sin(t * 14) * 0.15 : 0;
+    }
+    mn.g.rotation.z = stun ? Math.sin(t * 14) * 0.08 : 0;
   }
   if (boss){
     const thr = running ? S.time - boss.throwT : 9, fir = running ? S.time - boss.fireT : 9, stun = running && S.time < boss.stunUntil;
