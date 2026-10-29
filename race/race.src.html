@@ -183,8 +183,14 @@
   #tZoomOut{right:calc(110px + env(safe-area-inset-right,0px));top:calc(138px + env(safe-area-inset-top,0px))}
   #tZoomIn{right:calc(62px + env(safe-area-inset-right,0px));top:calc(138px + env(safe-area-inset-top,0px))}
   #tFull{right:calc(14px + env(safe-area-inset-right,0px));top:calc(138px + env(safe-area-inset-top,0px))}
+  /* portrait phones play too (some can't rotate: rotation lock, in-app viewers) —
+     just tighten the HUD so the road stays visible */
   @media (orientation: portrait) and (max-width: 600px){
-    body.touch::after{content:"📱 把手機橫過來玩";position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(255,248,236,.96);color:var(--sb-ink);font:700 22px/1.4 var(--sb-font)}
+    .chip{font-size:12px;padding:1px 9px}.chip b{font-size:14px}
+    .tr .lbl{font-size:10px}
+    #tZoomOut,#tZoomIn,#tFull{top:calc(118px + env(safe-area-inset-top,0px))}
+    .bubble.cap{bottom:auto !important;top:calc(170px + env(safe-area-inset-top,0px)) !important;font-size:13px}
+    #hint{top:auto;bottom:calc(200px + env(safe-area-inset-bottom,0px));font-size:13px}
   }
   @media (prefers-reduced-motion: reduce){.flash{transition:none}}
 </style>
@@ -1647,7 +1653,8 @@ function render(dt, clock){
     gh.g.userData.armR.rotation.x = w < 0.7 ? -2.4 * (w / 0.7) : w < 1 ? -2.4 + 3.4 * ((w - 0.7) / 0.3) : 0;
   }
   // camera: high and behind; level 2 follows you fully sideways (the gate spur)
-  _camTarget.set((S.x || 0) * L.camFollow, 9 * camZoom, -(S.m || 0) + 8 * camZoom);
+  const pf = camera.aspect < 1 ? 1.55 : 1;                         // upright phone: pull back so the road fits
+  _camTarget.set((S.x || 0) * L.camFollow, 9 * camZoom * pf, -(S.m || 0) + 8 * camZoom * pf);
   const cover = S.phase === 'menu' && coverGroup;
   if (coverGroup) coverGroup.visible = !!cover;
   if (cover){
