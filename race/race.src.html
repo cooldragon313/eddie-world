@@ -1852,7 +1852,7 @@ function render(dt, clock){
       cg.beat = beat;
       if (beat === 0) say(chaser, '你先跑我再追～', 2.2, { y: 4.6 });
       else if (beat === 1) say(cg.gm, '皮在癢了嗎？', 2.2, { y: 3.7 });
-      else { const KID = ['嬤嬤～媽媽～', '我要媽媽！', '咻咻咻！']; cg.kidLine = ((cg.kidLine || 0) + 1) % KID.length; say(cg.kid, KID[cg.kidLine], 2.2, { y: 3.3 }); }
+      else { const KID = ['媽媽～媽媽～', '我要媽媽！', '咻咻咻！']; cg.kidLine = ((cg.kidLine || 0) + 1) % KID.length; say(cg.kid, KID[cg.kidLine], 2.2, { y: 3.3 }); }
     }
     const wide = innerWidth >= 860 || (innerWidth >= 600 && innerWidth > innerHeight);
     const focus = introStep >= 0 ? INTRO_FOCUS[INTRO[introStep].at] : null;
