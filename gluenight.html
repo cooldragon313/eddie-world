@@ -131,6 +131,16 @@
   .card[hidden]{display:none!important}
   .card>div{background:var(--sb-paper);border:3px solid var(--sb-ink);border-radius:22px;padding:16px 20px;max-width:440px;width:100%;max-height:92vh;overflow:auto;text-align:center;box-shadow:0 8px 0 rgba(91,58,41,.25)}
   .card h1{font:900 38px/1.1 var(--sb-font);margin:0;color:#ffcf5a;-webkit-text-stroke:5px var(--sb-ink);paint-order:stroke fill;text-shadow:0 5px 0 var(--sb-ink);transform:rotate(-2deg)}
+  .board{list-style:none;margin:6px 0;padding:6px 10px;background:#fff;border:2px solid var(--sb-ink);border-radius:12px;font-size:14px;text-align:left}
+  .board.empty{color:var(--sb-muted);text-align:center}
+  .board li{display:grid;grid-template-columns:22px 1fr auto 20px;gap:6px;align-items:center;font-variant-numeric:tabular-nums}
+  .board li.me{background:#fff3c4;border-radius:6px}
+  .board .rk{font-weight:900;color:var(--sb-muted)}
+  .board .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .board .nm.crown{color:#c8901a;font-weight:900;text-shadow:0 0 6px rgba(255,207,90,.7)}
+  .board .sc{font-weight:700}
+  #startBoard,#endBoard{text-align:left;margin:8px 0}
+  .crownMsg{background:#ffcf5a;border:2px solid var(--sb-ink);border-radius:999px;padding:2px 10px;margin:4px 0;font-weight:900;text-align:center}
   #endAch{text-align:left;background:#fff;border:2px solid var(--sb-ink);border-radius:14px;padding:8px 12px;margin:8px 0;font-size:14px;line-height:1.5}
   #endAch div.off{color:var(--sb-muted)}
   #endAch div.new{color:#c0392b;font-weight:700}
@@ -208,6 +218,7 @@
     <li>媽媽每次手上的武器不一樣：🩹 熱熔膠條、🖐 愛的小手、🧥 衣架（衣架最痛）。</li>
     <li>撐到十點過關。被抽太多下，媽媽爆炸就結束。</li>
   </ul>
+  <div id="startBoard"></div>
   <button class="btn" id="startBtn" type="button">開始寫功課</button>
   <a class="btn ghost homeLink" href="index.html">🏠 回土星之家</a>
   <p class="muted">開著聲音更可怕（右上角可以關）。電腦：1–4 偷玩、空白鍵裝乖、F 翻頁</p>
@@ -219,6 +230,7 @@
   <div class="stat" id="endStat"></div>
   <p id="endLine"></p>
   <div id="endAch"></div>
+  <div id="endBoard"></div>
   <button class="btn" id="againBtn" type="button">🔄 再來一次</button>
   <a class="btn ghost homeLink" href="index.html">🏠 回土星之家</a>
   <p class="muted" id="bestLine"></p>
@@ -1988,6 +2000,42 @@ function celebrate(){
   }
   setTimeout(() => { w.hidden = true; }, 3000);
 }
+// ---------- account + leaderboard (same accounts as the race / island) ----------
+const ON_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), ON_LIVE = /github\.io$/.test(location.hostname);
+const API = ON_LOCAL ? 'http://localhost:1999/parties/main/global' : ON_LIVE ? 'https://etfm.cooldragon313.workers.dev/parties/main/global' : '';
+const DEVICE = (navigator.maxTouchPoints || 0) > 0 ? 'phone' : 'pc';
+const token = () => { try { return localStorage.getItem('etfm-token') || ''; } catch (e) { return ''; } };
+const myName = () => { try { return localStorage.getItem('etfm-display') || localStorage.getItem('etfm-username') || ''; } catch (e) { return ''; } };
+const escH = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+function boardHtml(rows){
+  if (!API) return '<div class="board empty">排行榜在正式網址才看得到</div>';
+  if (!rows) return '<div class="board empty">讀取排行榜…</div>';
+  if (!rows.length) return '<div class="board empty">還沒有人上榜，搶第一名！</div>';
+  const me = myName();
+  return '<ol class="board">' + rows.slice(0, 10).map((r, i) =>
+    '<li class="' + (r.name === me ? 'me' : '') + '"><span class="rk">' + (i + 1) + '</span><span class="nm' + (r.crown ? ' crown' : '') + '">' + (r.crown ? '👑 ' : '') + escH(r.name) + '</span>' +
+    '<span class="sc">' + r.mood + ' 心情</span><span class="dv">' + (r.device === 'phone' ? '📱' : '💻') + '</span></li>').join('') + '</ol>';
+}
+async function loadBoard(){
+  if (!API){ $('startBoard').innerHTML = boardHtml(null); return; }
+  try { const r = await fetch(API + '/glue_board'); const j = await r.json(); $('startBoard').innerHTML = '<b>🏆 心情排行</b>' + boardHtml(Array.isArray(j.rows) ? j.rows : []); }
+  catch (e){ $('startBoard').innerHTML = ''; }
+}
+async function submitScore(coins, win, achIds){
+  const el = $('endBoard');
+  if (!API){ el.innerHTML = '<div class="board empty">試玩版不存檔，正式網址才有排行榜</div>'; return; }
+  if (!token()){ el.innerHTML = '<div class="board empty">先到 <a href="race.html">逃離土星</a> 登入，心情才會上排行榜、金幣才會存進帳號</div>'; return; }
+  el.innerHTML = '<div class="board empty">上傳成績中…</div>';
+  try {
+    const r = await fetch(API + '/glue_score', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({ mood: Math.floor(S.mood), coins, hits: S.hits, win, ach: achIds, device: DEVICE }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok){ el.innerHTML = '<div class="board empty">' + escH(j.message || '成績沒傳到，等一下再玩一次') + '</div>'; return; }
+    el.innerHTML = '<b>🏆 心情排行' + (j.rank ? (j.improved ? '　你衝到第 ' + j.rank + ' 名！' : '　你的最佳是第 ' + j.rank + ' 名') : '') + '</b>' +
+      (j.crown ? '<div class="crownMsg">👑 全成就達成！你的名字在排行榜上變金色了</div>' : '') + boardHtml(j.board) +
+      '<div class="muted">金幣 +' + j.coins + ' 已存入帳號（現在 $' + j.money + '）</div>';
+  } catch (e){ el.innerHTML = '<div class="board empty">連不上伺服器，這次的成績沒傳到</div>'; }
+}
 function readAch(){ try { return JSON.parse(localStorage.getItem('gluenight.ach') || '[]'); } catch (e) { return []; } }
 function readBest(){ try { return +localStorage.getItem('gluenight.best') || 0; } catch (e) { return 0; } }
 function endGame(win){
@@ -2011,7 +2059,8 @@ function endGame(win){
   $('endAch').innerHTML = '<b>🏅 成就 ' + got.length + ' / ' + ACHIEVEMENTS.length + '</b>' +
     ACHIEVEMENTS.map(a => '<div class="' + (fresh.includes(a) ? 'new' : got.includes(a.id) ? '' : 'off') + '">' + (got.includes(a.id) ? a.name : '🔒 ' + a.name.replace(/^\S+\s/, '')) +
       ' <small>' + a.desc + '</small>' + (fresh.includes(a) ? ' <em>NEW!</em>' : '') + '</div>').join('');
-  $('bestLine').textContent = '這台裝置最高：' + best + ' 金幣　（金幣入帳、排行榜之後接海嘯島帳號）';
+  submitScore(coins, win, got);
+  $('bestLine').textContent = '這台裝置最高：' + best + ' 金幣';
   $('endCard').hidden = false; updateButtons();
 }
 
@@ -2021,6 +2070,7 @@ $('good').addEventListener('click', stow);
 $('flip').addEventListener('click', flip);
 $('startBtn').addEventListener('click', start);
 $('againBtn').addEventListener('click', start);
+loadBoard();
 // 🏠 back to 土星之家 (the hub is the front page of the main site; the race also lives on saturnfamily)
 { const h = document.querySelectorAll('.homeLink'), live = /github\.io$/.test(location.hostname), local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   h.forEach(a => { if (live) a.href = 'https://cooldragon313.github.io/escapetsunamiformoney/'; else if (!local) a.hidden = true; }); }
