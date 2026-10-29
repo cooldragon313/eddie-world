@@ -1173,7 +1173,7 @@ for (let f = 0; f < TOTAL_FLOORS; f += 8){
   // one "bamboo" section = 8 floors, a touch wider at its top (the shape everyone knows)
   const n = Math.min(8, TOTAL_FLOORS - f), hgt = n * FLOOR_H, t = new THREE.CanvasTexture(glassCanvas);
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, n);
-  const flare = f >= 24 ? 1.05 : 1;
+  const flare = 1;   // straight sides: everything on the wall sits at a fixed distance from the glass (a flare buried the 31–40F walls); the climbable bamboo node does the leaning
   const geo = new THREE.CylinderGeometry(R * Math.SQRT2 * flare, R * Math.SQRT2, hgt, 4, 1, true);
   const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: t, side: THREE.DoubleSide }));
   m.rotation.y = Math.PI / 4; m.position.y = f * FLOOR_H + hgt / 2; tower.add(m);
