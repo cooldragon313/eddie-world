@@ -1125,7 +1125,7 @@ function lowerThird(b, s, secs){ $('lowerB').textContent = b; $('lowerS').textCo
 //   s = distance around the tower (0 … 4·SIDE), y = height.
 //   +s = to the right as seen from outside. Faces: 0 front(+z) 1 right(+x) 2 back 3 left.
 // ============================================================
-const SIDE = 18, R = SIDE / 2, PER = SIDE * 4, FLOOR_H = 3, BUILT = 30;   // floors built so far
+const SIDE = 18, R = SIDE / 2, PER = SIDE * 4, FLOOR_H = 3, BUILT = 40;   // floors built so far
 // the ten segments (docs/PLAN-101-難度表.md): name + stars
 const SEGS = [null, ['出發！', 1], ['轉角遇到吊籃', 2], ['冷氣機森林', 2], ['竹節初登場', 3], ['夜幕降臨', 3], ['天空工地', 3], ['颱風前夕', 4], ['雨中攀登', 4], ['觀景台明星', 5], ['雲端之上', 5]];
 const segOf = y => Math.min(10, Math.floor(Math.max(0, y) / (10 * 3)) + 1);
@@ -1212,6 +1212,7 @@ const TYPES = {
   net:     { col: 0xffffff, depth: 2.6, h: 0.1 },           // safety net (catches falls, bounces you)
   balcony: { col: 0xd9cbb4, depth: 1.4, h: 0.3 },           // decoration
   drip:    { col: 0xdfe8ee, depth: 1.6, h: 1.0 },           // a dripping air-conditioner: wet on top, you slide
+  lip:     { col: 0x2f6e68, depth: 2.2, h: 0.5 },           // the bamboo section's lip sticking out over a traverse (decoration)
 };
 const ROUTE = [];   // footholds + walls in climbing order (for the "next step" marker)
 function plat(type, s0, w, y, o){ const p = Object.assign({ type, s0, s1: s0 + w, y, y0: y }, o || {}); plats.push(p); return p; }
@@ -1258,7 +1259,7 @@ foot('sill', 1.4, 2.3, 2.4);
 const cradle = foot('gondola', 1.5, 1.8, 2.6, { range: 5.0, speed: 0.4 }); // rides up 5 → reach the next sill from the top
 cy += 5.0;
 branch(foot('sill', 1.4, 2.0, 2.4), -1, [['sill', 1.6, 2.2, 2.0], ['balcony', 1.6, 2.2, 2.6, { item: 'reporter' }]]);   // 📸 the TV crew
-climb(1.0, 4.5, 2.2, { chalk: true });
+climb(1.0, 4.5, 2.2, { chalk: true, momWall: true });   // mom's 18F window is next to its top
 branch(foot('ac',   1.4, 2.1, 2.0), -1, [['flag', 2.0, 2.1, 1.2], ['flag', 2.2, 2.0, 1.0, { item: 'coin', id: 'coin2' }]]);   // 🥇 over mom's head
 climb(1.2, 5.0, 2.6, { over: true });                        // first bulging "bamboo" wall: grip drains fast
 foot('sill', 1.2, 2.0, 2.4, { pigeon: true });
@@ -1268,24 +1269,43 @@ cs += 1.5;
 foot('sill', 1.0, 2.2, 3.0);                                 // a breather first
 foot('sill', 1.2, 2.2, 2.8, { pigeon: true });
 foot('ac',   1.4, 2.2, 2.2);
-foot('drip', 1.5, 2.2, 2.2, { slide: 1, first: true });      // first wet one: it carries you right
+foot('drip', 1.5, 2.2, 1.9, { slide: 1, first: true });      // first wet one: it carries you right
 const toyFrom = foot('sill', 1.4, 2.1, 2.2);
 climb(1.0, 2.6, 1.8);                                        // two short walls, one straight after the other
 climb(1.2, 2.6, 1.8);
-foot('drip', 1.4, 2.2, 2.0, { slide: -1, chain: true });     // three wet ones in a row = 冷氣機溜冰王
-foot('drip', 1.5, 2.2, 2.0, { slide: 1, chain: true });
-foot('drip', 1.5, 2.2, 2.0, { slide: -1, chain: true });
-foot('sill', 1.4, 2.2, 2.4, { pigeon: true });
+foot('drip', 1.4, 2.2, 1.7, { slide: -1, chain: true });     // three wet ones in a row = 冷氣機溜冰王
+foot('drip', 1.5, 2.2, 1.7, { slide: 1, chain: true });
+foot('drip', 1.5, 2.2, 1.7, { slide: -1, chain: true });
+branch(foot('sill', 1.4, 2.2, 2.4, { pigeon: true }), -1, [['flag', 1.8, 2.1, 1.2], ['sill', 2.0, 2.2, 1.6, { item: 'gripup', id: 'g1' }]]);   // 💪 #1
 climb(1.0, 3.0, 2.2, { chalk: true });
 checkpoint(30);                                              // y 90
 branch(toyFrom, -1, [['ac', 1.8, 2.2, 1.6], ['drip', 2.0, 2.2, 1.4, { slide: -1 }], ['sill', 2.0, 2.1, 1.6, { item: 'toy', id: 'bey' }]]);   // 🌀 Eddie's battle top 爆破貝利亞
+// ---- segment 4: 31–40F 竹節初登場 — traverse under the bamboo lip, then out over the bulge
+cs += 1.5;
+foot('sill', 1.0, 2.2, 2.6);                                 // breather
+foot('ac',   1.3, 2.2, 2.0);
+foot('sill', 1.5, 2.2, 1.8, { pigeon: true });
+{ // the traverse: a wide, low wall under the bamboo lip — climb sideways to its end, then up the bulge
+  const tz = wall(cs + 1.0, 6.0, cy - 0.2, cy + 2.4, { traverse: true }); ROUTE.push(tz);
+  plat('lip', tz.s0 - 0.3, 4.8, cy + 3.3, { decor: true });  // the lip over your head (you can't stand on it)
+  const oz = wall(tz.s1 - 1.8, 1.8, cy + 2.2, cy + 5.8, { over: true, bamboo: true }); ROUTE.push(oz);
+  const top = plat('sill', oz.s0 - 0.2, 2.2, cy + 5.9); ROUTE.push(top); cs = top.s1; cy = top.y;
+}
+foot('drip', 1.4, 2.1, 1.6, { slide: 1 });
+branch(foot('flag', 1.8, 2.0, 1.2), -1, [['sill', 1.8, 2.2, 1.6], ['ac', 2.0, 2.1, 1.4, { item: 'gripup', id: 'g2' }]]);   // 💪 #2
+foot('sill', 1.6, 2.2, 1.8, { pigeon: true });
+climb(1.0, 4.0, 2.0, { chalk: true, momWall: true });          // mom's 38F window next to its top
+foot('ac',   1.5, 2.2, 1.6);
+climb(1.2, 3.2, 2.2, { over: true });
+checkpoint(40);                                              // y 120
 // safety nets halfway up each segment: a fall costs at most 5 floors
 plat('net', 0, PER, 5 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 15 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 25 * FLOOR_H - 0.4, { ring: true, net: true });
+plat('net', 0, PER, 35 * FLOOR_H - 0.4, { ring: true, net: true });
 // mom at an 18F window (a cameo from 恐怖考前複習夜)
 // (she rides the lift up to chase him — she shows up at a window every 20 floors: 18, 38, 58 … only 18F is built so far)
-const MOM_WALL = walls.find(z => z.chalk), MOM_S = MOM_WALL.s0 - 2.6, MOM_Y = MOM_WALL.y1 + 0.5;   // next to the top of the chalk wall (clear of the corner)
+const MOM_SPOTS = walls.filter(z => z.momWall).map(z => [z.s0 - 2.6, z.y1 + 0.5]);   // next to the top of those walls (clear of the corner)
 
 // ---------- build the meshes ----------
 const woodTex = canvasTex(64, 32, (x, w, h) => { x.fillStyle = '#c98a4a'; x.fillRect(0, 0, w, h); x.strokeStyle = '#a8743f'; x.lineWidth = 2; for (let i = 1; i < 3; i++){ x.beginPath(); x.moveTo(0, i * h / 3); x.lineTo(w, i * h / 3); x.stroke(); } });
@@ -1352,6 +1372,11 @@ for (const it of ITEMS){
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.12, 24), new THREE.MeshLambertMaterial({ color: 0xffcf3a, emissive: 0x6a4a00 })); c.rotation.x = Math.PI / 2; g.add(c);
     const t = canvasTex(64, 64, (x) => { x.fillStyle = '#b8860b'; x.font = '900 30px Fredoka, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('101', 32, 34); });
     const face = new THREE.Mesh(new THREE.CircleGeometry(0.4, 20), new THREE.MeshBasicMaterial({ map: t, transparent: true })); face.position.z = 0.07; g.add(face);
+  } else if (it.kind === 'gripup'){   // 💪 a golden dumbbell
+    const gold = new THREE.MeshLambertMaterial({ color: 0xffcf3a, emissive: 0x5a3c00 });
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 10), gold); bar.rotation.z = Math.PI / 2; g.add(bar);
+    for (const x of [-0.36, 0.36]){ const w = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.16, 16), gold); w.rotation.z = Math.PI / 2; w.position.x = x; g.add(w); }
+    const glow = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.68, 24), new THREE.MeshBasicMaterial({ color: 0xff8a3a, transparent: true, opacity: 0.8, side: THREE.DoubleSide })); g.add(glow);
   } else if (it.kind === 'toy'){   // 🌀 爆破貝利亞, spinning
     const bey = buildBey(c => LM(c), (pa, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); pa.add(m); return m; }, sbRoundBox);
     bey.scale.setScalar(1.3); bey.rotation.x = -0.4; g.add(bey);
@@ -1383,6 +1408,7 @@ for (const it of ITEMS){
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true })); sp.scale.set(1.3, 1.7, 1); cradle.mesh.add(sp);
   sp.position.copy(surf(cradle.s1 - 0.5, 0.8, cradle.y + 0.85)); cradle.cleaner = sp; }
 // mom at her window: a frame sticking out of the wall, a warm room behind her, a sill hiding her legs, glass in front
+function makeMomAt(MOM_S, MOM_Y){
 const momWin = (() => {
   const g = new THREE.Group(), fa = faceAngle(MOM_S), W = 2.8, H = 3.6, frameM = LM(0xf4efe6);
   const at = (out, y) => surf(MOM_S, out, MOM_Y + y);
@@ -1406,6 +1432,9 @@ const momNpc = (() => { const m = buildMom(); const b = new THREE.Box3().setFrom
     sign.visible = love;
   };
   return m; })();
+return { npc: momNpc, s: MOM_S, y: MOM_Y, said: false, love: false };
+}
+const MOMS = MOM_SPOTS.map(([ms, my]) => makeMomAt(ms, my)), momNpc = MOMS[0].npc;
 // climbing walls: a panel with coloured holds; the bulging ones stick out
 const holdCols = [0xff6b5a, 0xffcf5a, 0x6fb3e0, 0x7cc79a, 0xc58cf0];
 for (const z of walls){
@@ -1432,8 +1461,8 @@ function personTex(kind){
     else { x.strokeStyle = '#f2cfae'; x.lineWidth = 9; x.lineCap = 'round'; x.beginPath(); x.moveTo(70, 100); x.lineTo(84, 66); x.stroke(); }   // waving
   });
 }
-for (let i = 0; i < 28; i++){
-  const s = (i * 13.7) % PER, y = 1.6 + ((i * 7) % 20) * FLOOR_H + (i % 3) * 0.4;
+for (let i = 0; i < 52; i++){
+  const s = (i * 13.7) % PER, y = 1.6 + ((i * 7) % BUILT) * FLOOR_H + (i % 3) * 0.4;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: personTex(i), transparent: true })); sp.scale.set(1.1, 1.45, 1);
   sp.position.copy(surf(s, 0.05, y)); scene.add(sp);
   const fl = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xffffff, transparent: true, opacity: 0 })); fl.scale.set(1.6, 1.6, 1); fl.position.copy(surf(s + 0.3, 0.15, y + 0.2)); scene.add(fl);
@@ -1444,7 +1473,7 @@ for (let i = 0; i < 28; i++){
 const me = buildEddieAvatar(DEFAULT_CUSTOM, { bat: false });
 { const b = new THREE.Box3().setFromObject(me.group); me.group.scale.setScalar(1.9 / (b.max.y - b.min.y)); }
 scene.add(me.group);
-const P = { s: 9, y: 0, vs: 0, vy: 0, mode: 'ground', on: null, wall: null, face: 1, phase: 0, grip: 100, noGrab: 0, climbPh: 0 };
+const P = { s: 9, y: 0, vs: 0, vy: 0, mode: 'ground', on: null, wall: null, face: 1, phase: 0, grip: 100, gripMax: 100, noGrab: 0, climbPh: 0 };
 
 // ---------- sound (synth; on by default, remembered) ----------
 const sfx = (() => {
@@ -1526,10 +1555,13 @@ function startAt(floor){
   S = { phase: 'run', t: 0, best: floor, start: floor, coins: 0, jumpHeld: true, segT0: 0, seg: {}, windNext: 6, windDir: 0, windAt: 0, shot: null, shotT: 0, cine: 0 };
   claimFrom = floor; claimAt = performance.now();
   const on = plats.find(p => p.ring && p.floor === floor) || plats[0];
-  Object.assign(P, { s: floor ? 3 : 9, y, vs: 0, vy: 0, mode: 'ground', on, wall: null, grip: 100, noGrab: 0 });
+  P.gripMax = 100 + 25 * gripUps().length;
+  // start where the route reaches this checkpoint (keeps "how far round the tower" continuous)
+  const cpI = ROUTE.indexOf(on), startS = floor && cpI > 0 ? ROUTE[cpI - 1].s1 + 0.6 : 9;
+  Object.assign(P, { s: startS, y, vs: 0, vy: 0, mode: 'ground', on, wall: null, grip: P.gripMax, noGrab: 0 });
   for (const c of chalks){ c.taken = false; c.mesh.visible = true; }
   for (const it of ITEMS){ it.taken = false; it.mesh.visible = true; }
-  S.momLove = Math.random() < 0.5; momNpc.pose(S.momLove);   // a good day or a bad day
+  for (const M of MOMS){ M.love = Math.random() < 0.5; M.npc.pose(M.love); M.said = false; }   // each window: a good day or a bad day
   S.segPoop = 0; S.segPhotos = 0; for (const q of people) q.snapped = false;
   PO.state = 'idle'; PO.next = 6; flyer.visible = false; poop.visible = false;
   for (const p of plats) if (p.bird){ p.bird.fly = 0; p.bird.g.visible = true; p.bird.g.position.copy(p.bird.home); p.bird.g.rotation.z = 0; }
@@ -1540,7 +1572,9 @@ function startAt(floor){
 }
 
 // ---------- physics ----------
-function onSpan(p, s, pad){ if (p.ring) return true; const a = p.s0 - pad, b = p.s1 + pad; s = wrapS(s); return (s >= a && s <= b) || (s + PER >= a && s + PER <= b); }
+// is s inside [s0, s1] (± pad)? works however many laps round the tower either number is
+function onSpan(p, s, pad){ if (p.ring) return true; return wrapS(s - (p.s0 - pad)) <= p.s1 - p.s0 + 2 * pad; }
+const sDist = (a, b) => { const d = wrapS(a - b); return Math.min(d, PER - d); };   // shortest distance round the tower
 function wallAt(s, y){ for (const z of walls) if (onSpan(z, s, 0.1) && y + 0.9 >= z.y0 && y + 0.3 <= z.y1) return z; return null; }
 function step(dt){
   S.t += dt;
@@ -1564,23 +1598,28 @@ function step(dt){
     P.climbPh += (Math.abs(ix) + Math.abs(iy)) * dt * 6;
     P.grip -= dt * (z.over ? 30 : 13) * (gust ? 1.8 : 1) * (ix || iy ? 1 : 0.7);   // the bamboo bulge eats your grip
     if (P.grip < 30 && S.t > (S.beatAt || 0)){ S.beatAt = S.t + 0.55; sfx.beat(); }
-    for (const c of chalks) if (!c.taken && Math.abs(wrapS(P.s) - c.s) < 0.8 && Math.abs(P.y + 0.9 - c.y) < 1.0){ c.taken = true; c.mesh.visible = false; P.grip = 100; S.usedChalk = true; sfx.chalk(); flash('🧂 抹粉！握力補滿'); say('抹粉～滑溜溜！'); }
-    P.s = clamp(P.s, z.s0 + 0.1, z.s1 - 0.1);
-    if (P.y > z.y1 - 0.3){   // pull yourself up onto the sill at the top
+    for (const c of chalks) if (!c.taken && sDist(P.s, c.s) < 0.8 && Math.abs(P.y + 0.9 - c.y) < 1.0){ c.taken = true; c.mesh.visible = false; P.grip = P.gripMax; S.usedChalk = true; sfx.chalk(); flash('🧂 抹粉！握力補滿'); say('抹粉～滑溜溜！'); }
+    { // hand over to a neighbouring wall when you climb onto it (up out of a traverse, or sideways)
+      const z2 = walls.find(w => w !== z && onSpan(w, P.s, 0.1) && P.y + 0.9 >= w.y0 && P.y + 0.3 <= w.y1 && ((iy > 0 && w.y1 > z.y1) || (ix && (P.s < z.s0 + 0.3 || P.s > z.s1 - 0.3))));
+      if (z2){ P.wall = z2; if (z2.bamboo && !z2.warned){ z2.warned = true; flash('🎋 竹節外凸：從橫移牆接上去，一口氣爬！', 2.4); } } }
+    if (z.traverse && !z.hinted){ z.hinted = true; flash('🧗 橫移牆：抓著往旁邊爬，到盡頭再往上', 2.6); }
+    const zc = P.wall; P.s = clamp(P.s, zc.s0 + 0.1, zc.s1 - 0.1);
+    if (P.wall !== z){ /* switched walls this frame */ }
+    else if (P.y > z.y1 - 0.3){   // pull yourself up onto the sill at the top
       const top = plats.find(p => !p.ring && onSpan(p, P.s, 0.3) && Math.abs(p.y - z.y1) < 0.5);
       if (top){ P.y = top.y; P.mode = 'ground'; P.on = top; P.vy = 0; P.wall = null; } else P.y = z.y1 - 0.3;
     }
     else if (P.y < z.y0 - 0.6){ P.mode = 'air'; P.vy = 0; P.noGrab = 0.4; P.wall = null; }
     else if (fresh){ P.mode = 'air'; P.vy = JUMP_V * 0.9; P.vs = (ix || P.face) * 4; P.noGrab = 0.3; P.wall = null; sfx.jump(); }
-    else if (P.grip <= 0){ P.mode = 'air'; P.vy = -1; P.vs = 0; P.noGrab = 1.2; P.wall = null; sfx.slip(); flash('😱 手滑了！'); say('哇啊啊啊——'); }
-    if (P.mode === 'wall' && P.grip < 28 && !z.tired){ z.tired = true; say(pick(['手好痠…', '快沒力了！', '撐住撐住…'])); }
+    if (P.mode === 'wall' && P.grip <= 0){ P.mode = 'air'; P.vy = -1; P.vs = 0; P.noGrab = 1.2; P.wall = null; S.segSlips = (S.segSlips || 0) + 1; sfx.slip(); flash('😱 手滑了！'); say('哇啊啊啊——'); }
+    if (P.mode === 'wall' && P.grip < 28 && !(P.wall || z).tired){ (P.wall || z).tired = true; say(pick(['手好痠…', '快沒力了！', '撐住撐住…'])); }
   } else {
     const wet = P.mode === 'ground' && P.on && P.on.type === 'drip';
-    P.vs += (ix * RUN * (S.t < (P.boostUntil || 0) ? 1.3 : 1) - P.vs) * Math.min(1, dt * (P.mode === 'ground' ? (wet ? 1.6 : 14) : 4));
-    if (wet) P.vs += P.on.slide * 5 * dt;   // the water carries you toward the edge
-    if (gust) P.vs += S.windDir * 9 * dt;
+    P.vs += (ix * RUN * (S.t < (P.boostUntil || 0) ? 1.3 : 1) - P.vs) * Math.min(1, dt * (P.mode === 'ground' ? (wet ? 0.9 : 14) : 4));
+    if (wet) P.vs += P.on.slide * 8 * dt;   // the water carries you toward the edge
+    if (gust) P.vs += S.windDir * 9 * (wet ? 2 : 1) * dt;   // wind on a wet AC = whoosh
     if (P.mode === 'ground'){
-      if (!(P.on && P.on.type === 'drip')) P.grip = Math.min(100, P.grip + dt * 22);   // resting takes a few seconds (not on a wet AC)
+      if (!(P.on && P.on.type === 'drip')) P.grip = Math.min(P.gripMax, P.grip + dt * 22);   // resting takes a few seconds (not on a wet AC)
       if (P.on && P.on.type === 'gondola') P.y += P.on.dy;
       P.lastGround = S.t; P.jumped = false;
     }
@@ -1629,11 +1668,12 @@ function step(dt){
   }
   // treasure
   for (const it of ITEMS){
-    if (it.taken || Math.abs(wrapS(P.s) - wrapS(it.s)) > 0.9 || Math.abs(P.y + 0.9 - it.y) > 1.3) continue;
+    if (it.taken || sDist(P.s, it.s) > 0.9 || Math.abs(P.y + 0.9 - it.y) > 1.3) continue;
     it.taken = true;
     if (it.kind === 'coin'){ it.mesh.visible = false; sfx.cp(); flash('🥇 找到 101 金色紀念幣！'); say('閃閃發亮！'); gotCoin(it.id); }
     else if (it.kind === 'toy'){ it.mesh.visible = false; sfx.cp(); gotToy(it.id); }
-    else if (it.kind === 'bento'){ it.mesh.visible = false; sfx.chalk(); P.grip = 100; P.boostUntil = S.t + 6; flash('🍱 吃便當！握力補滿，6 秒內跑得快、爬得快'); say('好好吃！力氣來了！'); unlock('bento'); }
+    else if (it.kind === 'gripup'){ it.mesh.visible = false; sfx.cp(); gotGripUp(it.id); }
+    else if (it.kind === 'bento'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍱 吃便當！握力補滿，6 秒內跑得快、爬得快'); say('好好吃！力氣來了！'); unlock('bento'); }
     else { npcSay(it.sprite, '看這邊！笑一個！'); news('12 歲男孩徒手攀爬台北 101！目前高度 ' + Math.round(P.y * METERS) + ' 公尺，現場群眾驚呼連連……'); say('我上電視了！'); unlock('news'); }
   }
   // standing around too long: Eddie wonders where to go (the marker bounces harder)
@@ -1649,12 +1689,13 @@ function step(dt){
   }
   for (const q of people){ if (S.t < (q.saidAt || 0)) continue; if (Math.abs(q.base - P.y - 1) < 2 && q.sp.position.distanceTo(surf(P.s, 0, q.base)) < 2.5){ q.saidAt = S.t + 12; npcSay(q.sp, pick(q.photo ? ['拍一張！', '笑一個～', '要上新聞了！'] : ['你在幹嘛？！', '快下來啦！', '要不要喝飲料？', '小心喔！'])); } }
   // the window cleaner, and mom
-  if (!S.cleanerSaid && Math.abs(P.y - (cradle.cur || cradle.y0)) < 4 && Math.abs(P.s - cradle.s0) < 5){ S.cleanerSaid = true; npcSay(cradle.cleaner, '小朋友不能在這裡玩喔～'); }
+  if (!S.cleanerSaid && Math.abs(P.y - (cradle.cur || cradle.y0)) < 4 && sDist(P.s, cradle.s0) < 5){ S.cleanerSaid = true; npcSay(cradle.cleaner, '小朋友不能在這裡玩喔～'); }
   if (S.cleanerSaid === true && P.on === cradle){ S.cleanerSaid = 2; npcSay(cradle.cleaner, '要搭便車喔？好啦～'); }
-  if (!S.momSaid && Math.abs(P.y - MOM_Y) < 5 && Math.abs(P.s - MOM_S) < 7){
-    S.momSaid = 1;
-    if (S.momLove){ npcSay(momNpc.g, '艾迪加油！媽媽在這裡！', 2.6); setTimeout(() => { say('我也愛你～❤️', 2.2); hearts(); P.grip = 100; flash('💖 媽媽的愛：握力補滿！'); unlock('momlove'); }, 1500); }
-    else { npcSay(momNpc.g, '艾迪！功課寫完了沒？！', 2.6); setTimeout(() => say('…媽？！你怎麼搭電梯上來了？！', 2.2), 1800); unlock('mom'); }
+  for (const M of MOMS){
+    if (M.said || Math.abs(P.y - M.y) > 5 || sDist(P.s, M.s) > 7) continue;
+    M.said = true; const second = M !== MOMS[0];
+    if (M.love){ npcSay(M.npc.g, second ? '寶貝！媽媽又搭電梯上來了！加油！' : '艾迪加油！媽媽在這裡！', 2.6); setTimeout(() => { say(second ? '媽～我愛你！！' : '我也愛你～❤️', 2.2); hearts(); P.grip = P.gripMax; flash('💖 媽媽的愛：握力補滿！'); unlock('momlove'); }, 1500); }
+    else { npcSay(M.npc.g, second ? '你給我下來！電梯我都搭到 38 樓了！' : '艾迪！功課寫完了沒？！', 2.6); setTimeout(() => say(second ? '又是妳！！' : '…媽？！你怎麼搭電梯上來了？！', 2.2), 1800); unlock('mom'); }
   }
   if (P.on === cradle && cradle.cur > cradle.y0 + cradle.range - 0.3) unlock('cradle');
   // a new floor counts when you're standing on something
@@ -1681,6 +1722,7 @@ const ACH = [
   { id: 'poop3',   name: '💩 鴿屎運',       desc: '同一段被鴿子大便淋到 3 次' },
   { id: 'photo3',  name: '📸 網美攀岩家',   desc: '同一段讓窗戶裡的人拍 3 張照（站在拿手機的人前面）' },
   { id: 'cradle',  name: '🚡 搭便車',       desc: '搭擦窗吊籃升到最上面' },
+  { id: 'bamboo',   name: '🎋 竹節征服者', desc: '第 4 段一次都沒手滑' },
   { id: 'dripking', name: '🧊 冷氣機溜冰王', desc: '連續踩過 3 台滴水冷氣機沒摔（第 3 段）' },
 ];
 const ACH_KEY = () => 'etfm-tower2-ach-' + who(), COIN_KEY = () => 'etfm-tower2-coins-' + who();
@@ -1722,6 +1764,16 @@ function gotToy(id){
   flash(fresh ? '🧸 找到玩具：' + TOY_NAMES[id] + '！回家看看玩具架' : '🧸 ' + TOY_NAMES[id] + '（已經在玩具架上了）', 2.6);
   say(fresh ? '是我的' + TOY_NAMES[id] + '！原來掉在這裡！' : '這個我有了～');
 }
+// 💪 grip upgrades: +25 max grip each, kept forever (later walls are long — without these it gets tight)
+const GRIP_KEY = () => 'etfm-tower2-grip-' + who();
+const gripUps = () => { try { return JSON.parse(localStorage.getItem(GRIP_KEY()) || '[]'); } catch (e) { return []; } };
+function gotGripUp(id){
+  const got = gripUps(), fresh = !got.includes(id);
+  if (fresh){ got.push(id); try { localStorage.setItem(GRIP_KEY(), JSON.stringify(got)); } catch (e) {} }
+  P.gripMax = 100 + 25 * got.length; P.grip = P.gripMax;
+  flash(fresh ? '💪 握力上限 +25！（現在 ' + P.gripMax + '）' : '💪 握力補滿（這個已經拿過了）', 2.4);
+  say(fresh ? '手臂變強壯了！' : '再練一下～');
+}
 function gotCoin(id){
   let got = []; try { got = JSON.parse(localStorage.getItem(COIN_KEY()) || '[]'); } catch (e) {}
   if (!got.includes(id)){ got.push(id); try { localStorage.setItem(COIN_KEY(), JSON.stringify(got)); } catch (e) {} }
@@ -1735,9 +1787,10 @@ function arriveCheckpoint(f){
   const segNo = f / 10, t = S.t - S.segT0, best = segBest(), prev = best[segNo];
   S.seg[segNo] = t; S.segT0 = S.t;
   if (!S.segFalls) unlock('steady');
+  if (segNo === 4 && !S.segSlips) unlock('bamboo');
   if (t < 40) unlock('fast');
   if (f >= 20 && !S.usedChalk) unlock('nochalk');
-  S.segFalls = 0; S.segPoop = 0; S.segPhotos = 0;
+  S.segFalls = 0; S.segPoop = 0; S.segPhotos = 0; S.segSlips = 0;
   if (!prev || t < prev){ best[segNo] = t; try { localStorage.setItem(SEG_KEY(), JSON.stringify(best)); } catch (e) {} }
   flash('🚩 ' + f + 'F 檢查點！第 ' + segNo + ' 段 ' + t.toFixed(1) + ' 秒' + (!prev || t < prev ? '（新紀錄！）' : ''), 2.4);
   if (f < BUILT) setTimeout(() => lowerThird('第 ' + (segNo + 1) + ' 段・' + SEGS[segNo + 1][0], (f + 1) + '–' + (f + 10) + 'F　' + '⭐'.repeat(SEGS[segNo + 1][1]), 3.2), 2600);
@@ -1967,7 +2020,7 @@ function frame(nowMs){
   }
   for (const c of chalks) if (c.mesh.visible) c.mesh.children[1].rotation.z += dt * 2;
   for (const p of plats) if (p.drops) for (const d of p.drops){ const k = (now * 0.9 + d.userData.k * 0.33) % 1; d.position.copy(d.userData.home); d.position.y -= k * 3; d.material.opacity = 1 - k; }
-  for (const it of ITEMS) if (it.kind === 'toy' && it.mesh.visible) it.mesh.rotation.y += dt * 6;
+  for (const it of ITEMS) if ((it.kind === 'toy' || it.kind === 'gripup') && it.mesh.visible) it.mesh.rotation.y += dt * (it.kind === 'toy' ? 6 : 2);
   // HUD: timecode, altimeter, grip
   const sec = S.phase === 'run' || S.phase === 'end' ? S.t : 0;
   $('tc').textContent = '00:' + String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(Math.floor(sec % 60)).padStart(2, '0');
@@ -1975,9 +2028,11 @@ function frame(nowMs){
   $('windTxt').textContent = '風速 ' + (S.windDir && S.t > S.windAt ? 18 : P.y > 30 ? 6 : 2) + ' m/s';
   $('floorTag').textContent = Math.max(1, Math.min(BUILT, floorOf(P.y) || 1)) + 'F';
   $('coinTag').textContent = '🪙 +' + S.coins;
-  const gripOn = S.phase === 'run' && (P.mode === 'wall' || P.grip < 99);
+  const gripOn = S.phase === 'run' && (P.mode === 'wall' || P.grip < P.gripMax - 1);
   $('grip').classList.toggle('on', gripOn); $('gripLbl').classList.toggle('on', gripOn);
-  $('gripFill').style.width = Math.max(0, P.grip) + '%'; $('grip').classList.toggle('low', P.grip < 30);
+  $('gripFill').style.width = Math.max(0, P.grip / P.gripMax * 100) + '%'; $('grip').classList.toggle('low', P.grip < 30);
+  $('grip').style.width = 'min(' + (56 * P.gripMax / 100) + 'vw,' + (260 * P.gripMax / 100) + 'px)';   // a longer bar for a bigger grip
+  $('gripLbl').textContent = '💪 握力' + (P.gripMax > 100 ? '（上限 ' + P.gripMax + '）' : '');
   $('tired').classList.toggle('on', S.phase === 'run' && P.mode === 'wall' && P.grip < 30);
   sweat.visible = S.phase === 'run' && P.grip < 45; if (sweat.visible){ sweat.position.copy(me.group.position); sweat.position.y += 2.1 + ((now * 1.5) % 1) * -0.6; sweat.position.addScaledVector(softNormal(P.s), 0.4); }
   for (const it of ITEMS) if (it.kind === 'coin' && it.mesh.visible) it.mesh.rotation.y = faceAngle(it.s) + now * 3;
