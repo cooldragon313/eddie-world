@@ -57,7 +57,7 @@ const glueSort = (a, b) => b.mood - a.mood || a.hits - b.hits;
 // 土星之家 (index.html): each account's home lives here, and so do the PRICES —
 // the client only shows them. Keep in sync with home/home.src.html (FURN, FLOORS, WALLS, LEVELS).
 const HOME_FURN = { sofa: [120, 2, 1], bed: [150, 2, 1], desk: [100, 2, 1], tv: [180, 2, 1], shelf: [90, 1, 1], table: [60, 1, 1],
-                    chair: [30, 1, 1], rug: [50, 2, 2], plant: [25, 1, 1], lamp: [40, 1, 1], saturn: [70, 1, 1] };   // [price, w, d]
+                    chair: [30, 1, 1], rug: [50, 2, 2], plant: [25, 1, 1], lamp: [40, 1, 1], saturn: [70, 1, 1], toyshelf: [300, 2, 1] };   // [price, w, d]
 const HOME_FLOORS = { wood: 0, tile: 80, mint: 80, check: 120 };
 const HOME_WALLS = { cream: 0, sky: 60, pink: 60, stars: 150 };
 const HOME_LEVELS = { 1: { size: 8 }, 2: { size: 10, price: 600 } };   // next: 3 = 艾迪的房間 (two rooms)

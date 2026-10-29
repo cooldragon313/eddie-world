@@ -58,6 +58,14 @@
   #buildNext .lv b{display:block;font-size:17px}
   #buildNext .lv span{font-size:13px;color:var(--sb-muted)}
   #buildNext .lv.off{opacity:.55}
+  #shelfUI{position:fixed;inset:0;z-index:15;pointer-events:none}
+  #shelfUI[hidden]{display:none}
+  #shelfUI .shelfHead{position:absolute;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--sb-paper);border:3px solid var(--sb-ink);border-radius:999px;
+    padding:5px 18px;font:900 20px var(--sb-font);color:var(--sb-ink);box-shadow:0 4px 0 rgba(91,58,41,.3);white-space:nowrap}
+  #shelfUI .shelfSay{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(90vw,460px);background:#e8f6ff;border:2.5px solid var(--sb-ink);
+    border-radius:16px;padding:8px 14px;font:800 16px/1.4 var(--sb-font);color:var(--sb-ink);text-align:center;box-shadow:0 4px 0 rgba(91,58,41,.3)}
+  #shelfUI .shelfSay span:first-child{color:#3a7bc8}
+  #shelfUI #shelfClose{position:absolute;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);pointer-events:auto}
   #toast{position:fixed;left:50%;top:24%;transform:translateX(-50%);z-index:20;background:var(--sb-paper);border:2.5px solid var(--sb-ink);border-radius:14px;
          padding:7px 16px;font:700 15px var(--sb-font);color:var(--sb-ink);box-shadow:0 4px 0 rgba(91,58,41,.3);pointer-events:none;opacity:0;transition:opacity .25s}
   #toast.on{opacity:1}
@@ -125,6 +133,11 @@
   <button class="btn" id="goBtn">🚪 出門玩</button>
 </div>
 <div id="toast"></div>
+<div id="shelfUI" hidden>
+  <div class="shelfHead">🧸 艾迪的玩具架　<b id="shelfCount">0 / 6</b></div>
+  <div class="shelfSay"><span>艾迪：</span><span id="shelfSay"></span></div>
+  <button class="btn" id="shelfClose" type="button">✕ 回房間</button>
+</div>
 
 <div id="holdHint" hidden>手指在地板上拖，移動家具</div>
 <div id="holdBar" hidden>
@@ -382,7 +395,38 @@ const FURN = {
   plant:  { name: '盆栽',     price: 25,  w: 1, d: 1, solid: true },
   lamp:   { name: '立燈',     price: 40,  w: 1, d: 1, solid: true },
   saturn: { name: '土星玩偶', price: 70,  w: 1, d: 1, solid: true },
+  toyshelf: { name: '玩具架',  price: 300, w: 2, d: 1, solid: true, tap: 'shelf' },   // tap it: a close-up of the toys you've found
 };
+// ---------- the toy shelf: Eddie's favourite toys, found in the levels ----------
+// Content is a placeholder for now; a toy you haven't found is a black silhouette with ??? under it.
+const TOYS = [
+  { id: 'train', name: '小火車' }, { id: 'robot', name: '機器人' }, { id: 'dino', name: '恐龍' },
+  { id: 'kite', name: '風箏' }, { id: 'top', name: '陀螺' }, { id: 'duck', name: '小鴨' },
+];
+function foundToys(){ try { return JSON.parse(localStorage.getItem('etfm-toys') || '[]'); } catch (e) { return []; } }
+const SHADOW = new THREE.MeshBasicMaterial({ color: 0x2a1d18 });
+function buildToy(id, found){
+  const g = new THREE.Group(), m = c => found ? LM(c) : SHADOW;
+  if (id === 'train'){ part(g, RB(0.5, 0.25, 0.26), m(0xe0584a), 0, 0.2, 0); part(g, RB(0.22, 0.2, 0.24), m(0x3a7bc8), -0.12, 0.42, 0); part(g, new THREE.CylinderGeometry(0.05, 0.05, 0.14, 8), m(0x2a2a30), 0.16, 0.4, 0);
+    for (const x of [-0.16, 0.16]) for (const z of [-0.13, 0.13]){ const w = part(g, new THREE.CylinderGeometry(0.07, 0.07, 0.04, 12), m(0x2a2a30), x, 0.07, z); w.rotation.x = Math.PI / 2; } }
+  else if (id === 'robot'){ part(g, RB(0.3, 0.32, 0.22), m(0xb8c0c8), 0, 0.3, 0); part(g, RB(0.24, 0.2, 0.2), m(0xb8c0c8), 0, 0.58, 0); part(g, new THREE.CylinderGeometry(0.015, 0.015, 0.12, 6), m(0x888888), 0, 0.74, 0);
+    part(g, new THREE.SphereGeometry(0.035, 8, 6), m(0xe0584a), 0, 0.81, 0); for (const s of [-1, 1]){ part(g, RB(0.08, 0.14, 0.08), m(0x8a939c), s * 0.08, 0.07, 0); part(g, RB(0.07, 0.22, 0.07), m(0x8a939c), s * 0.2, 0.32, 0); } }
+  else if (id === 'dino'){ const b = part(g, new THREE.SphereGeometry(0.2, 14, 10), m(0x7cc79a), 0, 0.25, 0); b.scale.set(1.4, 1, 0.9); part(g, new THREE.SphereGeometry(0.12, 12, 8), m(0x7cc79a), 0.26, 0.45, 0);
+    const tail = part(g, new THREE.ConeGeometry(0.08, 0.32, 8), m(0x7cc79a), -0.32, 0.22, 0); tail.rotation.z = Math.PI / 2; for (let i = 0; i < 3; i++) part(g, new THREE.ConeGeometry(0.04, 0.1, 6), m(0xffcf5a), -0.1 + i * 0.1, 0.45, 0);
+    for (const x of [-0.12, 0.12]) part(g, RB(0.08, 0.12, 0.08), m(0x6aae86), x, 0.06, 0); }
+  else if (id === 'kite'){ const k = part(g, new THREE.CylinderGeometry(0.0, 0.26, 0.5, 4, 1), m(0xff8fb0), 0, 0.5, 0); k.rotation.z = 0.2; k.scale.z = 0.15; const k2 = part(g, new THREE.CylinderGeometry(0.26, 0.0, 0.25, 4, 1), m(0xff8fb0), 0.04, 0.13, 0); k2.rotation.z = 0.2; k2.scale.z = 0.15;
+    part(g, new THREE.CylinderGeometry(0.01, 0.01, 0.4, 4), m(0x5b3a29), 0.1, -0.1, 0); }
+  else if (id === 'top'){ part(g, new THREE.ConeGeometry(0.2, 0.25, 16), m(0xffcf5a), 0, 0.18, 0).rotation.x = Math.PI; part(g, new THREE.CylinderGeometry(0.21, 0.21, 0.08, 16), m(0x6fb3e0), 0, 0.34, 0); part(g, new THREE.CylinderGeometry(0.03, 0.03, 0.15, 8), m(0xe0584a), 0, 0.45, 0); }
+  else { const b = part(g, new THREE.SphereGeometry(0.17, 14, 10), m(0xffd84a), 0, 0.18, 0); b.scale.set(1.3, 0.9, 1); part(g, new THREE.SphereGeometry(0.11, 12, 8), m(0xffd84a), 0.12, 0.36, 0);
+    const beak = part(g, new THREE.ConeGeometry(0.04, 0.1, 8), m(0xff8a2a), 0.25, 0.35, 0); beak.rotation.z = -Math.PI / 2; }
+  return g;
+}
+function labelTex(text){
+  const c = document.createElement('canvas'); c.width = 128; c.height = 48; const x = c.getContext('2d');
+  x.fillStyle = '#fff8ec'; x.fillRect(4, 4, 120, 40); x.strokeStyle = '#5b3a29'; x.lineWidth = 4; x.strokeRect(4, 4, 120, 40);
+  x.fillStyle = '#5b3a29'; x.font = 'bold 26px "Noto Sans TC", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 64, 26);
+  return new THREE.CanvasTexture(c);
+}
 function buildFurniture(id){
   const g = new THREE.Group(), W = FURN[id].w * CELL, D = FURN[id].d * CELL;
   const wood = LM(0xc08a50), dark = LM(0x8a5a32);
@@ -434,6 +478,18 @@ function buildFurniture(id){
     part(g, new THREE.CylinderGeometry(0.3, 0.34, 0.08, 16), dark, 0, 0.04, 0);
     part(g, new THREE.CylinderGeometry(0.05, 0.05, 1.7, 8), dark, 0, 0.9, 0);
     part(g, new THREE.CylinderGeometry(0.28, 0.42, 0.45, 16, 1, true), LM(0xfff1c9, { emissive: 0x665522, side: THREE.DoubleSide }), 0, 1.8, 0);
+  } else if (id === 'toyshelf'){
+    // two open shelves, three toys each (silhouettes until found) with a little label under each
+    const back = LM(0xb5824e), board = LM(0xd9a066), found = foundToys();
+    part(g, RB(W - 0.1, 2.5, 0.12), back, 0, 1.25, -D / 2 + 0.12);
+    for (const s of [-1, 1]) part(g, RB(0.14, 2.5, 0.7), board, s * (W / 2 - 0.12), 1.25, -D / 2 + 0.42);
+    for (const y of [0.1, 1.15, 2.4]) part(g, RB(W - 0.1, 0.12, 0.72), board, 0, y, -D / 2 + 0.42);
+    TOYS.forEach((t, i) => {
+      const row = Math.floor(i / 3), col = i % 3, x = (col - 1) * (W / 3.2), y = row ? 0.16 : 1.21;
+      const has = found.includes(t.id), toy = buildToy(t.id, has); toy.position.set(x, y, -D / 2 + 0.45); toy.scale.setScalar(1.15); g.add(toy);
+      const lab = part(g, new THREE.PlaneGeometry(0.62, 0.23), new THREE.MeshBasicMaterial({ map: labelTex(has ? t.name : '???') }), x, y - 0.03, -D / 2 + 0.79);
+      lab.userData.noLine = true;
+    });
   } else if (id === 'saturn'){
     part(g, new THREE.CylinderGeometry(0.32, 0.36, 0.14, 16), wood, 0, 0.07, 0);
     part(g, new THREE.SphereGeometry(0.48, 24, 16), LM(0xffb35c), 0, 0.68, 0);
@@ -553,7 +609,16 @@ addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'KeyR' &&
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
-let mode = 'walk';     // 'walk' | 'deco'
+let mode = 'walk';     // 'walk' | 'deco' | 'shelf' (looking at the toy shelf up close)
+let shelfView = null;
+function openShelf(o){
+  shelfView = o; mode = 'shelf'; target = null;
+  $('shelfUI').hidden = false; $('tr').hidden = true; $('title').hidden = true;
+  const n = foundToys().filter(id => TOYS.some(t => t.id === id)).length;
+  $('shelfCount').textContent = n + ' / ' + TOYS.length;
+  $('shelfSay').textContent = n ? '這裡都是我最愛的玩具！還有 ' + (TOYS.length - n) + ' 個沒找回來…' : '這裡都是我最愛的玩具！……可是都不見了，要去關卡裡找回來！';
+}
+function closeShelf(){ shelfView = null; mode = 'walk'; $('shelfUI').hidden = true; $('tr').hidden = false; $('title').hidden = false; }
 let holding = null;    // { data, group, uid|null (new), fromInv }
 let down = null;
 renderer.domElement.addEventListener('pointerdown', e => {
@@ -570,6 +635,7 @@ renderer.domElement.addEventListener('pointerup', e => {
   if (!tap) return;
   if (mode === 'walk'){
     if (pickDoor(e)){ openGo(); return; }
+    { const uid = pickFurniture(e), o = uid != null && placedObjs.get(uid); if (o && FURN[o.data.id].tap === 'shelf'){ openShelf(o); return; } }
     const p = pickFloor(e);
     if (p){ target = new THREE.Vector3(Math.max(-HALF + 0.5, Math.min(HALF - 0.5, p.x)), 0, Math.max(-HALF + 0.5, Math.min(HALF - 0.5, p.z))); }
   } else if (mode === 'deco' && !holding){
@@ -759,6 +825,13 @@ function frame(now){
   const atDoor = Math.floor((pos.x + HALF) / CELL) === DOOR_CELL.x && Math.floor((pos.z + HALF) / CELL) === DOOR_CELL.z;
   if (atDoor && mode === 'walk'){ nearDoorT += dt; if (nearDoorT > 0.35 && nearDoorT < 1 && $('goCard').hidden){ openGo(); nearDoorT = 1; } }
   else nearDoorT = 0;
+  if (mode === 'shelf' && shelfView){
+    // close-up straight in front of the shelf (its front is +z before it's turned)
+    const g = shelfView.group, a = g.rotation.y, fx2 = Math.sin(a), fz2 = Math.cos(a);
+    camera.position.set(g.position.x + fx2 * 4.6, 2.0, g.position.z + fz2 * 4.6); camera.lookAt(g.position.x, 1.25, g.position.z);
+    if (lastTrayH !== 0){ lastTrayH = 0; camera.clearViewOffset(); }
+    renderer.render(scene, camera); return;
+  }
   // camera: fixed storybook angle on the room, a little drift toward the player
   const fx = pos.x * 0.25, fz = pos.z * 0.2;
   const cd = camDist * (mode === 'deco' && innerHeight < 520 ? 1.3 : 1);   // short screens: back off so the room fits above the tray
@@ -824,6 +897,7 @@ function knock(){
   } catch (e) {}
 }
 $('buildBtn').onclick = () => { renderBuild(); $('buildCard').hidden = false; };
+$('shelfClose').onclick = closeShelf;
 $('buildClose').onclick = () => { $('buildCard').hidden = true; };
 $('buildCard').addEventListener('click', e => { if (e.target === $('buildCard')) $('buildCard').hidden = true; });
 })();
