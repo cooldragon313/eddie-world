@@ -198,6 +198,8 @@
     background:rgba(255,248,236,.94);border:2px solid var(--sb-ink);border-radius:999px;padding:4px 14px;font:700 14px/1.2 var(--sb-font);color:var(--sb-ink);
     box-shadow:0 3px 0 rgba(91,58,41,.25);cursor:pointer;touch-action:manipulation}
   #restartBtn:active{transform:translateY(2px)}
+  #soundBtn{pointer-events:auto;margin-top:2px;background:rgba(255,248,236,.94);border:2px solid var(--sb-ink);border-radius:999px;padding:4px 10px;font:700 14px/1.2 var(--sb-font);
+    color:var(--sb-ink);box-shadow:0 3px 0 rgba(91,58,41,.25);cursor:pointer;touch-action:manipulation}
   #lineHint{position:fixed;z-index:40;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);max-width:92vw;
     background:#06c755;color:#fff;border-radius:14px;padding:8px 14px;font:700 14px/1.4 var(--sb-font);box-shadow:0 4px 0 rgba(0,0,0,.2);text-align:center}
   #lineHint button{margin-left:8px;background:#fff;color:#06c755;border:0;border-radius:999px;padding:2px 10px;font:inherit}
@@ -231,6 +233,7 @@
   <span class="chip">🪙 <b id="hCoins">0</b></span>
   <span class="chip" id="hDrankChip" hidden>🍺 酒鬼喝了 <b id="hDrank">0</b> / <span id="hBottles">10</span></span>
   <button id="restartBtn" type="button" hidden>🔄 重來</button>
+  <button id="soundBtn" type="button" aria-label="聲音開關">🔊</button>
 </div>
 <div class="hud tr">
   <span class="lbl" id="chaserLbl">刺牆距離</span>
@@ -987,6 +990,174 @@ const buildKid = (() => {
   };
 })();
 
+// ============================================================
+// MOM (艾迪的媽媽) — from reference photos: long dark-brown hair fading to
+// ash-blonde wavy ends, soft side part with face-framing strands, almond
+// eyes, brown long-sleeve top, black wide-leg pants, black Mary-Jane flats,
+// purple phone lanyard. Faces -z, feet at y=0. Same rig idea as Eddie:
+// head pivot, elbows, knees, face controller. Holds a glue stick (熱熔膠條).
+// ============================================================
+function buildMom(){
+  const LM = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+  const flat = c => new THREE.MeshBasicMaterial({ color: c });
+  const part = (p, geo, mat, x, y, z, nl) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); if (nl) m.userData.noLine = true; p.add(m); return m; };
+  const S = (r, w, h) => new THREE.SphereGeometry(r, w || 24, h || 16);
+  const Cy = (a, b, h, n) => new THREE.CylinderGeometry(a, b, h, n || 16);
+  // hair colour runs dark at the roots to ash-blonde at the tips (by height)
+  const DARK = new THREE.Color(0x2b1e18), MID = new THREE.Color(0x5a4334), ASH = new THREE.Color(0xc2b3a3);
+  const hairMat = LM(0xffffff, { vertexColors: true });
+  function hairPiece(p, geo, x, y, z, sx, sy, sz, y0, y1){
+    const m = part(p, geo, hairMat, x, y, z); m.scale.set(sx || 1, sy || 1, sz || 1);
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++){
+      const wy = y + pos.getY(i) * (sy || 1), k = Math.min(1, Math.max(0, (y0 - wy) / (y0 - y1)));
+      if (k < 0.45) c.copy(DARK).lerp(MID, k / 0.45); else c.copy(MID).lerp(ASH, (k - 0.45) / 0.55);
+      col.set([c.r, c.g, c.b], i * 3);
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return m;
+  }
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const skin = LM(0xf3cfb3), top = LM(0x5e3b2c), pants = LM(0x232026), shoe = LM(0x1c1a1d), purple = LM(0x7b5fb0);
+  // ---- legs: wide trousers, knee, Mary-Jane flats
+  const legs = [-1, 1].map(s => {
+    const l = new THREE.Group(); l.position.set(s * 0.2, 1.5, 0); body.add(l);
+    part(l, Cy(0.22, 0.25, 0.75), pants, 0, -0.37, 0);
+    const kn = new THREE.Group(); kn.position.y = -0.72; l.add(kn);
+    part(kn, Cy(0.25, 0.33, 0.66, 18), pants, 0, -0.32, 0);
+    const f = part(kn, S(0.15, 16, 10), shoe, 0, -0.7, -0.08); f.scale.set(0.9, 0.45, 1.55);
+    const strap = part(kn, sbRoundBox(0.25, 0.04, 0.05, 0.02), shoe, 0, -0.64, -0.2, true); strap.rotation.y = s * 0.5;
+    part(kn, sbRoundBox(0.06, 0.06, 0.02, 0.01), LM(0xd8d4cc), s * 0.1, -0.64, -0.24, true);
+    l.userData.knee = kn; return l;
+  });
+  // ---- torso: loose brown top
+  const torso = part(body, Cy(0.34, 0.47, 1.1, 22), top, 0, 2.02, 0);
+  const chest = part(body, S(0.36, 22, 14), top, 0, 2.5, 0); chest.scale.set(1.25, 0.55, 0.95);
+  part(body, Cy(0.1, 0.12, 0.25), skin, 0, 2.68, 0);
+  // ---- arms: long sleeves, elbows, hands
+  const arms = [-1, 1].map(s => {
+    const a = new THREE.Group(); a.position.set(s * 0.46, 2.47, 0); body.add(a);
+    part(a, S(0.14, 12, 10), top, 0, 0, 0);
+    part(a, Cy(0.13, 0.11, 0.55), top, 0, -0.28, 0);
+    const el = new THREE.Group(); el.position.y = -0.55; a.add(el);
+    part(el, Cy(0.11, 0.12, 0.45), top, 0, -0.22, 0);
+    const hand = part(el, S(0.09, 12, 10), skin, 0, -0.5, 0); hand.scale.set(0.9, 1.15, 0.8);
+    a.userData.elbow = el; return a;
+  });
+  // three weapons for the right hand (pointing forward when the arm hangs):
+  // 熱熔膠條 glue stick, 愛的小手 (a stick with a little hand), 衣架 wire hanger
+  const hand = arms[1].userData.elbow, weapons = {};
+  { const w = new THREE.Group(); w.position.set(0, -0.52, 0); hand.add(w);
+    const st = part(w, Cy(0.05, 0.05, 1.1, 10), LM(0xfff4d6), 0, 0, -0.5); st.rotation.x = Math.PI / 2; weapons.glue = w; }
+  { const w = new THREE.Group(); w.position.set(0, -0.52, 0); hand.add(w); const pink = LM(0xff8fb0);
+    const st = part(w, Cy(0.03, 0.035, 1.0, 8), pink, 0, 0, -0.5); st.rotation.x = Math.PI / 2;
+    const palm = part(w, S(0.12, 14, 10), pink, 0, 0, -1.08); palm.scale.set(1, 0.35, 1.15);
+    for (let i = 0; i < 4; i++){ const f = part(w, Cy(0.025, 0.028, 0.16, 6), pink, -0.075 + i * 0.05, 0, -1.26 - (i === 1 || i === 2 ? 0.02 : 0)); f.rotation.x = Math.PI / 2; }
+    const th = part(w, Cy(0.025, 0.028, 0.13, 6), pink, -0.13, 0, -1.1); th.rotation.x = Math.PI / 2; th.rotation.y = 0.7;
+    weapons.hand = w; }
+  { const w = new THREE.Group(); w.position.set(0, -0.52, 0); hand.add(w); const blue = LM(0x6fb3e0);
+    // hook in the fist, triangle reaching forward (in the y-z plane, flat side down)
+    const hook = part(w, new THREE.TorusGeometry(0.08, 0.018, 6, 14, Math.PI * 1.3), blue, 0, 0.06, -0.02); hook.rotation.y = Math.PI / 2;
+    const neck = part(w, Cy(0.018, 0.018, 0.16, 6), blue, 0, 0, -0.14); neck.rotation.x = Math.PI / 2;
+    const L = 0.75, a = 0.42;
+    for (const s of [-1, 1]){ const arm = part(w, Cy(0.02, 0.02, L, 6), blue, s * Math.sin(a) * L / 2, 0, -0.22 - Math.cos(a) * L / 2); arm.rotation.x = Math.PI / 2; arm.rotation.z = 0; arm.rotation.y = 0; arm.rotation.set(Math.PI / 2, 0, -s * a); }
+    const bar = part(w, Cy(0.022, 0.022, 2 * Math.sin(a) * L, 6), blue, 0, 0, -0.22 - Math.cos(a) * L); bar.rotation.z = Math.PI / 2;
+    weapons.hanger = w; }
+  // held like a stick: out of the fist, down and a little forward along the forearm
+  for (const k in weapons) weapons[k].rotation.x = -1.2;
+  let weapon = 'glue';
+  const setWeapon = name => { weapon = name; for (const k in weapons) weapons[k].visible = k === name; };
+  setWeapon('glue');
+  // phone on a purple lanyard
+  const lan = part(body, Cy(0.018, 0.018, 1.0, 6), purple, 0.12, 2.15, -0.38, true); lan.rotation.z = 0.32; lan.rotation.x = 0.05;
+  const phone = part(body, sbRoundBox(0.16, 0.28, 0.03, 0.02), LM(0x2a2a30), 0.27, 1.62, -0.46);
+  const handPhone = part(arms[0].userData.elbow, sbRoundBox(0.2, 0.36, 0.035, 0.02), LM(0x2a2a30), 0, -0.56, -0.06); handPhone.visible = false;
+  const phoneScreen = part(handPhone, new THREE.PlaneGeometry(0.17, 0.31), new THREE.MeshBasicMaterial({ color: 0x9fd3ff, side: THREE.DoubleSide }), 0, 0, 0.022, true);
+  handPhone.userData.screen = phoneScreen;
+  // ---- head (pivot at the neck)
+  const NECK = 2.72, HY = 0.45;
+  const headG = new THREE.Group(); headG.position.y = NECK; headG.scale.setScalar(1.4); body.add(headG);   // storybook: a bit big-headed
+  const head = part(headG, S(0.5, 32, 22), skin, 0, HY, 0); head.scale.set(0.94, 1.06, 0.96);
+  // hair: ONE piece over the whole head (no seams, so nothing reads as a hat).
+  // A sphere a touch bigger than the head; the vertices where the face is get
+  // pulled inside the head, which carves a curved hairline. The parting sits a
+  // little left of centre, so the hair dips lower over the right temple.
+  // Plus a long back curtain and two strands framing the face. One gradient:
+  // dark roots → ash-blonde tips.
+  const H0 = 0.95, H1 = -1.2, PART = -0.1;
+  {
+    const geo = new THREE.SphereGeometry(0.525, 96, 64), pos = geo.attributes.position, v = new THREE.Vector3();
+    const ss = k => { k = Math.min(1, Math.max(0, k)); return k * k * (3 - 2 * k); };
+    for (let i = 0; i < pos.count; i++){
+      v.fromBufferAttribute(pos, i);
+      const d = (v.x - PART) / 0.43, line = 0.38 - 0.3 * d * d;   // hairline height (arch, highest at the parting)
+      // soft edge: vertices sink gradually, so the hairline is smooth, not stepped
+      const k = ss((line - v.y) / 0.05) * ss((0.47 - Math.abs(v.x)) / 0.04) * ss((-0.05 - v.z) / 0.06);
+      if (k > 0){ v.multiplyScalar(1 - 0.45 * k); pos.setXYZ(i, v.x, v.y, v.z); }
+    }
+    geo.computeVertexNormals();
+    hairPiece(headG, geo, 0, HY, 0.01, 0.98, 1.06, 0.99, H0, H1);
+  }
+  hairPiece(headG, S(0.56, 26, 20), 0, HY - 0.45, 0.24, 1.04, 1.45, 0.42, H0, H1);
+  for (const s of [-1, 1]){
+    // long strands framing the face, lying in front of the shoulders
+    const fr = hairPiece(headG, S(0.2, 16, 16), s * 0.47, HY - 0.62, -0.08, 0.4, 2.75, 0.4, H0, H1); fr.rotation.z = s * -0.05;
+  }
+  for (let i = 0; i < 4; i++){   // wavy ends at the back
+    const x = (i - 1.5) * 0.24;
+    hairPiece(headG, S(0.16, 14, 10), x, HY - 1.2 + Math.abs(x) * 0.12, 0.3, 1, 1.1, 0.75, H0, H1);
+  }
+  // face
+  const ink = flat(0x241812), white = flat(0xffffff), lip = flat(0xc96a6a), mouthDark = flat(0x6e2626);
+  const eyes = [], glints = [], brows = [];
+  for (const s of [-1, 1]){
+    const e = part(headG, S(0.085, 16, 12), ink, s * 0.19, HY + 0.01, -0.46, true); e.scale.set(1.35, 1.0, 0.45); eyes.push(e);
+    glints.push(part(headG, S(0.026, 8, 6), white, s * 0.19 - 0.035, HY + 0.045, -0.5, true));
+    const la = part(headG, sbRoundBox(0.2, 0.025, 0.02, 0.01), ink, s * 0.19, HY + 0.085, -0.47, true); la.rotation.z = s * -0.12;
+    const b = part(headG, sbRoundBox(0.17, 0.03, 0.02, 0.012), flat(0x4a3428), s * 0.19, HY + 0.2, -0.47, true); b.rotation.z = s * -0.08; brows.push(b);
+    const bl = part(headG, S(0.075, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffa8a0, transparent: true, opacity: 0.55 }), s * 0.28, HY - 0.12, -0.42, true); bl.scale.set(1.1, 0.55, 0.3);
+  }
+  part(headG, S(0.03, 10, 8), LM(0xeab89a), 0, HY - 0.09, -0.49, true);
+  const mSmile = part(headG, new THREE.TorusGeometry(0.07, 0.018, 6, 14, Math.PI), lip, 0, HY - 0.17, -0.47, true); mSmile.rotation.z = Math.PI;
+  const mFrown = part(headG, new THREE.TorusGeometry(0.065, 0.018, 6, 14, Math.PI), lip, 0, HY - 0.23, -0.47, true);
+  const mYell = part(headG, new THREE.CircleGeometry(0.075, 18), mouthDark, 0, HY - 0.2, -0.475, true); mYell.rotation.y = Math.PI; mYell.scale.set(1.1, 1.25, 1);
+  const mO = part(headG, new THREE.CircleGeometry(0.045, 14), mouthDark, 0, HY - 0.19, -0.475, true); mO.rotation.y = Math.PI;
+  const mFlat = part(headG, sbRoundBox(0.1, 0.018, 0.015, 0.008), lip, 0.02, HY - 0.18, -0.47, true);
+  const vein = part(headG, new THREE.TorusGeometry(0.05, 0.012, 4, 10), flat(0xd94b3c), 0.3, HY + 0.3, -0.38, true); vein.rotation.y = 0.6;
+  let expr = '';
+  const eyeY = () => expr === 'suspicious' ? 0.45 : expr === 'shocked' ? 1.35 : expr === 'angry' || expr === 'yell' ? 0.8 : 1.0;
+  const face = {
+    set(name){
+      if (name === expr) return; expr = name;
+      const angry = name === 'angry' || name === 'yell', sus = name === 'suspicious', shock = name === 'shocked';
+      mSmile.visible = name === 'smile'; mFrown.visible = name === 'angry'; mYell.visible = name === 'yell'; mO.visible = shock; mFlat.visible = sus;
+      vein.visible = angry;
+      brows.forEach((b, i) => { const s = i ? 1 : -1;
+        b.rotation.z = angry ? s * 0.45 : sus ? (i ? -0.25 : 0.05) : shock ? s * -0.25 : s * -0.08;
+        b.position.y = HY + (angry ? 0.15 : shock ? 0.25 : sus && i ? 0.23 : 0.2); });
+      eyes.forEach(e => e.scale.set(1.35, eyeY(), 0.45));
+      glints.forEach(gl => gl.visible = !sus);
+    },
+    blink(k){ eyes.forEach(e => e.scale.y = eyeY() * (1 - k * 0.9)); },
+    get name(){ return expr; },
+  };
+  face.set('smile');
+  sbOutline(g, 0.025);
+  // whip pose for the right arm. c = time into one 0.9 s stroke: raise the
+  // weapon up behind the head (0–0.45), chop down to the front (0.45–0.6), recover.
+  const whipPose = c => {
+    const A = arms[1], E = A.userData.elbow, ez = x => x * x * (3 - 2 * x);
+    let sh, el;
+    if (c < 0.45){ const k = ez(c / 0.45); sh = 0.2 + 3.0 * k; el = 0.3 + 0.6 * k; }
+    else if (c < 0.6){ const k = ez((c - 0.45) / 0.15); sh = 3.2 - 2.6 * k; el = 0.9 - 0.8 * k; }
+    else { const k = ez(Math.min(1, (c - 0.6) / 0.3)); sh = 0.6 - 0.4 * k; el = 0.1 + 0.2 * k; }
+    A.rotation.x = sh; E.rotation.x = el; A.rotation.z = 0.15;
+    return c >= 0.45 && c < 0.6;   // true during the chop (for 啪 timing)
+  };
+  return { g, body, head: headG, arms, legs, torso, face, phone, handPhone, weapons, setWeapon, whipPose, get weapon(){ return weapon; } };
+}
+
+
 function buildAvatar(custom){
   custom = custom || DEFAULT_CUSTOM;
   if (custom.hero !== 'custom') return buildEddieAvatar(custom);   // everyone plays as Eddie
@@ -1506,7 +1677,43 @@ function mosaicTexture(){
   for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++){ x.fillStyle = pal[(Math.random() * pal.length) | 0]; x.fillRect(i, j, 1, 1); }
   const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; return t;
 }
+// ---------- sound effects (synthesised with WebAudio; nothing to download) ----------
+// On by default, remembered per device. No background music (Bernie: songs on a loop get tiring).
+const sfx = (() => {
+  let ac = null, on = true;
+  try { on = localStorage.getItem('race.sound') !== 'off'; } catch (e) {}
+  function ctx(){ if (!ac){ try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } } if (ac && ac.state === 'suspended') ac.resume(); return ac; }
+  // browsers only allow sound after a tap/key: wake the audio up on the first one
+  const wake = () => { if (on) ctx(); };
+  addEventListener('pointerdown', wake, true); addEventListener('keydown', wake, true);
+  const ok = () => on && ctx();
+  function noise(dur){ const b = ac.createBuffer(1, Math.max(1, ac.sampleRate * dur | 0), ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const n = ac.createBufferSource(); n.buffer = b; return n; }
+  function env(node, t, a, peak, rel){ const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + rel); node.connect(g); g.connect(ac.destination); return g; }
+  function tone(type, f0, f1, dur, vol, delay){ const t = ac.currentTime + (delay || 0), o = ac.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur); env(o, t, 0.008, vol, dur); o.start(t); o.stop(t + dur + 0.05); }
+  function hiss(dur, vol, type, f0, f1, delay, q){ const t = ac.currentTime + (delay || 0), n = noise(dur + 0.05), f = ac.createBiquadFilter(); f.type = type; f.Q.value = q || 1; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dur); n.connect(f); env(f, t, 0.01, vol, dur); n.start(t); n.stop(t + dur + 0.05); }
+  return {
+    get on(){ return on; },
+    toggle(){ on = !on; try { localStorage.setItem('race.sound', on ? 'on' : 'off'); } catch (e) {} if (on) ctx(); return on; },
+    jump(){ if (ok()) tone('square', 330, 660, 0.12, 0.08); },
+    dj(){ if (ok()){ tone('square', 520, 1040, 0.1, 0.07); tone('triangle', 780, 1560, 0.12, 0.06, 0.05); } },
+    coin(){ if (ok()){ tone('square', 988, 0, 0.06, 0.06); tone('square', 1319, 0, 0.14, 0.06, 0.06); } },
+    clink(){ if (ok()){ tone('triangle', 1800, 1400, 0.12, 0.08); tone('triangle', 2400, 0, 0.1, 0.05, 0.04); } },
+    thud(){ if (ok()){ tone('sine', 140, 50, 0.22, 0.4); hiss(0.08, 0.2, 'lowpass', 900, 200); } },
+    smack(){ if (ok()){ hiss(0.12, 0.6, 'highpass', 1500, 0, 0); tone('sine', 180, 60, 0.18, 0.35); } },
+    swish(){ if (ok()) hiss(0.18, 0.25, 'bandpass', 500, 3500, 0, 2); },
+    ping(){ if (ok()){ tone('triangle', 1200, 2000, 0.08, 0.12); tone('sine', 2000, 0, 0.25, 0.06, 0.06); } },
+    splash(){ if (ok()){ hiss(0.35, 0.35, 'bandpass', 2500, 700, 0, 0.8); tone('sine', 600, 200, 0.12, 0.05); } },
+    puke(){ if (ok()){ tone('sawtooth', 180, 70, 0.5, 0.12); hiss(0.45, 0.2, 'lowpass', 1200, 300, 0.05); } },
+    wind(){ if (ok()) hiss(1.3, 0.22, 'bandpass', 300, 1100, 0, 0.7); },
+    toss(){ if (ok()) hiss(0.12, 0.15, 'bandpass', 1500, 3000, 0, 3); },
+    chime(){ if (ok()) [784, 988, 1175].forEach((f, i) => tone('triangle', f, 0, 0.22, 0.09, i * 0.08)); },
+    beep(hi){ if (ok()) tone('square', hi ? 1320 : 660, 0, hi ? 0.35 : 0.14, 0.08); },
+    fanfare(){ if (ok()) [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone('square', f, 0, i === 5 ? 0.5 : 0.12, 0.07, i * 0.11)); },
+    caught(){ if (ok()){ tone('sawtooth', 300, 90, 0.5, 0.12); hiss(0.2, 0.3, 'lowpass', 800, 200); } },
+  };
+})();
 function puke(){
+  sfx.puke();
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: mosaicTexture() }));
   // on the ground behind his feet, well clear of the player (the mosaic is the puke, never you)
   sp.scale.set(1.7, 1.1, 1); sp.position.set(S.x - 0.3, FY(S.m) + 0.45, -(S.m - 2.6)); add(sp);
@@ -1627,6 +1834,7 @@ function makeFireball(r){
 // big stamped word + screen flash + camera shake
 let shakeUntil = 0, shakeAmp = 0;
 function impact(text, color, shake){
+  if (/噗/.test(text)) sfx.splash(); else if (/抓到/.test(text)) sfx.caught(); else if (!/噁/.test(text)) sfx.smack();
   const el = $('impact'); el.textContent = text; el.style.background = color; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
   const f = $('impactFlash'); f.style.transition = 'none'; f.style.background = color; f.style.opacity = 0.45;
   requestAnimationFrame(() => { f.style.transition = 'opacity .45s'; f.style.opacity = 0; });
@@ -1665,7 +1873,7 @@ function hurt(kind, text, knock){
   if (S.time < S.hurtUntil) return false;
   S.hurtUntil = S.time + 0.9; S.knockV = knock; S.slowUntil = S.time + 0.5; S.slideChain = 0;
   if (kind === 'shot') S.shot++; else S.hits++;
-  flash(text); return true;
+  sfx.thud(); flash(text); return true;
 }
 
 // ---------- ⑤ 頂樓曬衣場: clotheslines with wind-blown sheets, flower pots ----------
@@ -2224,6 +2432,8 @@ function startRun(level, easy){
   if (L.drunk) say(chaser, '你先跑我再追，追到我就對你嘿嘿嘿～', 4, { name: '酒鬼大叔', y: 4.6 });
 }
 $('againBtn').onclick = () => startRun(L, S.easy);
+$('soundBtn').textContent = sfx.on ? '🔊' : '🔇';
+$('soundBtn').addEventListener('click', e => { e.preventDefault(); $('soundBtn').blur(); $('soundBtn').textContent = sfx.toggle() ? '🔊' : '🔇'; });
 $('restartBtn').addEventListener('click', e => { e.preventDefault(); $('restartBtn').blur(); startRun(L, S.easy); });
 // still inside LINE (it didn't hand over): tell them how to get full screen
 if (/\bLine\//i.test(navigator.userAgent)){ $('lineHint').hidden = false; $('lineHintX').onclick = () => { $('lineHint').hidden = true; }; }
@@ -2241,6 +2451,7 @@ function respawn(reason){
   flash(reason);
 }
 function finish(){
+  sfx.fanfare();
   S.phase = 'done'; $('danger').style.opacity = 0; $('gateChip').hidden = true;
   const t = +S.time.toFixed(1), prevBest = bestTime(L), newBest = !prevBest || t < prevBest;
   if (newBest){ try { localStorage.setItem(bestKey(L), String(t)); } catch(e){} }
@@ -2366,7 +2577,9 @@ function frame(now){
   last = now;
   if (S.phase === 'count'){
     const left = 3 - (performance.now() - S.countAt) / 1000, c = $('count');
-    c.hidden = false; c.textContent = left > 0 ? Math.ceil(left) : 'GO!';
+    const label = left > 0 ? Math.ceil(left) : 'GO!';
+    if (c.textContent !== String(label) || c.hidden) sfx.beep(label === 'GO!');
+    c.hidden = false; c.textContent = label;
     if (left <= -0.4){ c.hidden = true; S.phase = 'run'; }
   }
   if (S.phase === 'run') step(dt);
@@ -2452,8 +2665,8 @@ function step(dt){
   // already falling below the platform (Bernie: 跳起來再跳一次, no mid-fall saves).
   const fresh = keys.Space && !S.jumpHeld; S.jumpHeld = !!keys.Space;
   if (!down){
-    if (keys.Space && S.onGround){ S.vy = JUMP_V; S.onGround = false; S.jumped = true; }
-    else if (fresh && !S.onGround && S.jumped && !S.djUsed && S.y > -0.2){ S.vy = DJ_V; S.djUsed = true; S.flipT = 0.0001; }
+    if (keys.Space && S.onGround){ S.vy = JUMP_V; S.onGround = false; S.jumped = true; sfx.jump(); }
+    else if (fresh && !S.onGround && S.jumped && !S.djUsed && S.y > -0.2){ S.vy = DJ_V; S.djUsed = true; S.flipT = 0.0001; sfx.dj(); }
   }
   S.vy -= GRAV * dt; S.y += S.vy * dt;
   const g = groundAt(S.m, S.x);
@@ -2475,7 +2688,7 @@ function step(dt){
       if (sp < MINS){ if (sp < 0.5){ vm = MINS; vx = 0; } else { vm *= MINS / sp; vx *= MINS / sp; } }
       S.slipVm = vm; S.slipVx = vx; S.slipUntil = S.time + L.slip.time; S.slipPud = pd; S.slides++;
       S.slideChain++; S.bestChain = Math.max(S.bestChain, S.slideChain);
-      flash(S.slideChain >= 3 ? `🛼 溜冰 ${S.slideChain} 連發！` : '💦 滑～～');
+      flash(S.slideChain >= 3 ? `🛼 溜冰 ${S.slideChain} 連發！` : '💦 滑～～'); sfx.splash();
       break;
     }
   }
@@ -2497,7 +2710,7 @@ function step(dt){
   const WD = L.wind;
   if (WD && S.m > WD.from && S.m < WD.to){
     if (!S.windNext) S.windNext = S.time + 1.5;
-    if (!S.windDir && S.time > S.windNext - WD.warn){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; flash(S.windDir < 0 ? '⬅️ 🌬 大風要來了！' : '🌬 大風要來了！➡️'); }
+    if (!S.windDir && S.time > S.windNext - WD.warn){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; sfx.wind(); flash(S.windDir < 0 ? '⬅️ 🌬 大風要來了！' : '🌬 大風要來了！➡️'); }
     if (S.windDir && S.time > S.windAt && S.time < S.windAt + WD.gust) S.x += S.windDir * WD.push * dt;
     if (S.windDir && S.time > S.windAt + WD.gust){ S.windDir = 0; S.windNext = S.time + WD.every * (0.8 + Math.random() * 0.4); }
     if (S.time > (S.flyNext || 0)){ S.flyNext = S.time + WD.flyEvery * EZ(1, 1.8); spawnFlyingCloth(); }
@@ -2572,7 +2785,7 @@ function step(dt){
       bullets.push({ x: tu.x, vx: (aimX - tu.x) / flight, m: tu.m - 1.5, vm: -22, mesh, back: false });
     }
   }
-  if (keys.KeyF && S.time > S.swingCd){ S.swingUntil = S.time + SWING_DUR; S.swingCd = S.time + 0.5; }
+  if (keys.KeyF && S.time > S.swingCd){ S.swingUntil = S.time + SWING_DUR; S.swingCd = S.time + 0.5; sfx.swish(); }
   const swinging = S.time < S.swingUntil;
   for (let i = bullets.length - 1; i >= 0; i--){
     const b = bullets[i];
@@ -2652,7 +2865,7 @@ function step(dt){
     if (mn.m > S.m + 2 && !mn.windAt && S.time > mn.next - (MN.windup || 0)) mn.windAt = S.time;   // arm goes up: the tell
     if (mn.m > S.m + 2 && S.time > mn.next){
       mn.windAt = 0;
-      mn.next = S.time + MN.fireEvery * EZ(1, 1.7) * (0.8 + Math.random() * 0.4); mn.throwT = S.time;
+      mn.next = S.time + MN.fireEvery * EZ(1, 1.7) * (0.8 + Math.random() * 0.4); mn.throwT = S.time; if (Math.abs(mn.m - S.m) < 16) sfx.toss();
       mn.car = !mn.car;
       if (mn.car){
         const mesh = makeCar(); mesh.scale.setScalar(0.75); add(mesh);
@@ -2680,7 +2893,7 @@ function step(dt){
     let gone = (!b.back && b.m < b.minM) || Math.abs(b.x) > L1_LANE + 1;
     for (const c of covers) if (Math.abs(b.m - c.m) < 1.2 && Math.abs(b.x - c.x) < 2) gone = true;
     if (b.kid && swinging && !b.back && b.m > S.m && b.m - S.m < 2.8 && Math.abs(b.x - S.x) < 1.9){
-      b.back = true; S.reflected++; b.vm = Math.abs(b.vm) + 6; b.vx = -b.vx * 0.3; b.maxM = b.m + 30; flash('⚾ 小車打回去！');
+      b.back = true; S.reflected++; b.vm = Math.abs(b.vm) + 6; b.vx = -b.vx * 0.3; b.maxM = b.m + 30; flash('⚾ 小車打回去！'); sfx.ping();
     }
     if (b.back){
       if (b.m > b.maxM) gone = true;
@@ -2693,7 +2906,7 @@ function step(dt){
     f.m += f.vm * dt; f.x += f.vx * dt; f.life -= dt;
     let gone = f.life <= 0 || Math.abs(f.x) > L1_LANE + 1;
     if (swinging && !f.back && f.m > S.m && f.m - S.m < 2.8 && Math.abs(f.x - S.x) < 1.9){
-      f.back = true; S.reflected++; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash('⚾ 遙控器打回去！');
+      f.back = true; S.reflected++; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash('⚾ 遙控器打回去！'); sfx.ping();
     }
     for (const c of covers) if (Math.abs(f.m - c.m) < 0.9 && Math.abs(f.x - c.x) < 1.3) gone = true;
     if (!gone && !f.back && Math.abs(f.m - S.m) < 0.75 && Math.abs(f.x - S.x) < 0.85 && S.y < 1.9 && hurt('shot', f.from === 'minion' ? '🔥 被火球燒到！' : '📺 被遙控器砸到！', 7)) gone = true;
@@ -2792,10 +3005,10 @@ function step(dt){
   // coins
   for (const c of coins){
     if (c.taken) continue;
-    if (Math.abs(c.m - S.m) < 1.1 && Math.abs(c.x - S.x) < 1.1 && S.y < 2.2){ c.taken = true; c.mesh.visible = false; S.coins++; }
+    if (Math.abs(c.m - S.m) < 1.1 && Math.abs(c.x - S.x) < 1.1 && S.y < 2.2){ c.taken = true; c.mesh.visible = false; S.coins++; sfx.coin(); }
   }
   // checkpoints
-  for (const [cm, cx] of L.checkpoints) if (S.m >= cm && cm > S.cp){ S.cp = cm; S.cpX = cx; flash('🚩 檢查點'); }
+  for (const [cm, cx] of L.checkpoints) if (S.m >= cm && cm > S.cp){ S.cp = cm; S.cpX = cx; flash('🚩 檢查點'); sfx.chime(); }
   // the wall: your section's speed, leashed within WALL_LEASH behind; in the
   // gate section it waits behind a barrier until you're through
   const gapNow = S.m - S.wallM;
@@ -2808,7 +3021,7 @@ function step(dt){
     // bottles: knock them over; the ones you leave, he drinks (and gets faster)
     for (const b of bottles){
       if (b.state !== 'up') continue;
-      if (Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.0 && S.y < 1.4){ b.state = 'down'; b.t = 0; b.dir = Math.sign(S.x - b.x) || 1; S.coins++; S.knocked++; flash('🍾 酒瓶撞倒！'); }
+      if (Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.0 && S.y < 1.4){ b.state = 'down'; b.t = 0; b.dir = Math.sign(S.x - b.x) || 1; S.coins++; S.knocked++; flash('🍾 酒瓶撞倒！'); sfx.clink(); }
       else if (S.wallM >= b.m){ b.state = 'drunk'; b.g.visible = false; S.boost = Math.min(6, S.boost + 1); S.drank++; say(chaser, '嗝～好喝！', 1.5, { name: '酒鬼大叔', y: 4.6 }); flash('🍺 酒鬼喝了一瓶，變快了！'); }
     }
   }
