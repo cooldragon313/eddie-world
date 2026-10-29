@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>媽媽原型</title>
+<!--
+  SOURCE — edit this file, then run:  python tools/build_proto.py mom
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+  :root{
+    --sb-paper:#fff8ec; --sb-ink:#5b3a29; --sb-text:#4a3426; --sb-muted:#9a7d5f;
+    --sb-gold-soft:#ffcf5a; --sb-sky:#6fb3e0;
+    --sb-font:"Fredoka","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    color-scheme:light;
+  }
+  html,body{height:100%}
+  body{margin:0;position:fixed;inset:0;overflow:hidden;color:var(--sb-text);font-family:var(--sb-font);
+       background:radial-gradient(circle at 50% 60%,#fff6e4,#ffe1ea 75%);user-select:none;-webkit-user-select:none;touch-action:none}
+  #stage{position:fixed;inset:0}
+  #head{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);text-align:center;pointer-events:none;z-index:2}
+  #head h1{margin:0;font:900 30px var(--sb-font);color:#ffcf5a;-webkit-text-stroke:3px var(--sb-ink);paint-order:stroke fill;letter-spacing:2px;white-space:nowrap}
+  #head p{margin:2px 0 0;font:700 14px var(--sb-font);color:var(--sb-muted)}
+  #bar{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:0 16px;z-index:2}
+  .btn{font:700 15px var(--sb-font);background:var(--sb-gold-soft);color:var(--sb-ink);border:2.5px solid var(--sb-ink);border-radius:999px;
+       padding:7px 16px;cursor:pointer;box-shadow:0 4px 0 rgba(91,58,41,.35)}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(91,58,41,.35)}
+  .btn:focus-visible{outline:3px solid var(--sb-sky);outline-offset:2px}
+  #tip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));font:600 12px var(--sb-font);color:var(--sb-muted);pointer-events:none;white-space:nowrap;z-index:2}
+  @media (max-height:520px){ #head h1{font-size:20px;-webkit-text-stroke:2px var(--sb-ink)} #head p{font-size:11px} .btn{font-size:13px;padding:5px 12px} #tip{display:none} }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="head"><h1>媽媽</h1><p>原型：恐怖考前複習夜的媽媽（照片版，可叫出艾迪比身高）</p></div>
+<div id="tip">手指拖曳可以轉</div>
+<div id="bar">
+  <button class="btn" id="bWalk">🚶‍♀️ 走路</button>
+  <button class="btn" id="bPeek">🚪 開門偷看</button>
+  <button class="btn" id="bWhip">🩹 抽膠條</button>
+  <button class="btn" id="bHips">😤 叉腰</button>
+  <button class="btn" id="bPhone">📱 滑手機</button>
+  <button class="btn" id="bFace">🙂 換表情</button>
+  <button class="btn" id="bEddie">👦 艾迪</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*@@INCLUDE:LOOK@@*/
+
+/*@@INCLUDE:AVATAR@@*/
+
+(() => {
+const $ = id => document.getElementById(id);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+$('stage').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+scene.add(new THREE.HemisphereLight(0xfff2dc, 0xb9d99c, 0.8));
+const sun = new THREE.DirectionalLight(0xffeccc, 0.55); sun.position.set(-3, 6, -6); scene.add(sun);
+function fit(){ const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.fov = w < h ? 44 : 30; camera.updateProjectionMatrix(); }
+addEventListener('resize', fit); fit();
+
+// ============================================================
+// MOM (艾迪的媽媽) — from reference photos: long dark-brown hair fading to
+// ash-blonde wavy ends, soft side part with face-framing strands, almond
+// eyes, brown long-sleeve top, black wide-leg pants, black Mary-Jane flats,
+// purple phone lanyard. Faces -z, feet at y=0. Same rig idea as Eddie:
+// head pivot, elbows, knees, face controller. Holds a glue stick (熱熔膠條).
+// ============================================================
+function buildMom(){
+  const LM = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+  const flat = c => new THREE.MeshBasicMaterial({ color: c });
+  const part = (p, geo, mat, x, y, z, nl) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); if (nl) m.userData.noLine = true; p.add(m); return m; };
+  const S = (r, w, h) => new THREE.SphereGeometry(r, w || 24, h || 16);
+  const Cy = (a, b, h, n) => new THREE.CylinderGeometry(a, b, h, n || 16);
+  // hair colour runs dark at the roots to ash-blonde at the tips (by height)
+  const DARK = new THREE.Color(0x2b1e18), MID = new THREE.Color(0x5a4334), ASH = new THREE.Color(0xc2b3a3);
+  const hairMat = LM(0xffffff, { vertexColors: true });
+  function hairPiece(p, geo, x, y, z, sx, sy, sz, y0, y1){
+    const m = part(p, geo, hairMat, x, y, z); m.scale.set(sx || 1, sy || 1, sz || 1);
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++){
+      const wy = y + pos.getY(i) * (sy || 1), k = Math.min(1, Math.max(0, (y0 - wy) / (y0 - y1)));
+      if (k < 0.45) c.copy(DARK).lerp(MID, k / 0.45); else c.copy(MID).lerp(ASH, (k - 0.45) / 0.55);
+      col.set([c.r, c.g, c.b], i * 3);
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return m;
+  }
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const skin = LM(0xf3cfb3), top = LM(0x5e3b2c), pants = LM(0x232026), shoe = LM(0x1c1a1d), purple = LM(0x7b5fb0);
+  // ---- legs: wide trousers, knee, Mary-Jane flats
+  const legs = [-1, 1].map(s => {
+    const l = new THREE.Group(); l.position.set(s * 0.2, 1.5, 0); body.add(l);
+    part(l, Cy(0.22, 0.25, 0.75), pants, 0, -0.37, 0);
+    const kn = new THREE.Group(); kn.position.y = -0.72; l.add(kn);
+    part(kn, Cy(0.25, 0.33, 0.66, 18), pants, 0, -0.32, 0);
+    const f = part(kn, S(0.15, 16, 10), shoe, 0, -0.7, -0.08); f.scale.set(0.9, 0.45, 1.55);
+    const strap = part(kn, sbRoundBox(0.25, 0.04, 0.05, 0.02), shoe, 0, -0.64, -0.2, true); strap.rotation.y = s * 0.5;
+    part(kn, sbRoundBox(0.06, 0.06, 0.02, 0.01), LM(0xd8d4cc), s * 0.1, -0.64, -0.24, true);
+    l.userData.knee = kn; return l;
+  });
+  // ---- torso: loose brown top
+  const torso = part(body, Cy(0.34, 0.47, 1.1, 22), top, 0, 2.02, 0);
+  const chest = part(body, S(0.36, 22, 14), top, 0, 2.5, 0); chest.scale.set(1.25, 0.55, 0.95);
+  part(body, Cy(0.1, 0.12, 0.25), skin, 0, 2.68, 0);
+  // ---- arms: long sleeves, elbows, hands
+  const arms = [-1, 1].map(s => {
+    const a = new THREE.Group(); a.position.set(s * 0.46, 2.47, 0); body.add(a);
+    part(a, S(0.14, 12, 10), top, 0, 0, 0);
+    part(a, Cy(0.13, 0.11, 0.55), top, 0, -0.28, 0);
+    const el = new THREE.Group(); el.position.y = -0.55; a.add(el);
+    part(el, Cy(0.11, 0.12, 0.45), top, 0, -0.22, 0);
+    const hand = part(el, S(0.09, 12, 10), skin, 0, -0.5, 0); hand.scale.set(0.9, 1.15, 0.8);
+    a.userData.elbow = el; return a;
+  });
+  // glue stick in the right hand, phone on a purple lanyard
+  const glue = part(arms[1].userData.elbow, Cy(0.05, 0.05, 1.1, 10), LM(0xfff4d6), 0, -0.52, -0.5);
+  glue.rotation.x = Math.PI / 2;
+  const lan = part(body, Cy(0.018, 0.018, 1.0, 6), purple, 0.12, 2.15, -0.38, true); lan.rotation.z = 0.32; lan.rotation.x = 0.05;
+  const phone = part(body, sbRoundBox(0.16, 0.28, 0.03, 0.02), LM(0x2a2a30), 0.27, 1.62, -0.46);
+  const handPhone = part(arms[0].userData.elbow, sbRoundBox(0.16, 0.28, 0.03, 0.02), LM(0x2a2a30), 0, -0.55, -0.1); handPhone.visible = false;
+  part(handPhone, new THREE.PlaneGeometry(0.13, 0.24), flat(0x9fd3ff), 0, 0, 0.02, true);
+  // ---- head (pivot at the neck)
+  const NECK = 2.72, HY = 0.45;
+  const headG = new THREE.Group(); headG.position.y = NECK; headG.scale.setScalar(1.4); body.add(headG);   // storybook: a bit big-headed
+  const head = part(headG, S(0.5, 32, 22), skin, 0, HY, 0); head.scale.set(0.94, 1.06, 0.96);
+  for (const s of [-1, 1]){ const ear = part(headG, S(0.09, 10, 8), skin, s * 0.47, HY - 0.02, 0.04); ear.scale.set(0.5, 1, 0.8); }
+  // hair: crown cap, long back curtain, face-framing front strands with wavy ash tips
+  const cap = hairPiece(headG, new THREE.SphereGeometry(0.535, 32, 18, 0, Math.PI * 2, 0, Math.PI * 0.5), 0, HY + 0.02, 0.04, 1.0, 1.0, 1.02, 1.2, -1.4);
+  cap.rotation.x = 0.38;   // tipped back: the forehead shows
+  hairPiece(headG, S(0.56, 26, 20), 0, HY - 0.55, 0.26, 1.06, 1.75, 0.45, 1.2, -1.4);
+  for (const s of [-1, 1]){
+    // long strands framing the face, falling in front of the shoulders
+    const fr = hairPiece(headG, S(0.2, 16, 14), s * 0.5, HY - 0.45, -0.04, 0.45, 2.3, 0.45, 0.6, -1.1); fr.rotation.z = s * -0.06;
+    const lo = hairPiece(headG, S(0.2, 16, 12), s * 0.55, HY - 1.05, -0.12, 0.55, 1.4, 0.45, 0.6, -1.1); lo.rotation.z = s * 0.2;
+    const tip = hairPiece(headG, S(0.12, 14, 10), s * 0.5, HY - 1.38, -0.15, 1.0, 1.0, 0.7, 0.6, -1.1); tip.rotation.z = s * -0.4;
+  }
+  // side part: a soft swoop from the left parting across the top of the forehead
+  const swoop = hairPiece(headG, S(0.25, 18, 12), -0.1, HY + 0.4, -0.3, 1.55, 0.5, 0.55, 1.2, -1.4); swoop.rotation.z = 0.28;
+  const swoop2 = hairPiece(headG, S(0.2, 16, 12), 0.33, HY + 0.28, -0.3, 0.9, 0.7, 0.5, 1.2, -1.4); swoop2.rotation.z = -0.5;
+  for (let i = 0; i < 4; i++){   // wavy ends at the back
+    const x = (i - 1.5) * 0.24;
+    hairPiece(headG, S(0.17, 14, 10), x, HY - 1.38 + Math.abs(x) * 0.15, 0.32, 1, 1.2, 0.8, 1.2, -1.4);
+  }
+  // face
+  const ink = flat(0x241812), white = flat(0xffffff), lip = flat(0xc96a6a), mouthDark = flat(0x6e2626);
+  const eyes = [], glints = [], brows = [];
+  for (const s of [-1, 1]){
+    const e = part(headG, S(0.085, 16, 12), ink, s * 0.19, HY + 0.01, -0.46, true); e.scale.set(1.35, 1.0, 0.45); eyes.push(e);
+    glints.push(part(headG, S(0.026, 8, 6), white, s * 0.19 - 0.035, HY + 0.045, -0.5, true));
+    const la = part(headG, sbRoundBox(0.2, 0.025, 0.02, 0.01), ink, s * 0.19, HY + 0.085, -0.47, true); la.rotation.z = s * -0.12;
+    const b = part(headG, sbRoundBox(0.17, 0.03, 0.02, 0.012), flat(0x4a3428), s * 0.19, HY + 0.2, -0.47, true); b.rotation.z = s * -0.08; brows.push(b);
+    const bl = part(headG, S(0.075, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffa8a0, transparent: true, opacity: 0.55 }), s * 0.28, HY - 0.12, -0.42, true); bl.scale.set(1.1, 0.55, 0.3);
+  }
+  part(headG, S(0.03, 10, 8), LM(0xeab89a), 0, HY - 0.09, -0.49, true);
+  const mSmile = part(headG, new THREE.TorusGeometry(0.07, 0.018, 6, 14, Math.PI), lip, 0, HY - 0.17, -0.47, true); mSmile.rotation.z = Math.PI;
+  const mFrown = part(headG, new THREE.TorusGeometry(0.065, 0.018, 6, 14, Math.PI), lip, 0, HY - 0.23, -0.47, true);
+  const mYell = part(headG, new THREE.CircleGeometry(0.075, 18), mouthDark, 0, HY - 0.2, -0.475, true); mYell.rotation.y = Math.PI; mYell.scale.set(1.1, 1.25, 1);
+  const mO = part(headG, new THREE.CircleGeometry(0.045, 14), mouthDark, 0, HY - 0.19, -0.475, true); mO.rotation.y = Math.PI;
+  const mFlat = part(headG, sbRoundBox(0.1, 0.018, 0.015, 0.008), lip, 0.02, HY - 0.18, -0.47, true);
+  const vein = part(headG, new THREE.TorusGeometry(0.05, 0.012, 4, 10), flat(0xd94b3c), 0.3, HY + 0.3, -0.38, true); vein.rotation.y = 0.6;
+  let expr = '';
+  const eyeY = () => expr === 'suspicious' ? 0.45 : expr === 'shocked' ? 1.35 : expr === 'angry' || expr === 'yell' ? 0.8 : 1.0;
+  const face = {
+    set(name){
+      if (name === expr) return; expr = name;
+      const angry = name === 'angry' || name === 'yell', sus = name === 'suspicious', shock = name === 'shocked';
+      mSmile.visible = name === 'smile'; mFrown.visible = name === 'angry'; mYell.visible = name === 'yell'; mO.visible = shock; mFlat.visible = sus;
+      vein.visible = angry;
+      brows.forEach((b, i) => { const s = i ? 1 : -1;
+        b.rotation.z = angry ? s * 0.45 : sus ? (i ? -0.25 : 0.05) : shock ? s * -0.25 : s * -0.08;
+        b.position.y = HY + (angry ? 0.15 : shock ? 0.25 : sus && i ? 0.23 : 0.2); });
+      eyes.forEach(e => e.scale.set(1.35, eyeY(), 0.45));
+      glints.forEach(gl => gl.visible = !sus);
+    },
+    blink(k){ eyes.forEach(e => e.scale.y = eyeY() * (1 - k * 0.9)); },
+    get name(){ return expr; },
+  };
+  face.set('smile');
+  sbOutline(g, 0.025);
+  return { g, body, head: headG, arms, legs, torso, face, glue, phone, handPhone };
+}
+
+const mom = buildMom(); scene.add(mom.g);
+let eddie = null;
+
+// ---------- moves ----------
+let yaw = 0, t = 0, act = null, actT = 0, walking = false, blinkAt = 2, blinkT = -1, fi = 0;
+const FACES = ['smile', 'suspicious', 'angry', 'yell', 'shocked'];
+const ease = k => k * k * (3 - 2 * k);
+const btn = (id, f) => $(id).addEventListener('click', f);
+const go = (a, f) => { act = a; actT = 0; walking = false; mom.face.set(f); };
+btn('bWalk', () => { walking = !walking; act = null; mom.face.set('smile'); });
+btn('bPeek', () => go('peek', 'suspicious'));
+btn('bWhip', () => go('whip', 'yell'));
+btn('bHips', () => go('hips', 'angry'));
+btn('bPhone', () => go('phone', 'smile'));
+btn('bFace', () => { act = null; fi = (fi + 1) % FACES.length; mom.face.set(FACES[fi]); });
+btn('bEddie', () => {
+  if (eddie){ scene.remove(eddie.group); eddie = null; mom.g.position.x = 0; return; }
+  eddie = buildEddieAvatar(DEFAULT_CUSTOM, { bat: false }); eddie.group.position.x = -1.1; scene.add(eddie.group); mom.g.position.x = 0.7;
+});
+let drag = null;
+renderer.domElement.addEventListener('pointerdown', e => { drag = e.clientX; });
+addEventListener('pointermove', e => { if (drag === null) return; yaw += (e.clientX - drag) * 0.01; drag = e.clientX; });
+addEventListener('pointerup', () => { drag = null; });
+
+const [aL, aR] = mom.arms, [lL, lR] = mom.legs, eL = aL.userData.elbow, eR = aR.userData.elbow, kL = lL.userData.knee, kR = lR.userData.knee;
+let last = 0;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = last ? Math.min(0.05, Math.max(0, (now - last) / 1000)) : 0.016; last = now; t += dt;
+  mom.g.rotation.y = yaw;
+  for (const j of [aL, aR, lL, lR, eL, eR, kL, kR, mom.head, mom.body]) j.rotation.set(0, 0, 0);
+  mom.body.position.set(0, 0, 0);
+  mom.handPhone.visible = act === 'phone'; mom.phone.visible = act !== 'phone';
+  const br = Math.sin(t * 2.2);
+  mom.torso.scale.set(1 + br * 0.015, 1 + br * 0.01, 1);
+  aL.rotation.z = -0.12; aR.rotation.z = 0.12; eL.rotation.x = eR.rotation.x = 0.25;
+  mom.head.rotation.z = Math.sin(t * 1.1) * 0.03;
+  if (walking){
+    const p = t * 6, w = Math.sin(p);
+    lL.rotation.x = w * 0.45; lR.rotation.x = -w * 0.45;
+    kL.rotation.x = -Math.max(0, Math.sin(p + 1.2)) * 0.5; kR.rotation.x = -Math.max(0, -Math.sin(p + 1.2)) * 0.5;
+    aL.rotation.x = -w * 0.4; aR.rotation.x = w * 0.4; eL.rotation.x = eR.rotation.x = 0.35;
+    mom.body.position.y = Math.abs(Math.cos(p)) * 0.04; mom.body.rotation.y = w * 0.06;
+  }
+  if (act === 'peek'){
+    actT += dt;
+    // lean round a door frame, eyes narrowed, slow look left-right
+    const k = ease(Math.min(1, actT / 0.4)) * (actT > 2.6 ? Math.max(0, 1 - (actT - 2.6) / 0.4) : 1);
+    mom.body.rotation.z = -0.22 * k; mom.body.position.x = -0.2 * k;
+    mom.head.rotation.z = 0.15 * k; mom.head.rotation.y = Math.sin(actT * 1.6) * 0.4 * k;
+    aR.rotation.z = 1.2 * k; aR.rotation.x = -0.5 * k; eR.rotation.x = 1.3 * k;   // hand on the door frame
+    if (actT > 3){ act = null; mom.face.set('smile'); }
+  } else if (act === 'whip'){
+    actT += dt;
+    const c = actT % 0.9, up = c < 0.4 ? ease(c / 0.4) : 0, down = c >= 0.4 ? 1 - ease(Math.min(1, (c - 0.4) / 0.2)) : 0;
+    aR.rotation.x = -2.9 * (c < 0.4 ? up : down) + (c >= 0.4 && c < 0.6 ? 0.6 : 0);
+    eR.rotation.x = 0.6 * up;
+    mom.body.rotation.y = -0.2 * up + 0.15 * (1 - down) * (c >= 0.4 ? 1 : 0);
+    aL.rotation.z = -0.6; eL.rotation.x = 1.6; aL.rotation.x = -0.4;   // other fist on the hip
+    mom.head.rotation.x = 0.08;
+    if (actT > 2.7){ act = null; mom.face.set('smile'); }
+  } else if (act === 'hips'){
+    actT += dt;
+    const k = ease(Math.min(1, actT / 0.3));
+    aL.rotation.z = -0.75 * k; aR.rotation.z = 0.75 * k;
+    eL.rotation.z = 1.9 * k; eR.rotation.z = -1.9 * k;
+    mom.head.rotation.x = 0.1 * k; mom.head.rotation.z = Math.sin(actT * 3) * 0.05;
+    lL.rotation.z = -0.08 * k; lR.rotation.z = 0.08 * k;
+    mom.body.position.y = actT > 0.6 ? Math.abs(Math.sin(actT * 9)) * 0.02 : 0;   // foot tapping
+    if (actT > 2.6){ act = null; mom.face.set('smile'); }
+  } else if (act === 'phone'){
+    actT += dt;
+    const k = ease(Math.min(1, actT / 0.4));
+    aL.rotation.x = -1.1 * k; eL.rotation.x = 1.5 * k; aL.rotation.z = 0.25 * k;
+    mom.head.rotation.x = 0.28 * k;
+    if (actT > 1.2) mom.face.set(Math.floor(actT * 0.8) % 2 ? 'smile' : 'shocked');
+    if (actT > 3.6){ act = null; mom.face.set('smile'); }
+  }
+  blinkAt -= dt;
+  if (blinkAt <= 0 && blinkT < 0){ blinkT = 0; blinkAt = 2 + Math.random() * 3; }
+  if (blinkT >= 0){ blinkT += dt; mom.face.blink(Math.sin(Math.min(1, blinkT / 0.16) * Math.PI)); if (blinkT > 0.16){ blinkT = -1; mom.face.blink(0); } }
+  if (eddie) animateEddie(eddie, { t, dt, moving: false, onGround: true });
+  const mobile = innerWidth < innerHeight;
+  camera.position.set(0, 2.3, mobile ? -12.5 : -10);
+  camera.lookAt(0, 1.95, 0);
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
