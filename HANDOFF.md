@@ -149,7 +149,7 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 髒髒度：Bernie 說只當成就、不影響玩法 → **還沒做**
 - 下一步：第二關（LEVEL2 天空機關城）要重新規劃主題
 
-## 2026-10-29 — 恐怖考前複習夜 媽媽版（分支上、還沒上架）
+## 2026-10-29 — 恐怖考前複習夜 媽媽版（✅ 已上架 main e53487f；逃離土星音效 saturnfamily 0f218b4）
 - 嬤嬤 → 媽媽（共用 `buildMom`，island.html AVATAR 區；原型 https://claude.ai/artifact/6uHQME8BxUenFG77wqMm3i ）
 - 三種武器每次開門隨機：膠條／愛的小手（輕）／衣架（重）；抽打特效、台詞、震動分武器；整個畫面震
 - 艾迪三張真實塗鴉（照片→`scratchpad/doodles.py` 去背成鉛筆線，內嵌 PNG）：畫畫沿著線慢慢長出來，畫完一張 +25、三張 +40；畫到一半收起來會畫歪，下次先擦 0.6 秒
@@ -157,3 +157,9 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 十點勝利：鐘聲＋彩帶＋10:00 大章；9 個成就（localStorage `gluenight.ach`）
 - 難度用機器人模擬調過（反應 0.6 秒：YouTube 約 170、打電動高風險）
 - 試玩：https://claude.ai/artifact/22KEpAkE6hMkbmHdEin8Bs
+
+## 2026-10-29 — 土星之家當首頁（分支上、還沒上架）
+- ⚠️ **檔名換了**：`index.html` ＝ 土星之家（`tools/build_home.py` 產出）；逃離土星改成 `race.html`（`tools/build_race.py` 產出）；`home.html` 只是跳轉到 index.html 的小頁
+- 上架 saturnfamily 時：把 **race.html** 複製成 saturnfamily 的 `index.html`（不是複製 index.html！）
+- 每關都有「🏠 回土星之家」：github.io 上連 `https://cooldragon313.github.io/escapetsunamiformoney/`，本機連 index.html，claude.ai 預覽隱藏
+- 海嘯島的「逃離土星」按鈕：本機 race.html、github.io 上照舊連 saturnfamily
