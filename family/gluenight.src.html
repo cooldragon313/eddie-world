@@ -88,6 +88,19 @@
   #whip .pa{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%) scale(0) rotate(-8deg);font:900 min(28vw,170px)/1 var(--sb-font);color:#fff;
     -webkit-text-stroke:6px #c0392b;paint-order:stroke fill;text-shadow:0 8px 0 #5b3a29}
   #whip.go .pa{animation:stamp .7s .25s ease-out forwards}
+  /* 愛的小手: a pink hand print slapped on the screen */
+  #whip .print{position:absolute;left:58%;top:52%;transform:translate(-50%,-50%) rotate(14deg) scale(0);font-size:min(46vw,300px);opacity:0;filter:drop-shadow(0 0 0 #ff6f9a) saturate(1.6) hue-rotate(-25deg)}
+  #whip[data-w=hand].go .print{animation:print 1.3s .27s ease-out forwards}
+  @keyframes print{0%{transform:translate(-50%,-50%) rotate(14deg) scale(1.6);opacity:0}12%{transform:translate(-50%,-50%) rotate(14deg) scale(1);opacity:.75}70%{opacity:.6}100%{transform:translate(-50%,-50%) rotate(14deg) scale(1);opacity:0}}
+  #whip[data-w=hand] .pa{color:#ffe0ea;-webkit-text-stroke-color:#e0487a;font-size:min(20vw,120px)}
+  #whip[data-w=hand] .red{background:radial-gradient(ellipse at center,rgba(255,110,160,0) 45%,rgba(255,110,160,.45))}
+  /* 衣架: the heavy one — dizzy stars spin round, the red lasts longer */
+  #whip .stars{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);font-size:min(12vw,64px);letter-spacing:.3em;white-space:nowrap;opacity:0}
+  #whip[data-w=hanger].go .stars{animation:stars 1.6s .3s ease-out forwards}
+  @keyframes stars{0%{opacity:0;transform:translate(-50%,-50%) rotate(0) scale(.4)}15%{opacity:1;transform:translate(-50%,-50%) rotate(40deg) scale(1)}
+    80%{opacity:1;transform:translate(-50%,-50%) rotate(300deg) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) rotate(360deg) scale(1.1)}}
+  #whip[data-w=hanger].go .red{animation:flash 1.1s .25s ease-out}
+  #whip[data-w=hanger] .pa{-webkit-text-stroke-color:#5b3a29;color:#ffcf5a;font-size:min(20vw,130px)}
   @keyframes stamp{0%{transform:translate(-50%,-50%) scale(2.2) rotate(-8deg);opacity:0}25%{transform:translate(-50%,-50%) scale(1) rotate(-8deg);opacity:1}80%{opacity:1}100%{transform:translate(-50%,-50%) scale(1) rotate(-8deg);opacity:0}}
   #stage.hit{animation:hitshake .42s cubic-bezier(.36,.07,.19,.97)}
   @keyframes hitshake{10%{transform:translate(-14px,6px) rotate(-1.2deg)}25%{transform:translate(12px,-8px) rotate(1deg)}40%{transform:translate(-10px,4px)}
@@ -175,6 +188,7 @@
   <svg class="hg" viewBox="0 0 200 300" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path d="M100 10 q-22 0 -22 22 q0 18 22 22 v26 L12 280 H188 L100 80" stroke="#5b3a29" stroke-width="16"/>
     <path d="M100 10 q-22 0 -22 22 q0 18 22 22 v26 L12 280 H188 L100 80" stroke="#6fb3e0" stroke-width="9"/></g></svg>
+  <div class="print">🖐</div><div class="stars">💫 ⭐ 💫</div>
   <div class="pa">啪！</div></div>
 
 <div class="card" id="startCard"><div>
@@ -230,7 +244,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1d2338);
 const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 80);
 // behind Eddie's right shoulder, looking down at the desk (Eddie is drawn see-through)
-const CAM_POS = new THREE.Vector3(2.0, 8.3, 8.4), CAM_AT = new THREE.Vector3(-0.2, 3.4, -1.2);
+const CAM_POS = new THREE.Vector3(0.6, 7.6, 6.2), CAM_AT = new THREE.Vector3(0, 3.4, -1.2);
 camera.position.copy(CAM_POS); camera.lookAt(CAM_AT);
 
 scene.add(new THREE.HemisphereLight(0xa9b8ff, 0x3a2a20, 0.55));
@@ -401,20 +415,23 @@ function paintLeft(){
 }
 
 // ---------- Eddie (shared model), sitting at the desk, see-through ----------
+const GHOST = 0.13;
 const eddie = (() => {
   const A = buildEddieAvatar(DEFAULT_CUSTOM, { bat: false }), e = A.eddie, g = A.group;
   // size: a 12-year-old is ~6 units tall standing (1 unit = 25 cm)
-  const b0 = new THREE.Box3().setFromObject(g); g.scale.setScalar(4.4 / (b0.max.y - b0.min.y));   // storybook-sized next to the desk
+  const b0 = new THREE.Box3().setFromObject(g); g.scale.setScalar(5.0 / (b0.max.y - b0.min.y));
   // sit: thighs forward, shins down, hands on the desk
   for (const l of e.legs){ l.rotation.x = 1.5; l.userData.knee.rotation.x = -1.5; }
   for (const a of e.arms){ a.rotation.x = 1.15; a.userData.elbow.rotation.x = 0.7; }
   e.arms[0].rotation.z = 0.25; e.arms[1].rotation.z = -0.25;
   g.updateMatrixWorld(true);
-  const b = new THREE.Box3().setFromObject(g); g.position.set(-0.3, -b.min.y + 0.9, 3.3);   // sitting on a chair
+  const b = new THREE.Box3().setFromObject(g); g.position.set(0, -b.min.y + 0.9, 2.7);   // sitting on a chair, right at the desk
+  // barely-there ghost: you feel him in front of you, the book shows through
+  const mats = [];
   g.traverse(o => { if (!o.isMesh) return;
-    o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.4; o.renderOrder = 5; });   // depth stays on: only the nearest surface shows, so the ghost reads cleanly
+    o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = GHOST; o.renderOrder = 5; mats.push(o.material); });   // depth stays on: only the nearest surface shows
   scene.add(g);
-  return { A, e, g };
+  return { A, e, g, mats };
 })();
 
 // ---------- the mirror on the desk (shows the door behind you) ----------
@@ -563,11 +580,14 @@ const sfx = (() => {
       g2.gain.setValueAtTime(vol * 0.9, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.1); o.connect(g2); o.start(t); o.stop(t + 0.12); },
     knob(){ if (!on || !ctx()) return; for (const d of [0, 0.11]){ const o = ac.createOscillator(), g = out(0); o.type = 'square'; o.frequency.value = 1400; const t = ac.currentTime + d;
       g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04); o.connect(g); o.start(t); o.stop(t + 0.05); } },
-    whip(){ if (!on || !ctx()) return; const t = ac.currentTime;
-      const s = noise(0.3), f = ac.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2; f.frequency.setValueAtTime(600, t); f.frequency.exponentialRampToValueAtTime(4000, t + 0.25);
-      const g = out(0); g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.22); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3); s.connect(f); f.connect(g); s.start(t);
-      const p = noise(0.12), g2 = out(0); g2.gain.setValueAtTime(0.9, t + 0.27); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.38); p.connect(g2); p.start(t + 0.27);
-      const o = ac.createOscillator(), g3 = out(0); o.frequency.setValueAtTime(160, t + 0.27); o.frequency.exponentialRampToValueAtTime(50, t + 0.45); g3.gain.setValueAtTime(0.6, t + 0.27); g3.gain.exponentialRampToValueAtTime(0.001, t + 0.48); o.connect(g3); o.start(t + 0.27); o.stop(t + 0.5); },
+    whip(w){ if (!on || !ctx()) return; const t = ac.currentTime, heavy = w === 'hanger', light = w === 'hand';
+      const sw = heavy ? 0.36 : 0.3, s = noise(sw), f = ac.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2; f.frequency.setValueAtTime(heavy ? 350 : light ? 900 : 600, t); f.frequency.exponentialRampToValueAtTime(heavy ? 2500 : light ? 5000 : 4000, t + 0.25);
+      const g = out(0); g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(heavy ? 0.7 : 0.5, t + 0.22); g.gain.exponentialRampToValueAtTime(0.001, t + sw); s.connect(f); f.connect(g); s.start(t);
+      const p = noise(light ? 0.08 : 0.12), g2 = out(0); g2.gain.setValueAtTime(light ? 0.6 : 0.9, t + 0.27); g2.gain.exponentialRampToValueAtTime(0.001, t + (light ? 0.33 : 0.38)); p.connect(g2); p.start(t + 0.27);
+      const o = ac.createOscillator(), g3 = out(0); o.frequency.setValueAtTime(heavy ? 120 : light ? 260 : 160, t + 0.27); o.frequency.exponentialRampToValueAtTime(heavy ? 35 : 50, t + (heavy ? 0.6 : 0.45));
+      g3.gain.setValueAtTime(heavy ? 0.9 : light ? 0.35 : 0.6, t + 0.27); g3.gain.exponentialRampToValueAtTime(0.001, t + (heavy ? 0.7 : 0.48)); o.connect(g3); o.start(t + 0.27); o.stop(t + 0.75);
+      if (heavy){ const r = ac.createOscillator(), g4 = out(0); r.type = 'triangle'; r.frequency.setValueAtTime(1700, t + 0.3); r.frequency.exponentialRampToValueAtTime(900, t + 0.9);   // the hanger's wire twang
+        g4.gain.setValueAtTime(0.12, t + 0.3); g4.gain.exponentialRampToValueAtTime(0.001, t + 0.9); r.connect(g4); r.start(t + 0.3); r.stop(t + 0.95); } },
     rub(){ if (!on || !ctx()) return; const t = ac.currentTime; for (let k = 0; k < 4; k++){ const s = noise(0.12), f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2200; f.Q.value = 1.5; const g = out(0);
       g.gain.setValueAtTime(0.001, t + k * 0.14); g.gain.linearRampToValueAtTime(0.12, t + k * 0.14 + 0.04); g.gain.exponentialRampToValueAtTime(0.001, t + k * 0.14 + 0.12); s.connect(f); f.connect(g); s.start(t + k * 0.14); } },
     done(){ if (!on || !ctx()) return; [784, 988, 1319].forEach((fq, i) => { const o = ac.createOscillator(), g = out(0); o.type = 'triangle'; o.frequency.value = fq; const t = ac.currentTime + i * 0.09;
@@ -592,7 +612,7 @@ const LINES = {
 let S;
 function newState(){
   return {
-    running: false, t: 0, kidT: 0, mood: 0, anger: 0, hits: 0, di: 0, prog: 0, drawn: 0, scribble: 0, erasing: false, flips: 0, leftDoodle: null, pendingLeft: null, hitsBy: { glue: 0, hand: 0, hanger: 0 }, streak: 0, firstLook: true,
+    running: false, t: 0, kidT: 0, hitAt: 0, hitW: 'glue', mood: 0, anger: 0, hits: 0, di: 0, prog: 0, drawn: 0, scribble: 0, erasing: false, flips: 0, leftDoodle: null, pendingLeft: null, hitsBy: { glue: 0, hand: 0, hanger: 0 }, streak: 0, firstLook: true,
     cur: -1, itemState: 'hidden', itemT: 0,   // hidden | rising | out | stowing
     pageIdle: 0, flipT: -1,
     g: { st: 'away', weapon: 'glue', waitFlip: false, waitT: 0, t: rand(3, 5), dur: 0, fake: false, caught: false, idleWarned: false, guard: 0, stepT: 0, stepN: 0 },
@@ -655,11 +675,12 @@ function caught(){
   const W = WEAPONS[g.weapon || 'glue'];
   S.anger = clamp(S.anger + W.anger + (g.guard > 0 ? 6 : 0), 0, 100);
   S.mood = Math.max(0, S.mood - 6);
-  S.hitsBy[g.weapon || 'glue']++;
+  S.hitsBy[g.weapon || 'glue']++; S.hitW = g.weapon || 'glue'; S.hitAt = tt + 0.27;
   setTimeout(() => say(pick(KID.caught), 1.6, true), 450);
   say(pick(W.lines), 2.4);
-  const w = $('whip'); w.dataset.w = g.weapon || 'glue'; w.classList.remove('go'); void w.offsetWidth; w.classList.add('go');
-  sfx.whip(); setTimeout(() => {
+  const w = $('whip'); w.dataset.w = g.weapon || 'glue'; w.querySelector('.pa').textContent = ({ glue: '啪！', hand: '啾啪！', hanger: '咻—啪！！' })[w.dataset.w];
+  w.classList.remove('go'); void w.offsetWidth; w.classList.add('go');
+  sfx.whip(g.weapon); setTimeout(() => {
     S.shake = 0.45; S.shakeK = g.weapon === 'hanger' ? 1.6 : g.weapon === 'hand' ? 0.8 : 1.1;
     const st = $('stage'); st.classList.remove('hit'); void st.offsetWidth; st.classList.add('hit');
     try { navigator.vibrate && navigator.vibrate(g.weapon === 'hanger' ? [40, 30, 220] : [30, 40, 140]); } catch (e) {}
@@ -829,12 +850,29 @@ function animate(dt){
 
   // Eddie: looks down while playing, glances at the door at footsteps, flinches when hit
   { const e = eddie.e, g = S.g, playing = S.itemState === 'out' || S.itemState === 'rising';
-    const scared = g.st === 'omen' || g.st === 'open', hit = g.caught && (g.st === 'look');
+    const scared = g.st === 'omen' || g.st === 'open', hk = S.hitAt ? (tt - S.hitAt) / 1.1 : 9, hit = hk < 1;
     e.face.set(hit ? 'sad' : scared ? 'surprised' : playing ? (S.cur >= 2 ? 'laugh' : 'smile') : 'smug');
     const hy = scared ? 0.55 : 0, hx = playing ? 0.35 : 0.1;
     e.head.rotation.y += (hy - e.head.rotation.y) * Math.min(1, dt * 10);
     e.head.rotation.x += (hx - e.head.rotation.x) * Math.min(1, dt * 8);
-    e.body.position.y = hit ? Math.abs(Math.sin(tt * 30)) * 0.04 : 0;
+    e.body.position.y = 0; e.body.rotation.z = 0;
+    // when hit he shows up more clearly for a moment, and each weapon gets its own reaction
+    const op = hit ? GHOST + (0.5 - GHOST) * Math.sin(Math.min(1, hk * 1.4) * Math.PI) : GHOST;
+    for (const m of eddie.mats) m.opacity = op;
+    if (hit){
+      const w = S.hitW, fall = 1 - hk;
+      if (w === 'hand'){         // 愛的小手: hands snap up, shaking the sting off
+        for (const a of e.arms){ a.rotation.x = 2.4 + Math.sin(tt * 40) * 0.25 * fall; }
+        e.head.rotation.z = Math.sin(tt * 30) * 0.12 * fall;
+      } else if (w === 'hanger'){ // 衣架: knocked sideways, head wobbling, slow to recover
+        e.body.rotation.z = -0.35 * Math.sin(Math.min(1, hk * 3) * Math.PI / 2) * fall;
+        e.head.rotation.z = Math.sin(tt * 9) * 0.3 * fall;
+        e.body.position.y = -0.1 * fall;
+      } else {                    // 膠條: jumps out of the chair
+        e.body.position.y = Math.sin(Math.min(1, hk * 2.2) * Math.PI) * 0.35;
+        for (const a of e.arms) a.rotation.x = 1.15 + Math.sin(Math.min(1, hk * 2.2) * Math.PI) * 1.3;
+      }
+    } else for (const a of e.arms) a.rotation.x = 1.15;
     eddie.st = eddie.st || { blinkAt: 2, blinkT: -1 };
     const bs = eddie.st; bs.blinkAt -= dt;
     if (bs.blinkAt <= 0 && bs.blinkT < 0){ bs.blinkT = 0; bs.blinkAt = 2 + Math.random() * 3; }
@@ -909,7 +947,7 @@ function celebrate(){
   if (S.cur >= 0){ S.itemState = 'stowing'; S.itemT = 0.01; }
   sfx.chimes();
   say('……十點了，好啦，去睡覺。', 2.6);
-  setTimeout(() => say('耶！！今晚我贏了！', 2.2, true), 700);
+  setTimeout(() => say('喔耶！！可以睡了！', 2.2, true), 700);
   const w = $('win'); w.hidden = false; w.classList.remove('go'); void w.offsetWidth; w.classList.add('go');
   const box = $('confetti'); box.innerHTML = '';
   const colors = ['#ffcf5a', '#ff8fb0', '#6fb3e0', '#7cc79a', '#e0584a', '#fff8ec'];
