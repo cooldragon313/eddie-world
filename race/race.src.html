@@ -59,6 +59,12 @@
   #impact.go{animation:stamp .9s ease-out forwards}
   @keyframes stamp{0%{transform:translate(-50%,-50%) scale(2.6) rotate(-8deg);opacity:0}12%{transform:translate(-50%,-50%) scale(1) rotate(-8deg);opacity:1}
     70%{transform:translate(-50%,-50%) scale(1.05) rotate(-6deg);opacity:1}100%{transform:translate(-50%,-50%) scale(1.1) rotate(-6deg);opacity:0}}
+  #screenFx{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0}
+  #screenFx.water{-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);
+    background:radial-gradient(circle at 18% 30%,rgba(140,210,255,.55) 0 7%,transparent 8%),radial-gradient(circle at 70% 22%,rgba(140,210,255,.5) 0 5%,transparent 6%),
+      radial-gradient(circle at 42% 68%,rgba(140,210,255,.5) 0 9%,transparent 10%),radial-gradient(circle at 84% 62%,rgba(140,210,255,.55) 0 6%,transparent 7%),
+      radial-gradient(circle at 28% 84%,rgba(140,210,255,.45) 0 5%,transparent 6%),rgba(120,190,240,.22)}
+  #screenFx.daze{-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);background:radial-gradient(ellipse at center,rgba(0,0,0,0) 35%,rgba(70,30,10,.6))}
   #impactFlash{position:fixed;inset:0;z-index:8;pointer-events:none;opacity:0;transition:opacity .35s}
   .bubble{position:fixed;z-index:7;transform:translate(-50%,-100%);background:#fff;border:2.5px solid var(--sb-ink);border-radius:14px;padding:4px 10px;
     font:800 15px/1.3 var(--sb-font);color:var(--sb-ink);white-space:nowrap;pointer-events:none;box-shadow:0 3px 0 rgba(91,58,41,.3);display:none}
@@ -235,6 +241,7 @@
 <div class="flash" id="flash"></div>
 <div id="bubbles"></div>
 <div id="hint" hidden></div>
+<div id="screenFx"></div>
 <div id="impact"></div><div id="impactFlash"></div>
 <div id="lineHint" hidden>LINE 裡不能全螢幕：點右上角 ⋯ 選「用預設瀏覽器開啟」<button type="button" id="lineHintX">知道了</button></div>
 <div class="big" id="count" hidden></div>
@@ -324,19 +331,26 @@ const BODY_H = 2.2, CROUCH_H = 1.1, CROUCH_SPEED = 0.55;
 // ---------- LEVEL 1: 荊棘峽谷 (unchanged numbers from the released version) ----------
 const LEVEL1 = {
   id: 1, name: '第一關 家庭聚會', short: '家庭聚會',
-  blurb: '酒鬼大叔從背後追上來！撞倒路上的酒、躲開鬼媽媽的熱熔膠條、衝過火焰怪，終點還有小屁孩大魔王。',
+  blurb: '從土星家的玄關一路逃上頂樓陽台！酒鬼大叔在後面追，鬼媽媽、水槍、樂高、小屁孩擋路。',
   drunk: true, leash: 26,   // the drunk hangs further back than the spike wall did
-  finish: 530, end: 560, finishBonus: 15, scenery: 'canyon', lateral: 0.8, camFollow: 0.6,
+  finish: 530, end: 560, finishBonus: 15, scenery: 'house', lateral: 0.8, camFollow: 0.6,
   clampX: L1_LANE - 0.5,
-  checkpoints: [[0, 0], [30, 0], [130, 0], [230, 0], [330, 0], [430, 0]],
+  // 土星家: 1F living room, stairs, 2F, stairs, 3F, roof terrace. Heights are
+  // only for drawing — physics heights stay relative to the floor you're on.
+  floorY: m => m < 125 ? 0 : m < 140 ? (m - 125) / 15 * 4 : m < 325 ? 4 : m < 340 ? 4 + (m - 325) / 15 * 4 : 8,
+  stairs: [[125, 140], [325, 340]],
+  checkpoints: [[0, 0], [30, 0], [125, 0], [230, 0], [325, 0], [430, 0]],
   sections: [
-    { from: 0, name: '起跑區', wall: 9 }, { from: 30, name: '① 地坑道', wall: 9 },
-    { from: 130, name: '② 荊棘地', wall: 9.5 }, { from: 230, name: '③ 落石谷', wall: 10 },
-    { from: 330, name: '④ 機關牆', wall: 10.5 }, { from: 430, name: '⑤ 小屁孩客廳', wall: 9.4 },
+    { from: 0, name: '玄關', wall: 9 }, { from: 30, name: '① 一樓客廳', wall: 9 }, { from: 125, name: '🪜 上二樓', wall: 9 },
+    { from: 140, name: '② 二樓走廊', wall: 9.5 }, { from: 230, name: '③ 二樓臥室', wall: 10 }, { from: 325, name: '🪜 上三樓', wall: 10 },
+    { from: 340, name: '④ 三樓', wall: 10.5 }, { from: 430, name: '⑤ 頂樓遊戲室', wall: 9.4 },
   ],
   floors: [[-40, 560, -L1_LANE, L1_LANE]],
-  holes: [[44,48,-8,8],[60,64,-8,0],[70,74,0,8],[88,93,-8,8],[104,108,-8,8],[118,122,-8,2]],
-  thorns: [[140,143,-8,3],[155,158,-3,8],[168,171,-8,3],[182,185,-3,8],[196,199,-8,1],[212,215,-1,8]],
+  // floor holes only upstairs (fall = back to the bottom of that floor's stairs)
+  holes: [[176,179,0,8],[204,207,-8,0],[262,266,-3,4],[352,355,0,8],[382,385,-8,-1]],
+  // [m0, m1, x0, x1, style]: 'mat' = massage foot mat (nubs pop up on a cycle), 'lego' = bricks (always hurt)
+  thorns: [[44,48,-8,8,'mat'],[60,64,-8,0,'mat'],[70,74,0,8,'mat'],[88,93,-8,8,'mat'],[104,108,-8,8,'mat'],[118,122,-8,2,'mat'],
+           [140,143,-8,3,'lego'],[155,158,-3,8,'lego'],[168,171,-8,3,'lego'],[184,187,-3,8,'lego'],[196,199,-8,1,'lego'],[214,217,-1,8,'lego']],
   // thorns pop up and sink on a cycle (seconds); each patch is offset so you time them
   thornCycle: 2.4,
   // meteor zones: [from, to, seconds between rocks, share aimed at where you're heading]
@@ -357,7 +371,7 @@ const LEVEL1 = {
     { id: 'homerun',  name: '⚾ 全壘打王',     desc: '打回去 3 個遙控器或火球',     test: s => s.reflected >= 3 },
     { id: 'shopper',  name: '🛍 逛街掩護',     desc: '鬼媽媽一下都沒抽到你',       test: s => s.whipped === 0 },
     { id: 'rich',     name: '💰 撿錢達人',     desc: '撿到 30 個金幣',             test: s => s.coins >= 30 },
-    { id: 'iron',     name: '🪨 鐵頭',         desc: '被石頭砸 4 次以上',          test: s => s.rocked >= 4 },
+    { id: 'iron',     name: '🛏 枕頭靶',       desc: '被樓上丟的東西砸 4 次以上',   test: s => s.rocked >= 4 },
     { id: 'glue',     name: '💢 熱熔膠收藏家', desc: '被鬼媽媽抽 3 下以上',        test: s => s.whipped >= 3 },
     { id: 'tipsy',    name: '🥴 酒鬼喝到飽',   desc: '讓酒鬼喝超過一半的酒',       test: s => s.drank > 5 },
     { id: 'buddy',    name: '🍺 酒鬼的好麻吉', desc: '被酒鬼抱了 3 次以上',        test: s => s.caught >= 3 },
@@ -477,6 +491,7 @@ if (window.ResizeObserver) new ResizeObserver(fitRenderer).observe(document.getE
 fitRenderer(); setInterval(fitRenderer, 1000);
 
 const LM = c => new THREE.MeshLambertMaterial({ color: c });
+const FY = m => (L && L.floorY) ? L.floorY(m) : 0;   // floor height under metre m (0 outside the house)
 const mats = {
   ground: LM(0xd9ad72), groundAlt: LM(0xcfa165), edge: LM(0x9b7b55), pit: LM(0x3d2a1e),
   stone: LM(0xc9c2b4), stoneAlt: LM(0xb9b1a2), plank: LM(0xb98a55),
@@ -497,6 +512,11 @@ const mats = {
   ghostDress: LM(0xf4f1ea), ghostSkin: LM(0xe6e2da), glue: new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0.85 }),
   phone: new THREE.MeshBasicMaterial({ color: 0x8fd3ff }), diaper: LM(0xffffff), shirt: LM(0xffcf5a), remote: LM(0x2a2a30), wheel: LM(0x222222),
   bottleG: LM(0x2e9b62), bottleB: LM(0x8a5a2a),
+  wood: LM(0xc8935a), woodAlt: LM(0xb9844c), tile: LM(0xe8e2d6), tileAlt: LM(0xd9d2c4),
+  wall1: LM(0xf3e3c3), wall2: LM(0xd5ead8), wall3: LM(0xe2d6ef), skirting: LM(0xffffff), windowSky: new THREE.MeshBasicMaterial({ color: 0xbfe6ff }),
+  matRubber: LM(0x5fb3a8), matNub: LM(0x8fd8cc), tape: LM(0xffcf3a), tapeB: LM(0x2a2a30), door: LM(0x9a6a3e),
+  water: new THREE.MeshBasicMaterial({ color: 0x6fc3ff, transparent: true, opacity: 0.8 }), nozzle: LM(0x3a6fd8),
+  pillow: LM(0xfdfbf5), ball: LM(0xe0584a), basin: LM(0x5aa8e0),
 };
 
 // Everything a level builds goes into one group so switching levels is a clean swap
@@ -670,7 +690,7 @@ function mosaicTexture(){
 function puke(){
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: mosaicTexture() }));
   // on the ground behind his feet, well clear of the player (the mosaic is the puke, never you)
-  sp.scale.set(1.7, 1.1, 1); sp.position.set(S.x - 0.3, 0.45, -(S.m - 2.6)); add(sp);
+  sp.scale.set(1.7, 1.1, 1); sp.position.set(S.x - 0.3, FY(S.m) + 0.45, -(S.m - 2.6)); add(sp);
   pukes.push({ sp, until: S.time + 2.6 });
 }
 // bottles on the road
@@ -801,9 +821,9 @@ function impact(text, color, shake){
 }
 const HINTS = {
   bottle: '🍾 撞倒路上的酒！沒撞到的會被酒鬼喝掉，他會越跑越快喔',
-  thorn:  '🌵 地刺會冒出來又縮回去，看準縮下去的時候衝',
-  spear:  '🎋 牆上的洞發紅＝要射竹箭了！「跳」過去！',
-  rock:   '🪨 看地上的影子，石頭會砸在那裡',
+  thorn:  '🦶 按摩腳墊的凸點會冒出來又縮回去，看準縮下去再衝；樂高踩到一定痛，繞過去或跳過去',
+  spear:  '💦 房門口會噴水槍！水槍頭發紅就要射了，「跳」過去，噴到會看不清楚',
+  rock:   '🛏 樓上會丟枕頭、球、臉盆下來，看地上的影子閃開',
   ghost:  '👻 鬼媽媽看到你會衝過來抽，抽到會跌坐、變慢喔！等她低頭逛網拍再衝過去',
   kids:   '👶 小屁孩會丟遙控器跟小車，被砸到會被撞退、變慢；按揮棒把遙控器打回去！',
   boss:   '🧸 打回去的遙控器砸中大魔王，他會哭著暈 2.5 秒',
@@ -819,11 +839,52 @@ function hint(key){
   const el = $('hint'); el.textContent = HINTS[key]; el.hidden = false;
   clearTimeout(hintTimer); hintTimer = setTimeout(() => { el.hidden = true; }, 4200);
 }
+// cover the screen for a moment: 'water' (water gun) or 'daze' (arrow / big hit)
+let fxTimer = 0;
+function screenFx(kind, secs){
+  const el = $('screenFx'); el.className = kind; el.style.transition = 'none'; el.style.opacity = 1;
+  clearTimeout(fxTimer); fxTimer = setTimeout(() => { el.style.transition = 'opacity .5s'; el.style.opacity = 0; }, secs * 1000);
+}
 function hurt(kind, text, knock){
   if (S.time < S.hurtUntil) return false;
   S.hurtUntil = S.time + 0.9; S.knockV = knock; S.slowUntil = S.time + 0.5;
   if (kind === 'shot') S.shot++; else S.hits++;
   flash(text); return true;
+}
+
+// ---------- 土星家 scenery: walls, windows, frames, rugs, stair rails, roof terrace ----------
+function buildHouse(level){
+  const W = L1_LANE + 0.5, floorOf = m => m < 132 ? 0 : m < 332 ? 1 : 2, WALL = [mats.wall1, mats.wall2, mats.wall3];
+  for (let m = -20; m < level.finish; m += 4) for (const s of [-1, 1]){
+    box(1, 7, 4.02, WALL[floorOf(m + 2)], s * W, 3.5, -(m + 2));
+    box(0.2, 0.4, 4.02, mats.skirting, s * (W - 0.55), 0.2, -(m + 2));
+  }
+  // windows (sky outside), picture frames, a few shelves
+  const FRAME = [0xe0584a, 0x3a6fd8, 0xffcf5a, 0x7cc79a, 0xb07cff];
+  for (let m = 6, i = 0; m < level.finish - 4; m += 11, i++){
+    const s = i % 2 ? 1 : -1;
+    if (i % 3 !== 1){
+      box(0.14, 2.6, 3.4, mats.skirting, s * (W - 0.55), 3.5, -m);
+      box(0.16, 2.2, 3.0, mats.windowSky, s * (W - 0.58), 3.5, -m);
+      box(0.18, 0.12, 3.0, mats.skirting, s * (W - 0.6), 3.5, -m);
+    } else {
+      box(0.12, 1.4, 1.8, LM(FRAME[i % FRAME.length]), s * (W - 0.56), 3.1, -m);
+      box(0.13, 1.0, 1.4, mats.skirting, s * (W - 0.58), 3.1, -m);
+    }
+  }
+  // rugs on the living-room floor (just paint, no collision)
+  for (const [m0, m1, x0, x1, c] of [[8, 26, -5, 5, 0xe0584a], [76, 86, -6, 2, 0x7cc79a], [150, 166, -3, 3, 0x3a6fd8], [236, 250, -6, 6, 0xb07cff], [440, 470, -7, 7, 0x8fd3ff], [490, 520, -7, 7, 0xffcf5a]]){
+    const r = box(x1 - x0, 0.03, m1 - m0, LM(c), (x0 + x1) / 2, 0.015, -(m0 + m1) / 2);
+  }
+  // stair rails
+  for (const [a, b] of level.stairs) for (let m = a; m <= b; m += 2) for (const s of [-1, 1]) box(0.14, 1.2, 0.14, mats.skirting, s * (L1_LANE - 0.3), 0.6, -m);
+  // floor holes upstairs: hazard tape around, the floor below in the gap
+  for (const h of level.holes){
+    box(h[3] - h[2], 0.2, h[1] - h[0], mats.wood, (h[2] + h[3]) / 2, -5, -(h[0] + h[1]) / 2);
+    for (const [x0, x1, z] of [[h[2], h[3], h[0] - 0.1], [h[2], h[3], h[1] + 0.1]]) for (let x = x0; x < x1; x += 0.6) box(0.3, 0.05, 0.14, (x * 10 | 0) % 2 ? mats.tape : mats.tapeB, x + 0.15, 0.03, -z);
+  }
+  // roof terrace: low railing past the finish, open sky
+  for (let m = level.finish; m < level.end; m += 2) for (const s of [-1, 1]) box(0.3, 1.1, 2.02, mats.skirting, s * W, 0.55, -(m + 1));
 }
 
 // ---------- build a level ----------
@@ -857,6 +918,11 @@ function buildLevel(level){
         const cx = (x0 + x1) / 2, cm = (m + m1) / 2;
         if (level.holes.some(h => inRect(h, cm, cx))) continue;
         const alt = Math.floor(m / 10) % 2;
+        if (level.scenery === 'house'){
+          const h = 1 + level.floorY(cm), roof = cm >= level.finish;
+          box(x1 - x0, h, m1 - m + 0.02, roof ? (alt ? mats.tile : mats.tileAlt) : (Math.floor(m / 2) % 2 ? mats.wood : mats.woodAlt), cx, (-1 - level.floorY(cm)) / 2, -cm);
+          continue;
+        }
         box(x1 - x0, sky ? 1.6 : 1, m1 - m + 0.02, sky ? (alt ? mats.stone : mats.stoneAlt) : (alt ? mats.ground : mats.groundAlt), cx, sky ? -0.8 : -0.5, -cm);
       }
     }
@@ -867,6 +933,8 @@ function buildLevel(level){
       const c = new THREE.Mesh(new THREE.SphereGeometry(4 + Math.random() * 6, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
       c.position.set((Math.random() - 0.5) * 140, -14 - Math.random() * 10, -Math.random() * level.end); c.scale.y = 0.5; add(c);
     }
+  } else if (level.scenery === 'house'){
+    buildHouse(level);
   } else {
     box(1, 1.4, level.end + 40, mats.edge, -L1_LANE - 0.5, 0.2, -(level.end - 40) / 2);
     box(1, 1.4, level.end + 40, mats.edge,  L1_LANE + 0.5, 0.2, -(level.end - 40) / 2);
@@ -878,12 +946,30 @@ function buildLevel(level){
   }
   // thorns
   thornObjs = (level.thorns || []).map((t, i) => {
-    box(t[3] - t[2], 0.3, t[1] - t[0], mats.thorn, (t[2] + t[3]) / 2, 0.15, -(t[0] + t[1]) / 2);
-    const cones = [];
+    const style = t[4] || 'thorn', cones = [], mid = (t[0] + t[1]) / 2;
+    if (style === 'lego'){
+      // scattered bricks, always there (and always hurt)
+      const LEGO = [0xe0584a, 0x3a6fd8, 0xffcf3a, 0x2e9b62, 0xf4f1ea];
+      for (let x = t[2] + 0.5; x < t[3]; x += 0.95) for (let m = t[0] + 0.4; m < t[1]; m += 0.9){
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.26, 0.32), LM(LEGO[(Math.random() * LEGO.length) | 0]));
+        b.position.set(x + (Math.random() - 0.5) * 0.4, 0.13, -(m + (Math.random() - 0.5) * 0.3)); b.rotation.y = Math.random() * 3; add(b);
+        const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.08, 8), b.material); stud.position.y = 0.16; b.add(stud);
+      }
+      return { t, cones, ph: 0, style, mid };
+    }
+    if (style === 'mat'){
+      // massage foot mat: rubber base, nubs that pop up on a cycle
+      box(t[3] - t[2], 0.12, t[1] - t[0], mats.matRubber, (t[2] + t[3]) / 2, 0.06, -mid);
+      for (let x = t[2] + 0.5; x < t[3]; x += 0.9) for (let m = t[0] + 0.45; m < t[1]; m += 0.9){
+        const c = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), mats.matNub); c.scale.y = 1.6; c.position.set(x, 0.3, -m); add(c); cones.push(c);
+      }
+      return { t, cones, ph: i * 0.55, style, mid };
+    }
+    box(t[3] - t[2], 0.3, t[1] - t[0], mats.thorn, (t[2] + t[3]) / 2, 0.15, -mid);
     for (let x = t[2] + 0.6; x < t[3]; x += 1.2) for (let m = t[0] + 0.6; m < t[1]; m += 1.2){
       const c = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.9, 6), mats.spike); c.position.set(x, 0.75, -m); add(c); cones.push(c);
     }
-    return { t, cones, ph: i * 0.55 };
+    return { t, cones, ph: i * 0.55, style, mid };
   });
   // checkpoint flags, finish line, podium
   for (const [cm, cx] of level.checkpoints.slice(1)){
@@ -908,7 +994,10 @@ function buildLevel(level){
   // bamboo spear launchers: a hole in the canyon wall at the spear's height
   spears = (level.spears || []).map(sp => {
     const y = SPEAR_Y[sp.kind], x = sp.side * (L1_LANE + 0.35);
-    box(0.5, 1.2, 1.6, mats.edge, x, y, -sp.m, true);
+    if (level.scenery === 'house'){
+      box(0.3, 3.2, 2.2, mats.door, sp.side * (L1_LANE + 0.1), 1.6, -sp.m);                       // a bedroom door, ajar
+      const nz = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.7, 10), mats.nozzle); nz.rotation.z = Math.PI / 2; nz.position.set(sp.side * (L1_LANE - 0.3), y, -sp.m); add(nz);
+    } else box(0.5, 1.2, 1.6, mats.edge, x, y, -sp.m, true);
     const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.2, 14), mats.hole);
     hole.rotation.z = Math.PI / 2; hole.position.set(x - sp.side * 0.3, y, -sp.m); add(hole);
     return { ...sp, y, x, hole, next: 0, armed: true };
@@ -989,7 +1078,7 @@ function buildLevel(level){
       const c = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.4, 6), chaserSpike); c.rotation.x = -Math.PI / 2; c.position.set(x, y, -1.2); chaser.add(c);
     }
   }
-  add(chaser); chaser.userData.x = 0;
+  add(chaser); chaser.userData.x = 0; chaser.userData.noLift = true;
   $('chaserLbl').textContent = level.drunk ? '酒鬼距離' : '刺牆距離';
   $('hDrankChip').hidden = !level.drunk; $('hBottles').textContent = (level.bottles || []).length;
   bottles = (level.bottles || []).map(([m, x], i) => { const g = makeBottle(i); g.position.set(x, 0, -m); add(g); return { m, x, g, state: 'up', t: 0 }; });
@@ -997,6 +1086,8 @@ function buildLevel(level){
     const g = makeGhostMom(); add(g);
     return { ...gm, m0: gm.m, g, th: i * 1.3, state: 'watch', until: 4 + i * 1.5, whipT: -9, whipCd: 0, hitDone: true, warned: false, mm: gm.m, xx: gm.x, ox: 0, om: 0, rushUntil: 0, rushCd: 0 };
   });
+  if (level.floorY) for (const o of world.children) if (!o.userData.noLift) o.position.y += level.floorY(-o.position.z);
+  if (level.scenery === 'house'){ mats.wall.color.set(0x9a6a3e); mats.cover.color.set(0xf2a65a); } else { mats.wall.color.set(0xa08a74); mats.cover.color.set(0xb0bcc8); }
   document.getElementById('hFinish').textContent = level.finish;
   layoutWalls(0);
 }
@@ -1036,7 +1127,7 @@ function reset(){
   for (const b of bullets) world.remove(b.mesh); bullets.length = 0;
   clearShots(); hushBubbles();
   for (const pk of pukes) world.remove(pk.sp); pukes.length = 0;
-  for (const b of bottles){ b.state = 'up'; b.t = 0; b.g.visible = true; b.g.rotation.set(0, 0, 0); b.g.position.set(b.x, 0, -b.m); }
+  for (const b of bottles){ b.state = 'up'; b.t = 0; b.g.visible = true; b.g.rotation.set(0, 0, 0); b.g.position.set(b.x, FY(b.m), -b.m); }
   for (const [i, gh] of ghosts.entries()){ gh.th = i * 1.3; gh.state = 'watch'; gh.until = 4 + i * 1.5; gh.whipCd = 0; gh.hitDone = true; gh.warned = false; gh.ox = gh.om = 0; gh.rushUntil = 0; gh.rushCd = 0; }
   for (const mn of minions){ mn.m = mn.hm; mn.x = mn.hx; mn.stunUntil = 0; mn.next = 1 + Math.random() * 1.5; }
   if (boss){ boss.nextBarrel = 0; boss.nextFire = 1.5; boss.stunUntil = 0; }
@@ -1174,11 +1265,11 @@ async function loadBoards(){
 renderLevelButtons(); loadBoards();
 // ---------- first-time intro: the camera visits each character, a card says what they do ----------
 const INTRO = [
-  { at: 'drunk',  title: '🍺 酒鬼大叔', text: '他一直在後面追你。被他從後面抱住會被定住，還會吐你一身！' },
+  { at: 'drunk',  title: '🍺 酒鬼大叔', text: '從玄關一路逃上頂樓陽台！他一直在後面追你，被他從後面抱住會被定住，還會吐你一身！' },
   { at: 'bottle', title: '🍾 路上的酒', text: '撞倒加金幣。漏掉的會被酒鬼喝掉，他會越跑越快——左上角看他喝了幾瓶。' },
   { at: 'ghost',  title: '👻 鬼媽媽',   text: '看到你就衝過來抽熱熔膠條，抽到會跌坐、變慢。等她低頭逛網拍再衝過去！酒鬼喝超過一半，她會改去抽酒鬼。' },
   { at: 'kid',    title: '🧸 小屁孩',   text: '坐在地上丟遙控器跟小車。按「揮棒」把遙控器打回去！終點的小屁孩大魔王被打中會哭。' },
-  { at: 'all',    title: '⚠️ 路上的機關', text: '🕳 地坑要跳過　🌵 地刺會冒出又縮回　🪨 看地上的影子躲落石　🎋 牆洞發紅會射竹箭：「跳」過去' },
+  { at: 'all',    title: '⚠️ 路上的機關', text: '🦶 按摩腳墊會冒凸點　🧱 樂高踩到很痛　🛏 看影子躲樓上丟的東西　💦 房門口的水槍要跳過　🕳 樓上地板破洞，掉下去要重爬樓梯' },
   { at: 'all',    title: '🎮 怎麼操作', text: isTouch ? '左邊搖桿移動；右邊「跳」（空中再按一次＝二段跳）、「衝刺」、「揮棒」；左上「重來」。'
                                                   : 'WASD 移動・空白鍵跳（空中再按＝二段跳）・Shift 衝刺・F 揮棒・R 重來' },
 ];
@@ -1379,7 +1470,7 @@ function spitFire(x, m, r, speed, angle, from){
 }
 // thorn state: 1 = up (hurts), 0.35 = poking (about to come up), 0 = down (safe)
 function thornLevel(o, time){
-  if (!L.thornCycle) return 1;
+  if (!L.thornCycle || o.style === 'lego') return 1;
   const p = ((time + o.ph) % L.thornCycle) / L.thornCycle;
   return p < 0.5 ? 1 : p > 0.86 ? 0.35 : 0;
 }
@@ -1387,7 +1478,7 @@ function step(dt){
   S.time += dt;
   if (L.drunk){
     if (S.time > 1.2) hint('bottle');
-    if (S.m > 132) hint('thorn');
+    if (S.m > 36) hint('thorn');
     if (S.m > 144) hint('spear');
     if (ghosts.some(g => g.mm - S.m > 0 && g.mm - S.m < 26)) hint('ghost');
     if (S.m > 222) hint('rock');
@@ -1449,7 +1540,11 @@ function step(dt){
   const g = groundAt(S.m, S.x);
   if (g && S.y <= 0 && S.y > -0.8){ S.y = 0; S.vy = 0; S.onGround = true; S.djUsed = false; S.jumped = false; S.onMover = g.mover || null; }
   else if (!g || S.y < 0){ S.onGround = false; if (!g) S.onMover = null; }
-  if (S.y < -5){ S.pits++; respawn(L.scenery === 'sky' ? '掉下去了！回檢查點' : '掉坑了！回檢查點'); return; }
+  if (S.y < -5){
+    S.pits++;
+    if (L.scenery === 'house'){ S.cp = S.m >= 325 ? 325 : 125; S.cpX = 0; respawn('🕳 咚！掉到樓下了，再爬一次樓梯'); return; }
+    respawn(L.scenery === 'sky' ? '掉下去了！回檢查點' : '掉坑了！回檢查點'); return;
+  }
 
   // ---- solid blocks ----
   const block = (m, half, x0, x1, top) => {
@@ -1464,7 +1559,8 @@ function step(dt){
   if (S.y < 0.6) for (const o of thornObjs){
     const t = o.t;
     if (thornLevel(o, S.time) === 1 && S.m >= t[0] && S.m <= t[1] && S.x >= t[2] - 0.3 && S.x <= t[3] + 0.3 && S.time > S.slowUntil){
-      S.knockV = 7; S.slowUntil = S.time + 1; S.vy = 5; S.y = 0.05; S.thorned++; flash('🌵 被荊棘刺到！'); break;
+      S.knockV = 7; S.slowUntil = S.time + 1; S.vy = 5; S.y = 0.05; S.thorned++;
+      flash(o.style === 'lego' ? '🧱 踩到樂高！痛死了' : o.style === 'mat' ? '🦶 踩到按摩腳墊！好痛' : '🌵 被荊棘刺到！'); break;
     }
   }
   const rz = (L.rocks || []).find(z => S.m > z[0] && S.m < z[1]);
@@ -1475,23 +1571,30 @@ function step(dt){
     const aimed = Math.random() < rz[3] * EZ(1, 0.4), FALL = 1.25;
     const m = Math.min(rz[1] - 1, aimed ? S.m + Math.max(0, S.vmS) * FALL + (Math.random() - 0.5) * 1.6 : S.m + 6 + Math.random() * 16);
     const x = aimed ? Math.max(-L1_LANE + 1.2, Math.min(L1_LANE - 1.2, S.x + S.vxS * FALL + (Math.random() - 0.5) * 1.6)) : (Math.random() * 2 - 1) * (L1_LANE - 1.2);
-    const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), mats.shadow); shadow.rotation.x = -Math.PI / 2; shadow.position.set(x, 0.02, -m); add(shadow);
-    const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1), mats.rock); mesh.position.set(x, 18, -m); add(mesh);
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), mats.shadow); shadow.rotation.x = -Math.PI / 2; shadow.position.set(x, 0.04 + FY(m), -m); add(shadow);
+    let mesh;
+    if (L.scenery === 'house'){
+      const k = (Math.random() * 3) | 0;
+      mesh = k === 0 ? new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 1.2), mats.pillow)
+           : k === 1 ? new THREE.Mesh(new THREE.SphereGeometry(0.8, 14, 10), mats.ball)
+           : new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.7, 0.6, 16, 1, true), mats.basin);
+    } else mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1), mats.rock);
+    mesh.position.set(x, 18 + FY(m), -m); add(mesh);
     rocks.push({ x, m, t: 0, shadow, mesh, landed: false });
   }
   for (let i = rocks.length - 1; i >= 0; i--){
     const r = rocks[i]; r.t += dt;
     const k = Math.max(0, (r.t - 1.0) / 0.25);
-    r.mesh.position.y = Math.max(1.1, 18 - 17 * k * k); r.mesh.rotation.x += dt * 3;
+    r.mesh.position.y = FY(r.m) + Math.max(0.8, 18 - 17 * k * k); r.mesh.rotation.x += dt * 3;
     r.shadow.scale.setScalar(0.6 + Math.min(1, r.t) * 0.4);
     if (!r.landed && k >= 1){
       r.landed = true;
       // after a hit you get 1.8 s to get up and moving before the next one can count
-      if (S.time > S.rockSafe && Math.hypot(S.x - r.x, S.m - r.m) < 1.9 && S.y < 2){ r.hitDone = true; S.rockSafe = S.time + 1.8; S.downUntil = S.time + 1; S.knockV = 3; S.rocked++; flash('🪨 被石頭砸到！'); }
+      if (S.time > S.rockSafe && Math.hypot(S.x - r.x, S.m - r.m) < 1.9 && S.y < 2){ r.hitDone = true; S.rockSafe = S.time + 1.8; S.downUntil = S.time + 1; S.knockV = 3; S.rocked++; flash(L.scenery === 'house' ? '🛏 被樓上丟下來的東西砸到！' : '🪨 被石頭砸到！'); }
     }
     // a landed rock sits there for a moment: run into it and you trip
     if (r.landed && !r.hitDone && r.t < 2.0 && S.time > S.rockSafe && Math.hypot(S.x - r.x, S.m - r.m) < 1.35 && S.y < 1.0){
-      r.hitDone = true; S.rockSafe = S.time + 1.8; S.knockV = 6; S.slowUntil = S.time + 0.6; S.rocked++; flash('🪨 撞到石頭！');
+      r.hitDone = true; S.rockSafe = S.time + 1.8; S.knockV = 6; S.slowUntil = S.time + 0.6; S.rocked++; flash(L.scenery === 'house' ? '🛏 被地上的東西絆倒！' : '🪨 撞到石頭！');
     }
     if (r.t > 2.2){ world.remove(r.mesh); world.remove(r.shadow); r.mesh.geometry.dispose(); r.shadow.geometry.dispose(); rocks.splice(i, 1); }
   }
@@ -1649,10 +1752,15 @@ function step(dt){
       sp.next = S.time + sp.period * EZ(1, 1.5);
       for (const off of [-1.3, 0, 1.3]){
         const mesh = new THREE.Group();
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.6, 8), mats.spear); shaft.rotation.z = Math.PI / 2; mesh.add(shaft);
-        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 8), mats.spearTip); tip.rotation.z = sp.side > 0 ? Math.PI / 2 : -Math.PI / 2; tip.position.x = -sp.side * 1.5; mesh.add(tip);
-        const sx = sp.x - sp.side * Math.abs(off) * 0.8;                    // middle spear leads a little
-        mesh.position.set(sx, sp.y, -(sp.m + off)); add(mesh);
+        if (L.scenery === 'house'){
+          const jet = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 2.4, 10), mats.water); jet.rotation.z = Math.PI / 2; mesh.add(jet);
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), mats.water); head.position.x = -sp.side * 1.2; mesh.add(head);
+        } else {
+          const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.6, 8), mats.spear); shaft.rotation.z = Math.PI / 2; mesh.add(shaft);
+          const tip = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 8), mats.spearTip); tip.rotation.z = sp.side > 0 ? Math.PI / 2 : -Math.PI / 2; tip.position.x = -sp.side * 1.5; mesh.add(tip);
+        }
+        const sx = sp.x - sp.side * Math.abs(off) * 0.8;                    // middle one leads a little
+        mesh.position.set(sx, sp.y + FY(sp.m), -(sp.m + off)); add(mesh);
         flying.push({ x: sx, m: sp.m + off, y: sp.y, vx: -sp.side * SPEAR_SPEED, side: sp.side, mesh, hit: false });
       }
     }
@@ -1664,7 +1772,8 @@ function step(dt){
     if (!f.hit && Math.abs(f.m - S.m) < 0.6 && Math.abs(f.x - S.x) < 0.9 && S.y < f.y + 0.2 && S.y + bodyH > f.y - 0.2){
       for (const g of flying) if (Math.abs(g.m - f.m) < 3 && g.side === f.side) g.hit = true;   // one hit per volley
       S.knockV = 5; S.slowUntil = S.time + 0.7; S.speared++;
-      flash(f.y < 1 ? '🎋 被竹箭射到！要跳過去' : '🎋 被竹箭射到！要蹲下來');
+      if (L.scenery === 'house'){ flash('💦 被水槍噴到！看不清楚了'); impact('噗滋！', '#4aa8ff', 0.25); screenFx('water', 1.5); }
+      else { flash('🎋 被竹箭射到！要跳過去'); impact('中箭！', '#c27a00', 0.35); screenFx('daze', 1.0); }
     }
     if (Math.abs(f.x) > L1_LANE + 1.5){ world.remove(f.mesh); f.mesh.traverse(o => o.geometry && o.geometry.dispose()); flying.splice(i, 1); }
   }
@@ -1758,7 +1867,7 @@ const _camTarget = new THREE.Vector3(), _camLook = new THREE.Vector3(0, 2.6, 1.2
 const INTRO_FOCUS = { drunk: [-1.9, 0, 3.4, 2.6], bottle: [1.6, 0, -2.4, 0.9], ghost: [3.6, 0, 1.8, 2.4], kid: [-3.4, 0, -1.2, 1.6] };
 function render(dt, clock){
   const g = me.group, running = S.phase === 'run', t = running ? S.time : clock;
-  g.position.set(S.x || 0, Math.max(-6, S.y || 0), -(S.m || 0));
+  g.position.set(S.x || 0, FY(S.m || 0) + Math.max(-6, S.y || 0), -(S.m || 0));
   const down = running && S.time < S.downUntil;
   g.rotation.z = down ? 1.2 : 0;
   g.rotation.y += ((running ? -(S.side || 0) * 0.35 : 0) - g.rotation.y) * Math.min(1, dt * 10);
@@ -1786,12 +1895,13 @@ function render(dt, clock){
   for (const c of coins) if (!c.taken) c.mesh.rotation.z += dt * 3;
   for (const b of bullets) b.mesh.position.set(b.x, 1.3, -b.m);
   for (const o of thornObjs){
-    const want = [ -0.45, 0.2, 0.75 ][thornLevel(o, t) === 1 ? 2 : thornLevel(o, t) > 0 ? 1 : 0];
+    const lv = thornLevel(o, t) === 1 ? 2 : thornLevel(o, t) > 0 ? 1 : 0;
+    const want = FY(o.mid) + (o.style === 'mat' ? [-0.05, 0.15, 0.3] : [-0.45, 0.2, 0.75])[lv];
     for (const c of o.cones) c.position.y += (want - c.position.y) * Math.min(1, dt * 18);
   }
   for (const mn of minions){
     const stun = running && S.time < mn.stunUntil;
-    mn.g.position.set(mn.x, 0, -mn.m);
+    mn.g.position.set(mn.x, FY(mn.m), -mn.m);
     mn.g.rotation.y = Math.atan2((S.x || 0) - mn.x, mn.m - (S.m || 0));
     const thr = running ? S.time - (mn.throwT || -9) : 9;
     mn.g.userData.armR.rotation.x = thr < 0.4 ? -2.4 * Math.sin(thr / 0.4 * Math.PI) : 0;
@@ -1801,11 +1911,11 @@ function render(dt, clock){
     const thr = running ? S.time - boss.throwT : 9, fir = running ? S.time - boss.fireT : 9, stun = running && S.time < boss.stunUntil;
     boss.g.userData.armR.rotation.x = thr < 0.5 ? -2.4 * Math.sin(thr / 0.5 * Math.PI) : 0;
     boss.g.userData.armL.rotation.z = stun ? 0.8 : Math.sin(t * 2) * 0.15;
-    boss.g.position.y = fir < 0.4 ? Math.sin(fir / 0.4 * Math.PI) * 0.5 : 0;
+    boss.g.position.y = FY(boss.m) + (fir < 0.4 ? Math.sin(fir / 0.4 * Math.PI) * 0.5 : 0);
     boss.g.rotation.z = stun ? Math.sin(t * 12) * 0.08 : 0;
   }
-  for (const b of barrels){ b.mesh.position.set(b.x, 0.45 * b.mesh.scale.y, -b.m); b.mesh.rotation.y = Math.atan2(b.vx, -b.vm); }
-  for (const f of fireballs){ f.mesh.position.set(f.x, f.from === 'minion' ? 1.0 : 1.2, -f.m); if (f.from !== 'minion'){ f.mesh.rotation.y += dt * 14; f.mesh.rotation.x += dt * 6; } else f.mesh.scale.setScalar(1 + Math.sin(t * 20 + f.x) * 0.12); }
+  for (const b of barrels){ b.mesh.position.set(b.x, FY(b.m) + 0.45 * b.mesh.scale.y, -b.m); b.mesh.rotation.y = Math.atan2(b.vx, -b.vm); }
+  for (const f of fireballs){ f.mesh.position.set(f.x, FY(f.m) + (f.from === 'minion' ? 1.0 : 1.2), -f.m); if (f.from !== 'minion'){ f.mesh.rotation.y += dt * 14; f.mesh.rotation.x += dt * 6; } else f.mesh.scale.setScalar(1 + Math.sin(t * 20 + f.x) * 0.12); }
   for (const f of flying) f.mesh.position.x = f.x;
   for (const sp of spears) sp.hole.material = (running && sp.next && sp.next - S.time < SPEAR_WARN) ? mats.holeHot : mats.hole;
   if (L.drunk){
@@ -1816,7 +1926,7 @@ function render(dt, clock){
     const ph = t * 9;
     poseDrunk(cu, held ? 'hug' : sore ? 'sore' : 'run', ph, t);
     chaser.rotation.z = held ? 0 : Math.sin(t * 2.3) * 0.06;                                      // a happy drunk sway
-    chaser.position.y = held ? 0 : sore ? Math.abs(Math.sin(t * 16)) * 0.3 : Math.abs(Math.sin(ph)) * 0.18;
+    chaser.position.y = FY(S.wallM || 0) + (held ? 0 : sore ? Math.abs(Math.sin(t * 16)) * 0.3 : Math.abs(Math.sin(ph)) * 0.18);
     const see = running && !held && (S.m - S.wallM) < 7;             // see-through when he's right behind you
     for (const m of cu.mats){ m.opacity = see ? 0.35 : 1; m.depthWrite = !see; }
   } else chaser.position.set(0, 0, -(S.wallM || -WALL_START_GAP));
@@ -1824,7 +1934,7 @@ function render(dt, clock){
   for (const b of bottles) if (b.state === 'down' && b.t < 1){ b.t += dt * 4; b.g.rotation.z = -b.dir * Math.min(1, b.t) * Math.PI / 2; b.g.position.x = b.x - b.dir * Math.min(1, b.t) * 0.5; }
   for (const gh of ghosts){
     const shop = gh.state !== 'watch';
-    gh.g.position.set(gh.xx, 0.25 + Math.sin(t * 2.5 + gh.th) * 0.15, -gh.mm);
+    gh.g.position.set(gh.xx, FY(gh.mm) + 0.25 + Math.sin(t * 2.5 + gh.th) * 0.15, -gh.mm);
     gh.g.rotation.y = Math.atan2((S.x || 0) - gh.xx, gh.mm - (S.m || 0)) + (shop ? Math.PI : 0);
     gh.g.userData.phone.visible = shop;
     gh.g.userData.armL.rotation.x = shop ? -1.1 : 0;
@@ -1834,7 +1944,8 @@ function render(dt, clock){
   }
   // camera: high and behind; level 2 follows you fully sideways (the gate spur)
   const pf = camera.aspect < 1 ? 1.55 : 1;                         // upright phone: pull back so the road fits
-  _camTarget.set((S.x || 0) * L.camFollow, 9 * camZoom * pf, -(S.m || 0) + 8 * camZoom * pf);
+  const fyc = FY(S.m || 0);
+  _camTarget.set((S.x || 0) * L.camFollow, fyc + 9 * camZoom * pf, -(S.m || 0) + 8 * camZoom * pf);
   const cover = S.phase === 'menu' && coverGroup;
   if (coverGroup) coverGroup.visible = !!cover;
   if (cover){
@@ -1873,12 +1984,12 @@ function render(dt, clock){
     return;
   }
   const hug = running && L.drunk && S.heldUntil;                    // swing round to the side to show the hug
-  if (hug) _camTarget.set((S.x || 0) + 7, 4.2, -(S.m || 0) + 2);
+  if (hug) _camTarget.set((S.x || 0) + 7, fyc + 4.2, -(S.m || 0) + 2);
   if (!Number.isFinite(camera.position.x + camera.position.y + camera.position.z)) camera.position.copy(_camTarget);
   camera.position.lerp(_camTarget, Math.min(1, dt * (hug ? 10 : 6)));
   if (performance.now() / 1000 < shakeUntil){ camera.position.x += (Math.random() - 0.5) * shakeAmp; camera.position.y += (Math.random() - 0.5) * shakeAmp; }
-  if (hug) camera.lookAt(S.x || 0, 2, -(S.m || 0) + 0.5);
-  else camera.lookAt((S.x || 0) * (L.camFollow >= 1 ? 1 : 0.4), 0.5, -(S.m || 0) - 12);
+  if (hug) camera.lookAt(S.x || 0, fyc + 2, -(S.m || 0) + 0.5);
+  else camera.lookAt((S.x || 0) * (L.camFollow >= 1 ? 1 : 0.4), FY((S.m || 0) + 12) + 0.5, -(S.m || 0) - 12);
   const near = running && !L.drunk && (S.m - S.wallM) < 9;
   chaserMat.opacity = chaserSpike.opacity = near ? 0.35 : 1;
   chaserMat.depthWrite = chaserSpike.depthWrite = !near;
