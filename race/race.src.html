@@ -24,11 +24,12 @@
   index.html (the site's home page). Never edit index.html by hand.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Huninn&family=Noto+Sans+TC:wght@500;700;900&display=swap">
 <style>
   :root{
     --sb-paper:#fff8ec; --sb-ink:#5b3a29; --sb-text:#4a3426; --sb-muted:#9a7d5f; --sb-line:#e2c9a0;
     --sb-gold:#e8a317; --sb-gold-soft:#ffcf5a; --sb-red:#e0584a; --sb-mint:#7cc79a; --sb-sky:#6fb3e0; --wall:#8a3fa0;
+    --sb-pop:"Huninn","Fredoka","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;   /* round 粉圓 for shouty pop-ups */
     --sb-font:"Fredoka","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
     color-scheme:light;
   }
@@ -54,8 +55,8 @@
   #hint{position:fixed;left:50%;top:calc(96px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:7;max-width:min(92vw,520px);
     background:#fff6d8;border:2.5px solid var(--sb-ink);border-radius:14px;padding:8px 14px;font:700 15px/1.45 var(--sb-font);color:var(--sb-ink);
     box-shadow:0 4px 0 rgba(91,58,41,.3);pointer-events:none;text-align:center}
-  #impact{position:fixed;left:50%;top:38%;z-index:9;transform:translate(-50%,-50%) scale(0);pointer-events:none;font:900 64px/1 var(--sb-font);color:#fff;
-    -webkit-text-stroke:4px var(--sb-ink);paint-order:stroke fill;white-space:nowrap;opacity:0}
+  #impact{position:fixed;left:50%;top:38%;z-index:9;transform:translate(-50%,-50%) scale(0);pointer-events:none;font:54px/1 var(--sb-pop);color:#fff;
+    padding:12px 28px 14px;border:4px solid var(--sb-ink);border-radius:26px;box-shadow:0 6px 0 var(--sb-ink);text-shadow:0 3px 0 rgba(91,58,41,.55);white-space:nowrap;opacity:0}
   #impact.go{animation:stamp .9s ease-out forwards}
   @keyframes stamp{0%{transform:translate(-50%,-50%) scale(2.6) rotate(-8deg);opacity:0}12%{transform:translate(-50%,-50%) scale(1) rotate(-8deg);opacity:1}
     70%{transform:translate(-50%,-50%) scale(1.05) rotate(-6deg);opacity:1}100%{transform:translate(-50%,-50%) scale(1.1) rotate(-6deg);opacity:0}}
@@ -72,17 +73,18 @@
   .bubble.cap{transform:translateX(-50%);top:auto !important;bottom:calc(132px + env(safe-area-inset-bottom,0px));background:rgba(40,28,20,.88);color:#fff;border-color:#1c120c;white-space:normal;max-width:88vw;text-align:center}
   .bubble.cap::before{content:attr(data-name) "：";color:#ffcf5a}
   .bubble.cap::after{display:none}
-  .flash{position:fixed;left:50%;top:24%;transform:translateX(-50%);z-index:8;font-weight:900;font-size:22px;color:#fff;-webkit-text-stroke:1.5px var(--sb-ink);pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
-  .flash.on{opacity:1}
+  .flash{position:fixed;left:50%;top:24%;transform:translateX(-50%) scale(.85);z-index:8;font:20px/1.2 var(--sb-pop);color:var(--sb-ink);background:#fff8ec;
+    border:2.5px solid var(--sb-ink);border-radius:999px;padding:6px 18px;box-shadow:0 4px 0 rgba(91,58,41,.35);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;white-space:nowrap}
+  .flash.on{opacity:1;transform:translateX(-50%) scale(1)}
   /* phones held sideways (short screens): keep the middle clear for the action —
      character lines go to a thin caption top-centre, hints to a strip bottom-centre
      (between the joystick and the buttons), hit text small under the caption */
   @media (max-height:520px){
-    .flash{top:calc(38px + env(safe-area-inset-top,0px));font-size:15px;-webkit-text-stroke:1px var(--sb-ink)}
+    .flash{top:calc(38px + env(safe-area-inset-top,0px));font-size:14px;padding:3px 12px;border-width:2px}
     .bubble{font-size:12px;padding:2px 8px;border-width:2px;border-radius:10px}
     .bubble.cap{bottom:auto !important;top:calc(6px + env(safe-area-inset-top,0px)) !important;max-width:46vw;font-size:12px;padding:3px 10px}
     #hint{top:auto;bottom:calc(6px + env(safe-area-inset-bottom,0px));max-width:44vw;font-size:12px;padding:4px 10px;border-width:2px;line-height:1.35}
-    #impact{font-size:46px;-webkit-text-stroke:3px var(--sb-ink);top:46%}
+    #impact{font-size:36px;padding:8px 18px 10px;border-width:3px;border-radius:18px;box-shadow:0 4px 0 var(--sb-ink);top:46%}
   }
   .big{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9;pointer-events:none;font-size:96px;font-weight:700;color:var(--sb-paper);-webkit-text-stroke:3px var(--sb-ink)}
   .big[hidden]{display:none}
@@ -811,7 +813,7 @@ function makeFireball(r){
 // big stamped word + screen flash + camera shake
 let shakeUntil = 0, shakeAmp = 0;
 function impact(text, color, shake){
-  const el = $('impact'); el.textContent = text; el.style.color = color; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+  const el = $('impact'); el.textContent = text; el.style.background = color; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
   const f = $('impactFlash'); f.style.transition = 'none'; f.style.background = color; f.style.opacity = 0.45;
   requestAnimationFrame(() => { f.style.transition = 'opacity .45s'; f.style.opacity = 0; });
   shakeUntil = performance.now() / 1000 + 0.35; shakeAmp = shake || 0.35;
