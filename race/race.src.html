@@ -24,11 +24,12 @@
   index.html (the site's home page). Never edit index.html by hand.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Huninn&family=Noto+Sans+TC:wght@500;700;900&display=swap">
 <style>
   :root{
     --sb-paper:#fff8ec; --sb-ink:#5b3a29; --sb-text:#4a3426; --sb-muted:#9a7d5f; --sb-line:#e2c9a0;
     --sb-gold:#e8a317; --sb-gold-soft:#ffcf5a; --sb-red:#e0584a; --sb-mint:#7cc79a; --sb-sky:#6fb3e0; --wall:#8a3fa0;
+    --sb-pop:"Huninn","Fredoka","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;   /* round 粉圓 for shouty pop-ups */
     --sb-font:"Fredoka","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
     color-scheme:light;
   }
@@ -54,11 +55,17 @@
   #hint{position:fixed;left:50%;top:calc(96px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:7;max-width:min(92vw,520px);
     background:#fff6d8;border:2.5px solid var(--sb-ink);border-radius:14px;padding:8px 14px;font:700 15px/1.45 var(--sb-font);color:var(--sb-ink);
     box-shadow:0 4px 0 rgba(91,58,41,.3);pointer-events:none;text-align:center}
-  #impact{position:fixed;left:50%;top:38%;z-index:9;transform:translate(-50%,-50%) scale(0);pointer-events:none;font:900 64px/1 var(--sb-font);color:#fff;
-    -webkit-text-stroke:4px var(--sb-ink);paint-order:stroke fill;white-space:nowrap;opacity:0}
+  #impact{position:fixed;left:50%;top:38%;z-index:9;transform:translate(-50%,-50%) scale(0);pointer-events:none;font:54px/1 var(--sb-pop);color:#fff;
+    padding:12px 28px 14px;border:4px solid var(--sb-ink);border-radius:26px;box-shadow:0 6px 0 var(--sb-ink);text-shadow:0 3px 0 rgba(91,58,41,.55);white-space:nowrap;opacity:0}
   #impact.go{animation:stamp .9s ease-out forwards}
   @keyframes stamp{0%{transform:translate(-50%,-50%) scale(2.6) rotate(-8deg);opacity:0}12%{transform:translate(-50%,-50%) scale(1) rotate(-8deg);opacity:1}
     70%{transform:translate(-50%,-50%) scale(1.05) rotate(-6deg);opacity:1}100%{transform:translate(-50%,-50%) scale(1.1) rotate(-6deg);opacity:0}}
+  #screenFx{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:0}
+  #screenFx.water{-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);
+    background:radial-gradient(circle at 18% 30%,rgba(140,210,255,.55) 0 7%,transparent 8%),radial-gradient(circle at 70% 22%,rgba(140,210,255,.5) 0 5%,transparent 6%),
+      radial-gradient(circle at 42% 68%,rgba(140,210,255,.5) 0 9%,transparent 10%),radial-gradient(circle at 84% 62%,rgba(140,210,255,.55) 0 6%,transparent 7%),
+      radial-gradient(circle at 28% 84%,rgba(140,210,255,.45) 0 5%,transparent 6%),rgba(120,190,240,.22)}
+  #screenFx.daze{-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);background:radial-gradient(ellipse at center,rgba(0,0,0,0) 35%,rgba(70,30,10,.6))}
   #impactFlash{position:fixed;inset:0;z-index:8;pointer-events:none;opacity:0;transition:opacity .35s}
   .bubble{position:fixed;z-index:7;transform:translate(-50%,-100%);background:#fff;border:2.5px solid var(--sb-ink);border-radius:14px;padding:4px 10px;
     font:800 15px/1.3 var(--sb-font);color:var(--sb-ink);white-space:nowrap;pointer-events:none;box-shadow:0 3px 0 rgba(91,58,41,.3);display:none}
@@ -66,17 +73,18 @@
   .bubble.cap{transform:translateX(-50%);top:auto !important;bottom:calc(132px + env(safe-area-inset-bottom,0px));background:rgba(40,28,20,.88);color:#fff;border-color:#1c120c;white-space:normal;max-width:88vw;text-align:center}
   .bubble.cap::before{content:attr(data-name) "：";color:#ffcf5a}
   .bubble.cap::after{display:none}
-  .flash{position:fixed;left:50%;top:24%;transform:translateX(-50%);z-index:8;font-weight:900;font-size:22px;color:#fff;-webkit-text-stroke:1.5px var(--sb-ink);pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
-  .flash.on{opacity:1}
+  .flash{position:fixed;left:50%;top:24%;transform:translateX(-50%) scale(.85);z-index:8;font:20px/1.2 var(--sb-pop);color:var(--sb-ink);background:#fff8ec;
+    border:2.5px solid var(--sb-ink);border-radius:999px;padding:6px 18px;box-shadow:0 4px 0 rgba(91,58,41,.35);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;white-space:nowrap}
+  .flash.on{opacity:1;transform:translateX(-50%) scale(1)}
   /* phones held sideways (short screens): keep the middle clear for the action —
      character lines go to a thin caption top-centre, hints to a strip bottom-centre
      (between the joystick and the buttons), hit text small under the caption */
   @media (max-height:520px){
-    .flash{top:calc(38px + env(safe-area-inset-top,0px));font-size:15px;-webkit-text-stroke:1px var(--sb-ink)}
+    .flash{top:calc(38px + env(safe-area-inset-top,0px));font-size:14px;padding:3px 12px;border-width:2px}
     .bubble{font-size:12px;padding:2px 8px;border-width:2px;border-radius:10px}
     .bubble.cap{bottom:auto !important;top:calc(6px + env(safe-area-inset-top,0px)) !important;max-width:46vw;font-size:12px;padding:3px 10px}
     #hint{top:auto;bottom:calc(6px + env(safe-area-inset-bottom,0px));max-width:44vw;font-size:12px;padding:4px 10px;border-width:2px;line-height:1.35}
-    #impact{font-size:46px;-webkit-text-stroke:3px var(--sb-ink);top:46%}
+    #impact{font-size:36px;padding:8px 18px 10px;border-width:3px;border-radius:18px;box-shadow:0 4px 0 var(--sb-ink);top:46%}
   }
   .big{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9;pointer-events:none;font-size:96px;font-weight:700;color:var(--sb-paper);-webkit-text-stroke:3px var(--sb-ink)}
   .big[hidden]{display:none}
@@ -87,6 +95,19 @@
   #startCard h1{display:none}
   body.menu .hud, body.menu #touch, body.menu #restartBtn{display:none!important}
   .logo{text-align:center;pointer-events:none;user-select:none}
+  #intro{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:12;display:flex;justify-content:center;padding:0 12px;pointer-events:none}
+  #intro[hidden]{display:none}
+  .introCard{pointer-events:auto;background:var(--sb-paper);border:3px solid var(--sb-ink);border-radius:20px;padding:12px 18px;max-width:560px;width:100%;
+    box-shadow:0 6px 0 rgba(91,58,41,.3);animation:introIn .35s ease-out}
+  @keyframes introIn{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+  .introTitle{font:900 24px var(--sb-font);color:#e9822c;-webkit-text-stroke:1px var(--sb-ink)}
+  .introText{font:600 16px/1.55 var(--sb-font);color:var(--sb-ink);margin:6px 0 8px}
+  .introNav{display:flex;align-items:center;gap:8px}
+  .introNav .btn{margin:0}
+  .introNav #introNext{margin-left:auto}
+  .introDots{font-size:12px;color:var(--sb-muted);letter-spacing:3px}
+  #howBtn{font-size:13px;padding:4px 14px;margin-top:8px}
+  @media (max-height:520px){ .introCard{padding:8px 12px;max-width:min(560px,70vw)} .introTitle{font-size:18px} .introText{font-size:13px;margin:3px 0 5px} }
   .logo .planet{width:120px;height:80px;display:block;margin:0 auto -18px;filter:drop-shadow(0 4px 0 rgba(91,58,41,.35));animation:bob 3.2s ease-in-out infinite}
   .logoText{font:900 76px/1.05 var(--sb-font);letter-spacing:4px;color:#ffcf5a;-webkit-text-stroke:5px #5b3a29;paint-order:stroke fill;
     text-shadow:0 7px 0 #5b3a29,0 12px 18px rgba(0,0,0,.35);transform:rotate(-3deg)}
@@ -144,6 +165,8 @@
   .reward{font-weight:700;color:#c27a00}
   .lvls{display:flex;flex-direction:column;gap:12px;align-items:stretch;margin:10px auto 0;max-width:360px}
   .btn.lvl{display:flex;flex-direction:column;align-items:center;margin:0;padding:10px 18px;line-height:1.2;font-size:24px}
+  .btn.easy{display:flex;flex-direction:column;align-items:center;margin:4px 0 0;padding:5px 14px;line-height:1.2;font-size:16px}
+  .btn.easy small{font-size:11px;color:var(--sb-muted);font-weight:600}
   .btn.lvl small{font-size:12px;font-weight:600;color:var(--sb-muted)}
   .lvlcard{display:flex;flex-direction:column;gap:4px}
   .board{list-style:none;margin:0;padding:6px 8px;background:#fff;border:2px solid var(--sb-line);border-radius:12px;font-size:13px;text-align:left}
@@ -201,6 +224,7 @@
 <div id="stage"></div>
 <div class="hud tl">
   <span class="chip sec" id="hSec">起跑區</span>
+  <span class="chip" id="easyChip" hidden>🐣 手殘版</span>
   <span class="chip">⏱ <b id="hTime">0.0</b> 秒</span>
   <span class="chip">📍 <b id="hDist">0</b> / <span id="hFinish">530</span> m</span>
   <span class="chip">🪙 <b id="hCoins">0</b></span>
@@ -219,10 +243,19 @@
 <div class="flash" id="flash"></div>
 <div id="bubbles"></div>
 <div id="hint" hidden></div>
+<div id="screenFx"></div>
 <div id="impact"></div><div id="impactFlash"></div>
 <div id="lineHint" hidden>LINE 裡不能全螢幕：點右上角 ⋯ 選「用預設瀏覽器開啟」<button type="button" id="lineHintX">知道了</button></div>
 <div class="big" id="count" hidden></div>
 
+<div id="intro" hidden>
+  <div class="introCard">
+    <div class="introTitle" id="introTitle"></div>
+    <div class="introText" id="introText"></div>
+    <div class="introNav"><span class="introDots" id="introDots"></span>
+      <button type="button" class="btn ghost" id="introSkip">跳過</button><button type="button" class="btn" id="introNext">下一個 ▶</button></div>
+  </div>
+</div>
 <div class="card" id="startCard">
 <header class="logo">
   <svg class="planet" viewBox="0 0 120 80" aria-hidden="true">
@@ -233,7 +266,7 @@
   </svg>
   <div class="logoText">逃離土星</div>
   <div class="logoSub">第一關・家庭聚會</div>
-  <div class="logoCast"><span>🍺 酒鬼大叔在後面追</span><span>👻 鬼媽媽揮熱熔膠條</span><span>🧸 小屁孩大魔王</span></div>
+  <div class="logoCast"><span>🍺 酒鬼大叔在後面追</span><span>👻 鬼媽媽揮熱熔膠條</span><span>🧸 小屁孩丟玩具車</span><span>👕 頂樓曬衣場大風吹</span></div>
 </header>
 <div>
   <h1>🪐 逃離土星</h1>
@@ -246,8 +279,9 @@
     <button class="btn" id="aGo" type="submit">登入開跑</button>
     <p class="authMsg" id="aMsg">要先登入才能跑。跑完的金幣會存進你的帳號。</p>
   </form>
-  <p class="keys"><kbd>WASD</kbd> 移動 <kbd>空白</kbd> 跳 <kbd>Shift</kbd> 衝 <kbd>C</kbd> 蹲 <kbd>F</kbd> 揮棒 <kbd>R</kbd> 重來</p>
+  <p class="keys"><kbd>WASD</kbd> 移動 <kbd>空白</kbd> 跳 <kbd>Shift</kbd> 衝刺 <kbd>F</kbd> 揮棒 <kbd>R</kbd> 重來</p>
   <div id="levelBtns" class="lvls"></div>
+  <button class="btn ghost" id="howBtn" type="button">❓ 怎麼玩</button>
 </div></div>
 
 <div class="card" id="endCard" hidden><div>
@@ -269,7 +303,7 @@
 
 <div id="touch">
   <div id="stickZone"><div id="stick"><div id="knob"></div></div></div>
-  <div class="tb" id="tJump">跳</div><div class="tb" id="tBat">揮棒</div><div class="tb" id="tDash">衝刺</div><div class="tb" id="tCrouch">蹲</div>
+  <div class="tb" id="tJump">跳</div><div class="tb" id="tBat">揮棒</div><div class="tb" id="tDash">衝刺</div>
   <div class="tb mini" id="tZoomOut" aria-label="拉遠">－</div><div class="tb mini" id="tZoomIn" aria-label="拉近">＋</div>
   <div class="tb mini" id="tFull" aria-label="全螢幕">⛶</div>
 </div>
@@ -289,7 +323,7 @@
 // platforms; anything else is a drop.
 // ============================================================
 const RUN = 10.8, SPRINT = 16.2, JUMP_V = 10.5, DJ_V = 8.5, GRAV = 30;
-const STAMINA_DRAIN = 1 / 2.5, STAMINA_FILL = 1 / 4;
+const STAMINA_DRAIN = 1 / 4.5, STAMINA_FILL = 1 / 2.5;   // sprint lasts 4.5 s, refills in 2.5 s
 const WALL_START_GAP = 12, WALL_LEASH = 18, WALL_CATCHUP = 15;
 const L1_LANE = 8;
 const SPEAR_SPEED = 22, SPEAR_WARN = 0.7, SPEAR_RANGE = 28;
@@ -299,40 +333,62 @@ const BODY_H = 2.2, CROUCH_H = 1.1, CROUCH_SPEED = 0.55;
 // ---------- LEVEL 1: 荊棘峽谷 (unchanged numbers from the released version) ----------
 const LEVEL1 = {
   id: 1, name: '第一關 家庭聚會', short: '家庭聚會',
-  blurb: '酒鬼大叔從背後追上來！撞倒路上的酒、躲開鬼媽媽的熱熔膠條、衝過火焰怪，終點還有小屁孩大魔王。',
+  blurb: '從土星家的玄關一路逃上頂樓陽台！酒鬼大叔在後面追，鬼媽媽、水槍、樂高、小屁孩擋路，最後穿過大風吹的曬衣場。',
   drunk: true, leash: 26,   // the drunk hangs further back than the spike wall did
-  finish: 530, end: 560, finishBonus: 15, scenery: 'canyon', lateral: 0.8, camFollow: 0.6,
+  finish: 530, end: 560, finishBonus: 15, scenery: 'house', lateral: 0.8, camFollow: 0.6,
   clampX: L1_LANE - 0.5,
-  checkpoints: [[0, 0], [30, 0], [130, 0], [230, 0], [330, 0], [430, 0]],
+  // 土星家: 1F living room, stairs, 2F, stairs, 3F, roof terrace. Heights are
+  // only for drawing — physics heights stay relative to the floor you're on.
+  floorY: m => m < 125 ? 0 : m < 140 ? (m - 125) / 15 * 4 : m < 325 ? 4 : m < 340 ? 4 + (m - 325) / 15 * 4 : 8,
+  stairs: [[125, 140], [325, 340]],
+  checkpoints: [[0, 0], [30, 0], [125, 0], [230, 0], [325, 0], [430, 0], [478, 0]],
   sections: [
-    { from: 0, name: '起跑區', wall: 9 }, { from: 30, name: '① 地坑道', wall: 9 },
-    { from: 130, name: '② 荊棘地', wall: 9.5 }, { from: 230, name: '③ 落石谷', wall: 10 },
-    { from: 330, name: '④ 機關牆', wall: 10.5 }, { from: 430, name: '⑤ 小屁孩客廳', wall: 9.4 },
+    { from: 0, name: '玄關', wall: 9 }, { from: 30, name: '① 一樓客廳', wall: 9 }, { from: 125, name: '🪜 上二樓', wall: 9 },
+    { from: 140, name: '② 二樓走廊', wall: 9.5 }, { from: 230, name: '③ 二樓臥室', wall: 10 }, { from: 325, name: '🪜 上三樓', wall: 10 },
+    { from: 340, name: '④ 三樓', wall: 10.5 }, { from: 430, name: '⑤ 頂樓遊戲室', wall: 9.4 }, { from: 478, name: '⑥ 頂樓曬衣場', wall: 9.4 },
   ],
   floors: [[-40, 560, -L1_LANE, L1_LANE]],
-  holes: [[44,48,-8,8],[60,64,-8,0],[70,74,0,8],[88,93,-8,8],[104,108,-8,8],[118,122,-8,2]],
-  thorns: [[140,143,-8,3],[155,158,-3,8],[168,171,-8,3],[182,185,-3,8],[196,199,-8,1],[212,215,-1,8]],
+  // floor holes only upstairs (fall = back to the bottom of that floor's stairs)
+  holes: [[176,179,0,8],[204,207,-8,0],[262,266,-3,4],[352,355,0,8],[382,385,-8,-1]],
+  // [m0, m1, x0, x1, style]: 'mat' = massage foot mat (nubs pop up on a cycle), 'lego' = bricks (always hurt)
+  thorns: [[44,48,-8,8,'mat'],[60,64,-8,0,'mat'],[70,74,0,8,'mat'],[88,93,-8,8,'mat'],[104,108,-8,8,'mat'],[118,122,-8,2,'mat'],
+           [140,143,-8,3,'lego'],[155,158,-3,8,'lego'],[168,171,-8,3,'lego'],[184,187,-3,8,'lego'],[196,199,-8,1,'lego'],[214,217,-1,8,'lego']],
   // thorns pop up and sink on a cycle (seconds); each patch is offset so you time them
   thornCycle: 2.4,
   // meteor zones: [from, to, seconds between rocks, share aimed at where you're heading]
   rocks: [[225, 330, 0.38, 0.45], [60, 125, 0.9, 0.4]],
   slideWalls: [{ m: 345, ph: 0 }, { m: 370, ph: 1.7 }, { m: 395, ph: 3.1 }, { m: 420, ph: 4.6 }],
-  covers: [[452,-3],[466,3.5],[480,-4],[494,2],[508,-2.5],[520,3]],
-  // ⑤ fire monsters: slow, walk toward you, spit fireballs; touching one hurts
-  // ⑤ little kids sitting on the floor: throw remotes (fly) and toy cars (roll) at you
-  minions: { from: 440, to: 526, count: 6, fireEvery: 2.4, fireSpeed: 8, carSpeed: 7 },
-  // the end boss behind the podium: rolls barrels down the road and breathes fire
-  boss: { m: 554, from: 455, barrelEvery: 1.7, barrelSpeed: 9, fireEvery: 3.0, fireSpeed: 10 },
+  // ⑤ 頂樓遊戲室: little kids sitting on the floor throw toy cars and remotes —
+  // they raise the arm first (the tell), so you can dodge or bat it back.
+  minions: { from: 434, to: 472, count: 5, fireEvery: 2.6, fireSpeed: 8, carSpeed: 7, windup: 0.55 },
+  // ⑥ 頂樓曬衣場: gusts of wind (warned) shove you sideways, bedsheets swing
+  // along their lines (too tall to jump — time the gap), socks and undies fly
+  // across, flower pots sit in between (jump them).
+  laundry: [{ m: 486, ph: 0.0, w: 5.2 }, { m: 498, ph: 2.1, w: 5.8 }, { m: 510, ph: 4.0, w: 5.4 }, { m: 521, ph: 1.0, w: 6.2 }],
+  pots: [[492, -4], [492, 4.5], [504, 1], [516, -3.5], [516, 5], [526, 0]],
+  wind: { from: 480, to: 530, every: 3.2, warn: 0.9, gust: 1.2, push: 5.5, flyEvery: 0.9 },
+  // water puddles all over the house [m, x, half-width, half-depth]: step in one
+  // and you skate straight on the way you were going for a moment (no steering).
+  // Jump over them, or line up first and enjoy the ride. Never hurts by itself.
+  puddles: [
+    [36,-3,1.8,1.4],[52,4,2,1.3],[56,-5,1.6,1.2],[66,4,1.8,1.4],[78,-2,2.2,1.5],[82,5,1.5,1.2],[97,0,2.4,1.5],[100,-6,1.5,1.2],[113,3,2,1.4],
+    [146,5,1.8,1.3],[152,-5,1.8,1.3],[164,-4,2,1.4],[181,-4,1.8,1.3],[192,4,2,1.4],[210,4,1.8,1.3],[225,-3,2.2,1.5],[240,2,2,1.4],[250,-5,1.8,1.3],
+    [272,4,2,1.4],[285,-2,2.4,1.5],[300,5,1.8,1.3],[312,-4,2,1.4],
+    [350,-4,1.8,1.3],[360,3,2,1.4],[378,4,1.8,1.3],[390,-3,2,1.4],[405,2,2.2,1.5],[412,-5,1.6,1.2],
+    [440,3,2,1.4],[450,-2,2.2,1.5],[465,4,1.8,1.3],[484,-2,2,1.4],[495,3,1.8,1.3],[507,-4,2,1.4],[519,2,2,1.4],[528,-1,1.8,1.3],
+  ],
+  slip: { time: 0.8, minSpeed: 5 },
   achievements: [
+    { id: 'skater',   name: '🛼 溜冰高手',     desc: '連續滑過 3 灘水窪都沒撞到東西', test: s => s.bestChain >= 3 },
     { id: 'perfect',  name: '👑 完美過關',     desc: '一次都沒失誤',               test: s => s.misses === 0 },
     { id: 'flash',    name: '⚡ 閃電俠',       desc: '65 秒內跑完',                test: s => s.t < 65 },
     { id: 'untouch',  name: '🙅 酒鬼摸不到',   desc: '整場沒被酒鬼抱到',           test: s => s.caught === 0 },
     { id: 'sweeper',  name: '🍾 掃酒王',       desc: '路上的酒全部撞倒',           test: s => s.knocked >= 10 },
-    { id: 'crybaby',  name: '😭 把小屁孩打哭', desc: '用遙控器打中大魔王',         test: s => s.bossCried > 0 },
-    { id: 'homerun',  name: '⚾ 全壘打王',     desc: '打回去 3 個遙控器或火球',     test: s => s.reflected >= 3 },
+    { id: 'laundry',  name: '👕 床單沒糊臉',   desc: '頂樓曬衣場一次都沒被床單打到', test: s => s.sheeted === 0 },
+    { id: 'homerun',  name: '⚾ 全壘打王',     desc: '打回去 3 台小車或遙控器',     test: s => s.reflected >= 3 },
     { id: 'shopper',  name: '🛍 逛街掩護',     desc: '鬼媽媽一下都沒抽到你',       test: s => s.whipped === 0 },
     { id: 'rich',     name: '💰 撿錢達人',     desc: '撿到 30 個金幣',             test: s => s.coins >= 30 },
-    { id: 'iron',     name: '🪨 鐵頭',         desc: '被石頭砸 4 次以上',          test: s => s.rocked >= 4 },
+    { id: 'iron',     name: '🛏 枕頭靶',       desc: '被樓上丟的東西砸 4 次以上',   test: s => s.rocked >= 4 },
     { id: 'glue',     name: '💢 熱熔膠收藏家', desc: '被鬼媽媽抽 3 下以上',        test: s => s.whipped >= 3 },
     { id: 'tipsy',    name: '🥴 酒鬼喝到飽',   desc: '讓酒鬼喝超過一半的酒',       test: s => s.drank > 5 },
     { id: 'buddy',    name: '🍺 酒鬼的好麻吉', desc: '被酒鬼抱了 3 次以上',        test: s => s.caught >= 3 },
@@ -348,11 +404,11 @@ const LEVEL1 = {
   // Bamboo spears from the canyon walls: 'low' = jump over, 'high' = crouch under.
   // The hole glows red 0.7 s before each shot; its height tells you which.
   spears: [
-    { m: 149, side: -1, kind: 'low',  period: 2.6, ph: 0 },   { m: 162, side: 1, kind: 'high', period: 2.6, ph: 0.9 },
-    { m: 176, side: 1,  kind: 'low',  period: 2.4, ph: 0.4 }, { m: 190, side: -1, kind: 'high', period: 2.4, ph: 1.3 },
-    { m: 205, side: 1,  kind: 'high', period: 2.2, ph: 0.2 }, { m: 220, side: -1, kind: 'low', period: 2.2, ph: 1.1 },
-    { m: 357, side: -1, kind: 'high', period: 2.4, ph: 0.5 }, { m: 382, side: 1, kind: 'low', period: 2.4, ph: 1.4 },
-    { m: 407, side: 1,  kind: 'high', period: 2.2, ph: 0.8 },
+    { m: 149, side: -1, kind: 'low',  period: 2.6, ph: 0 },   { m: 162, side: 1, kind: 'low', period: 2.6, ph: 0.9 },
+    { m: 176, side: 1,  kind: 'low',  period: 2.4, ph: 0.4 }, { m: 190, side: -1, kind: 'low', period: 2.4, ph: 1.3 },
+    { m: 205, side: 1,  kind: 'low', period: 2.2, ph: 0.2 }, { m: 220, side: -1, kind: 'low', period: 2.2, ph: 1.1 },
+    { m: 357, side: -1, kind: 'low', period: 2.4, ph: 0.5 }, { m: 382, side: 1, kind: 'low', period: 2.4, ph: 1.4 },
+    { m: 407, side: 1,  kind: 'low', period: 2.2, ph: 0.8 },
   ],
   coinLines: [[10,28,0],[50,58,4],[76,86,-4],[95,103,0],[124,128,5],[146,152,-5],[160,166,5],[174,180,-5],
     [188,194,5],[202,210,-4],[240,260,0],[275,295,-5],[305,325,5],[350,365,0],[378,390,0],[400,415,0],[440,450,0],[470,478,-1],[500,506,5]],
@@ -452,6 +508,7 @@ if (window.ResizeObserver) new ResizeObserver(fitRenderer).observe(document.getE
 fitRenderer(); setInterval(fitRenderer, 1000);
 
 const LM = c => new THREE.MeshLambertMaterial({ color: c });
+const FY = m => (L && L.floorY) ? L.floorY(m) : 0;   // floor height under metre m (0 outside the house)
 const mats = {
   ground: LM(0xd9ad72), groundAlt: LM(0xcfa165), edge: LM(0x9b7b55), pit: LM(0x3d2a1e),
   stone: LM(0xc9c2b4), stoneAlt: LM(0xb9b1a2), plank: LM(0xb98a55),
@@ -472,6 +529,11 @@ const mats = {
   ghostDress: LM(0xf4f1ea), ghostSkin: LM(0xe6e2da), glue: new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0.85 }),
   phone: new THREE.MeshBasicMaterial({ color: 0x8fd3ff }), diaper: LM(0xffffff), shirt: LM(0xffcf5a), remote: LM(0x2a2a30), wheel: LM(0x222222),
   bottleG: LM(0x2e9b62), bottleB: LM(0x8a5a2a),
+  wood: LM(0xc8935a), woodAlt: LM(0xb9844c), tile: LM(0xe8e2d6), tileAlt: LM(0xd9d2c4),
+  wall1: LM(0xf3e3c3), wall2: LM(0xd5ead8), wall3: LM(0xe2d6ef), skirting: LM(0xffffff), windowSky: new THREE.MeshBasicMaterial({ color: 0xbfe6ff }),
+  matRubber: LM(0x5fb3a8), matNub: LM(0x8fd8cc), tape: LM(0xffcf3a), tapeB: LM(0x2a2a30), door: LM(0x9a6a3e),
+  water: new THREE.MeshBasicMaterial({ color: 0x6fc3ff, transparent: true, opacity: 0.8 }), nozzle: LM(0x3a6fd8),
+  pillow: LM(0xfdfbf5), ball: LM(0xe0584a), basin: LM(0x5aa8e0),
 };
 
 // Everything a level builds goes into one group so switching levels is a clean swap
@@ -504,10 +566,10 @@ function groundAt(m, x){
 
 // ---------- fire monster + end boss models ----------
 function makeMinion(){
-  // a little kid sitting on the floor (a small copy of the end boss, no sign, no toys)
+  // a little kid sitting on the floor (the shared toddler, holding the next toy he'll throw)
   const g = new THREE.Group(), kid = makeKid(false);
   kid.scale.setScalar(0.32); g.add(kid);
-  g.userData.armR = kid.userData.armR; g.userData.armL = kid.userData.armL;
+  g.userData.armR = kid.userData.armR; g.userData.armL = kid.userData.armL; g.userData.kid = kid.userData.kid;
   return g;
 }
 // ---------- speech bubbles (above a 3D object, or a caption when it's off screen) ----------
@@ -535,33 +597,106 @@ function clearBubbles(){ for (const b of bubbleList) b.el.remove(); bubbleList.l
 function hushBubbles(){ for (const b of bubbleList) b.until = 0; }
 
 // ---------- drunk uncle (the chaser in level 1) ----------
+// Faces -z (the way he runs). Limbs hang along -y from their joint groups, so
+// rotation.x > 0 swings a limb FORWARD (toward the player) and < 0 backward.
+function drunkFaceTexture(){
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+  x.fillStyle = 'rgba(255,120,130,.55)'; for (const cx of [66, 190]){ x.beginPath(); x.ellipse(cx, 160, 30, 18, 0, 0, Math.PI * 2); x.fill(); }   // tipsy blush
+  x.strokeStyle = '#3b2418'; x.lineWidth = 11; x.lineCap = 'round';
+  x.beginPath(); x.moveTo(62, 92); x.quadraticCurveTo(88, 78, 112, 90); x.moveTo(194, 92); x.quadraticCurveTo(168, 78, 144, 90); x.stroke();   // cool brows
+  for (const cx of [88, 168]){
+    x.fillStyle = '#2a1a12'; x.beginPath(); x.ellipse(cx, 124, 15, 19, 0, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#fff'; x.beginPath(); x.arc(cx + 5, 116, 6, 0, Math.PI * 2); x.fill(); x.beginPath(); x.arc(cx - 5, 132, 3, 0, Math.PI * 2); x.fill();
+  }
+  x.strokeStyle = '#c96a50'; x.lineWidth = 5; x.beginPath(); x.moveTo(126, 140); x.quadraticCurveTo(132, 152, 124, 156); x.stroke();            // nose
+  x.fillStyle = '#7a1f1f'; x.beginPath(); x.moveTo(96, 178); x.quadraticCurveTo(132, 214, 172, 172); x.quadraticCurveTo(134, 190, 96, 178); x.fill();   // big grin
+  x.fillStyle = '#fff'; x.beginPath(); x.moveTo(104, 180); x.quadraticCurveTo(134, 194, 164, 177); x.lineTo(162, 183); x.quadraticCurveTo(134, 198, 106, 185); x.fill();
+  const t = new THREE.CanvasTexture(c); return t;
+}
 function makeDrunk(){
   const g = new THREE.Group(), u = g.userData;
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.7, 1.0), mats.track); torso.position.y = 2.55; g.add(torso); sbOutline(torso, 0.05);
-  for (const sx of [-0.55, 0.55]){ const st = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.7, 1.02), mats.trackStripe); st.position.set(sx, 2.55, 0); g.add(st); }
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 12), mats.track); belly.position.set(0, 2.25, -0.35); g.add(belly);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 12), mats.skin); head.position.y = 3.95; g.add(head); sbOutline(head, 0.05);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), mats.nose); nose.position.set(0, 3.9, -0.68); g.add(nose);
-  for (const sx of [-0.45, 0.45]){ const ck = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), mats.nose); ck.position.set(sx, 3.78, -0.55); g.add(ck); }
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.72, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), mats.hairBlack); hair.position.y = 4.0; g.add(hair);
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.73, 0.73, 0.16, 18, 1, true), mats.headband); band.position.y = 4.18; g.add(band);
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.6, 8), mats.hairBlack); tail.position.set(0, 4.05, 0.78); tail.rotation.x = -2.2; g.add(tail);   // little ponytail
-  const knot = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), mats.headband); knot.position.set(0, 4.25, 0.68); g.add(knot);
-  for (const sx of [-1, 1]){
-    const arm = new THREE.Group(); arm.position.set(sx * 0.95, 3.25, 0);
-    const a = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.18, 1.3, 10), mats.track); a.position.y = -0.6; arm.add(a);
-    const h = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), mats.skin); h.position.y = -1.3; arm.add(h);
-    g.add(arm); u[sx < 0 ? 'armL' : 'armR'] = arm;
-    const leg = new THREE.Group(); leg.position.set(sx * 0.4, 1.7, 0);
-    const l = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.22, 1.5, 10), mats.track); l.position.y = -0.75; leg.add(l);
-    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.7), mats.trackStripe); shoe.position.set(0, -1.55, -0.12); leg.add(shoe);
-    g.add(leg); u[sx < 0 ? 'legL' : 'legR'] = leg;
+  const body = new THREE.Group(); g.add(body); u.body = body;                    // leans as one piece
+  const tank = LM(0xf4f1ea), tankTrim = LM(0x3a6fd8), shorts = LM(0x2c3e66), hair = LM(0x3b2418), shoe = LM(0xffffff), shoeTrim = LM(0xe0584a);
+  // shorts + tank top
+  const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.62, 0.6, 18), shorts); pelvis.position.y = 1.62; body.add(pelvis); sbOutline(pelvis, 0.04);
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.64, 0.56, 1.15, 18), tank); torso.position.y = 2.42; body.add(torso); sbOutline(torso, 0.05);
+  const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.645, 0.62, 0.2, 18, 1, true), tankTrim); stripe.position.y = 2.55; body.add(stripe);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, 0.3, 12), mats.skin); neck.position.y = 3.1; body.add(neck);
+  // head
+  const head = new THREE.Group(); head.position.y = 3.72; body.add(head); u.head = head;
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.74, 22, 16), mats.skin); skull.scale.set(1, 1.02, 0.95); head.add(skull); sbOutline(skull, 0.05);
+  const face = new THREE.Mesh(new THREE.CircleGeometry(0.62, 32), new THREE.MeshBasicMaterial({ map: drunkFaceTexture(), transparent: true }));
+  face.position.set(0, -0.05, -0.72); face.rotation.y = Math.PI; head.add(face);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.78, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.45), hair); cap.position.y = 0.04; cap.rotation.x = 0.25; head.add(cap);
+  const quiff = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), hair); quiff.scale.set(1.5, 0.7, 1); quiff.position.set(0.12, 0.62, -0.38); quiff.rotation.z = -0.25; head.add(quiff);
+  const tie = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), shoeTrim); tie.position.set(0, 0.25, 0.74); head.add(tie);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.55, 10), hair); tail.position.set(0, 0.08, 0.88); tail.rotation.x = 2.5; head.add(tail);   // little ponytail
+  for (const sx of [-1, 1]){                                                        // shades pushed up on his head
+    const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.05, 16), mats.remote); lens.rotation.x = Math.PI / 2 - 0.5; lens.position.set(sx * 0.24, 0.6, -0.52); head.add(lens);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), mats.skin); ear.position.set(sx * 0.73, -0.05, 0); head.add(ear);
   }
-  g.scale.setScalar(0.9);
+  // arms: shoulder -> upper arm -> elbow -> forearm -> hand (bare arms: it's a tank top)
+  for (const sx of [-1, 1]){
+    const sh = new THREE.Group(); sh.position.set(sx * 0.7, 2.86, 0); body.add(sh);
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), mats.skin); sh.add(ball);
+    const up = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.15, 0.62, 10), mats.skin); up.position.y = -0.31; sh.add(up); sbOutline(up, 0.03);
+    const el = new THREE.Group(); el.position.y = -0.62; sh.add(el);
+    const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.56, 10), mats.skin); fore.position.y = -0.28; el.add(fore); sbOutline(fore, 0.03);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), mats.skin); hand.position.y = -0.6; el.add(hand);
+    if (sx < 0){                                                                    // a beer in his left hand
+      const bt = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.42, 10), mats.bottleG); bt.position.set(0, -0.66, -0.12); bt.rotation.x = 1.2; el.add(bt);
+      const nk = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.09, 0.2, 8), mats.bottleG); nk.position.set(0, -0.6, -0.38); nk.rotation.x = 1.2; el.add(nk);
+    }
+    u[sx < 0 ? 'armL' : 'armR'] = sh; u[sx < 0 ? 'elbowL' : 'elbowR'] = el;
+  }
+  // legs: hip -> thigh (shorts leg) -> knee -> shin -> sneaker
+  for (const sx of [-1, 1]){
+    const hip = new THREE.Group(); hip.position.set(sx * 0.3, 1.45, 0); g.add(hip);
+    const thighShort = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.24, 0.42, 12), shorts); thighShort.position.y = -0.18; hip.add(thighShort);
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.17, 0.32, 10), mats.skin); thigh.position.y = -0.5; hip.add(thigh);
+    const kn = new THREE.Group(); kn.position.y = -0.64; hip.add(kn);
+    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.14, 0.62, 10), mats.skin); shin.position.y = -0.3; kn.add(shin); sbOutline(shin, 0.03);
+    const sneaker = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.6), shoe); sneaker.position.set(0, -0.68, -0.1); kn.add(sneaker); sbOutline(sneaker, 0.03);
+    const swoosh = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.06, 0.34), shoeTrim); swoosh.position.set(0, -0.66, -0.1); kn.add(swoosh);
+    u[sx < 0 ? 'legL' : 'legR'] = hip; u[sx < 0 ? 'kneeL' : 'kneeR'] = kn;
+  }
+  g.scale.setScalar(1.05);
   const own = new Map();
   g.traverse(o => { if (o.isMesh && o.material){ if (!own.has(o.material)){ const c = o.material.clone(); c.transparent = true; own.set(o.material, c); } o.material = own.get(o.material); } });
   u.mats = [...own.values()];
   return g;
+}
+// one place for all his poses: 'run' (cycle phase ph), 'hug', 'sore', 'cover'
+function poseDrunk(u, mode, ph, t){
+  const set = (o, x, y, z) => o.rotation.set(x, y || 0, z || 0);
+  if (mode === 'hug'){
+    // lean in and wrap both arms round the player in front of him
+    set(u.body, -0.22); set(u.head, 0.15, 0, 0.12);
+    set(u.armL, 1.45, 0, -0.25); set(u.elbowL, 0, 0, 1.25);
+    set(u.armR, 1.45, 0, 0.25); set(u.elbowR, 0, 0, -1.25);
+    set(u.legL, 0.25); set(u.kneeL, -0.35); set(u.legR, -0.2); set(u.kneeR, -0.2);
+  } else if (mode === 'sore'){
+    // whipped: hand on his butt, hopping
+    set(u.body, 0.2, 0, Math.sin(t * 14) * 0.08); set(u.head, -0.25);
+    set(u.armL, -0.9, 0, -0.4); set(u.elbowL, -1.2);
+    set(u.armR, -0.9, 0, 0.4); set(u.elbowR, -1.2);
+    const hop = Math.sin(t * 16);
+    set(u.legL, hop * 0.3); set(u.kneeL, -0.6); set(u.legR, -hop * 0.3); set(u.kneeR, -0.6);
+  } else if (mode === 'cover'){
+    // sneaking up on the cover: arms out, grinning
+    set(u.body, -0.1, 0, Math.sin(t * 2.3) * 0.06); set(u.head, 0.1, Math.sin(t * 1.3) * 0.25);
+    set(u.armL, 1.0, 0, -0.75); set(u.elbowL, 0, 0, 0.6);
+    set(u.armR, 1.0, 0, 0.75); set(u.elbowR, 0, 0, -0.6);
+    set(u.legL, 0.35); set(u.kneeL, -0.4); set(u.legR, -0.35); set(u.kneeR, -0.2);
+  } else {
+    // running: arms pump with bent elbows, legs stride with a knee kick, a happy sway
+    const sw = Math.sin(ph);
+    set(u.body, -0.12, 0, Math.sin(ph * 0.5) * 0.08); set(u.head, 0.05, 0, -Math.sin(ph * 0.5) * 0.1);
+    set(u.armL, -sw * 0.8, 0, -0.12); set(u.elbowL, 1.1);
+    set(u.armR, sw * 0.8, 0, 0.12); set(u.elbowR, 1.1);
+    set(u.legL, sw * 0.75); set(u.kneeL, -Math.max(0, -sw) * 1.1 - 0.15);
+    set(u.legR, -sw * 0.75); set(u.kneeR, -Math.max(0, sw) * 1.1 - 0.15);
+  }
 }
 function mosaicTexture(){
   const c = document.createElement('canvas'); c.width = c.height = 8; const x = c.getContext('2d');
@@ -572,7 +707,7 @@ function mosaicTexture(){
 function puke(){
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: mosaicTexture() }));
   // on the ground behind his feet, well clear of the player (the mosaic is the puke, never you)
-  sp.scale.set(1.7, 1.1, 1); sp.position.set(S.x - 0.3, 0.45, -(S.m - 2.6)); add(sp);
+  sp.scale.set(1.7, 1.1, 1); sp.position.set(S.x - 0.3, FY(S.m) + 0.45, -(S.m - 2.6)); add(sp);
   pukes.push({ sp, until: S.time + 2.6 });
 }
 // bottles on the road
@@ -606,6 +741,7 @@ function ghostPos(gh){
   if (gh.path === '8') return { x: gh.x + gh.w * Math.sin(2 * gh.th), m: gh.m0 + gh.h * Math.sin(gh.th) };
   return { x: gh.x + gh.r * Math.cos(gh.th), m: gh.m0 + gh.r * Math.sin(gh.th) };
 }
+const DRUNK_OUCH = ['酒鬼阿～～救命啊～', '救命啊～鬼媽媽打人啦！', '痛痛痛～我不喝了啦！'];
 const GHOST_LINES = ['熱熔膠一條十塊錢！', '給我認真點好嗎！'];
 
 // ---------- little-kid boss (sits at the end, throws toy cars and remotes) ----------
@@ -631,20 +767,14 @@ function bossNameSprite(text){
 }
 function makeBoss(){ return makeKid(true); }
 function makeKid(isBoss){
-  const g = new THREE.Group();
-  const diaper = new THREE.Mesh(new THREE.SphereGeometry(2.0, 20, 14), mats.diaper); diaper.scale.y = 0.75; diaper.position.y = 1.5; g.add(diaper); sbOutline(diaper, 0.07);
-  const body = new THREE.Mesh(new THREE.SphereGeometry(1.75, 20, 14), mats.shirt); body.position.y = 2.9; g.add(body); sbOutline(body, 0.07);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(1.9, 22, 16), mats.skin); head.position.y = 5.4; g.add(head); sbOutline(head, 0.07);
-  const face = new THREE.Mesh(new THREE.CircleGeometry(1.5, 32), new THREE.MeshBasicMaterial({ map: bossFaceTexture() }));
-  face.position.set(0, 5.3, 1.95); face.rotation.x = -0.2; g.add(face);
-  const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.9, 8), mats.hairBlack); tuft.position.set(0, 7.5, 0); tuft.rotation.z = 0.4; g.add(tuft);
-  for (const sx of [-1, 1]){
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.4, 10, 8), mats.skin); ear.position.set(sx * 1.85, 5.4, 0); g.add(ear);
-    const arm = new THREE.Group(); arm.position.set(sx * 1.9, 3.6, 0.3);
-    const a = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), mats.skin); a.scale.y = 1.6; a.position.y = -0.7; arm.add(a);
-    g.add(arm); g.userData[sx < 0 ? 'armL' : 'armR'] = arm;
-    const leg = new THREE.Mesh(new THREE.SphereGeometry(0.75, 12, 10), mats.skin); leg.position.set(sx * 1.2, 0.6, 1.6); leg.scale.z = 1.4; g.add(leg);
-  }
+  // Shared toddler (faces -z) turned to face +z like the old model, scaled to
+  // the old size, sitting on the floor. userData.armL/armR keep the old API.
+  const g = new THREE.Group(), k = buildKid();
+  k.g.rotation.y = Math.PI; k.g.scale.setScalar(3.0); g.add(k.g);
+  for (const l of k.legs){ l.rotation.x = 1.45; } k.legs[0].rotation.z = -0.25; k.legs[1].rotation.z = 0.25;
+  k.body.position.y = -0.24;
+  g.userData.armL = k.arms[0]; g.userData.armR = k.arms[1]; g.userData.kid = k;
+  const rem = makeRemote(); rem.scale.setScalar(0.55); rem.position.copy(k.toy.position); rem.visible = false; k.arms[1].userData.elbow.add(rem); k.remote = rem;
   if (!isBoss) return g;
   const name = bossNameSprite('小屁孩大魔王'); name.position.set(0, 8.8, 0); g.add(name);
   // toy pile beside him
@@ -679,10 +809,11 @@ function makeSaturn(){
 }
 function makeRemote(){
   const g = new THREE.Group();
-  const b = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.95), mats.remote); g.add(b);
+  const b = new THREE.Mesh(sbRoundBox(0.38, 0.14, 0.95, 0.05), mats.remote); g.add(b);
   for (const [bx, bz, c] of [[0, -0.3, mats.nose], [-0.09, 0, mats.phone], [0.09, 0, mats.phone], [0, 0.2, mats.gold]]){
     const k = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), c); k.position.set(bx, 0.08, bz); g.add(k);
   }
+  sbOutline(g, 0.03);
   return g;
 }
 function makeFireball(r){
@@ -694,18 +825,21 @@ function makeFireball(r){
 // big stamped word + screen flash + camera shake
 let shakeUntil = 0, shakeAmp = 0;
 function impact(text, color, shake){
-  const el = $('impact'); el.textContent = text; el.style.color = color; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+  const el = $('impact'); el.textContent = text; el.style.background = color; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
   const f = $('impactFlash'); f.style.transition = 'none'; f.style.background = color; f.style.opacity = 0.45;
   requestAnimationFrame(() => { f.style.transition = 'opacity .45s'; f.style.opacity = 0; });
   shakeUntil = performance.now() / 1000 + 0.35; shakeAmp = shake || 0.35;
-  try { navigator.vibrate && navigator.vibrate(120); } catch(_){}
+  try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(120); } catch(_){}
 }
 const HINTS = {
   bottle: '🍾 撞倒路上的酒！沒撞到的會被酒鬼喝掉，他會越跑越快喔',
-  thorn:  '🌵 地刺會冒出來又縮回去，看準縮下去的時候衝',
-  rock:   '🪨 看地上的影子，石頭會砸在那裡',
+  thorn:  '🦶 按摩腳墊的凸點會冒出來又縮回去，看準縮下去再衝；樂高踩到一定痛，繞過去或跳過去',
+  spear:  '💦 房門口會噴水槍！水槍頭發紅就要射了，「跳」過去，噴到會看不清楚',
+  rock:   '🛏 樓上會丟枕頭、球、臉盆下來，看地上的影子閃開',
   ghost:  '👻 鬼媽媽看到你會衝過來抽，抽到會跌坐、變慢喔！等她低頭逛網拍再衝過去',
-  kids:   '👶 小屁孩會丟遙控器跟小車，被砸到會被撞退、變慢；按揮棒把遙控器打回去！',
+  kids:   '👶 小屁孩丟玩具車跟遙控器！看他「舉手」就要閃，或按揮棒打回去砸他！',
+  puddle: '💦 踩到水窪會「溜冰」照原本方向滑出去！可以跳過，或先對準方向再滑。',
+  laundry:'👕 頂樓曬衣場：大風會把你吹歪（看箭頭）、床單擋路、襪子內褲亂飛！盆栽要跳過去。',
   boss:   '🧸 打回去的遙控器砸中大魔王，他會哭著暈 2.5 秒',
   ghostDrunk: '👻 酒鬼喝超過一半的酒了！鬼媽媽會改去抽他！',
 };
@@ -719,14 +853,147 @@ function hint(key){
   const el = $('hint'); el.textContent = HINTS[key]; el.hidden = false;
   clearTimeout(hintTimer); hintTimer = setTimeout(() => { el.hidden = true; }, 4200);
 }
+// cover the screen for a moment: 'water' (water gun) or 'daze' (arrow / big hit)
+let fxTimer = 0;
+function screenFx(kind, secs){
+  const el = $('screenFx'); el.className = kind; el.style.transition = 'none'; el.style.opacity = 1;
+  clearTimeout(fxTimer); fxTimer = setTimeout(() => { el.style.transition = 'opacity .5s'; el.style.opacity = 0; }, secs * 1000);
+}
 function hurt(kind, text, knock){
   if (S.time < S.hurtUntil) return false;
-  S.hurtUntil = S.time + 0.9; S.knockV = knock; S.slowUntil = S.time + 0.5;
+  S.hurtUntil = S.time + 0.9; S.knockV = knock; S.slowUntil = S.time + 0.5; S.slideChain = 0;
   if (kind === 'shot') S.shot++; else S.hits++;
   flash(text); return true;
 }
 
+// ---------- ⑤ 頂樓曬衣場: clotheslines with wind-blown sheets, flower pots ----------
+const SHEET_PRINTS = [
+  ['#ffffff', '#7cc79a', 'stripe'], ['#fff1d0', '#e0584a', 'dots'], ['#d8ecf8', '#6fb3e0', 'stripe'],
+  ['#ffe4ee', '#ff8fb0', 'dots'], ['#ffffff', '#ffcf5a', 'check'], ['#e9f6e6', '#5fae5a', 'dots'], ['#fff8ec', '#8a5a32', 'stripe'],
+];
+function sheetTexture(i){
+  const [bg, fg, kind] = SHEET_PRINTS[i % SHEET_PRINTS.length];
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = bg; x.fillRect(0, 0, 128, 128); x.fillStyle = fg;
+  if (kind === 'stripe') for (let k = 0; k < 8; k += 2) x.fillRect(k * 16, 0, 12, 128);
+  else if (kind === 'dots') for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++){ x.beginPath(); x.arc(16 + a * 32 + (b % 2) * 16, 16 + b * 32, 7, 0, 6.3); x.fill(); }
+  else for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) if ((a + b) % 2) x.fillRect(a * 32, b * 32, 32, 32);
+  return new THREE.CanvasTexture(c);
+}
+const SHEET_H = 3.0, LINE_Y = 3.6;
+// The sheet's centre x at a given time (shared by drawing and the hit test)
+const laundryX = (d, time) => Math.sin(time * 0.95 + d.ph) * (L1_LANE - d.w / 2 - 0.3);
+function makeLaundryLine(d, i){
+  const y0 = 0, z = -d.m;   // buildLevel lifts everything onto its floor afterwards
+  for (const s of [-1, 1]){
+    const pole = box(0.25, LINE_Y + 0.3, 0.25, mats.plank, s * (L1_LANE + 0.2), y0 + (LINE_Y + 0.3) / 2, z, true);
+    pole.userData.noLine = true;
+  }
+  const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, L1_LANE * 2 + 0.4, 6), mats.edge);
+  rope.rotation.z = Math.PI / 2; rope.position.set(0, y0 + LINE_Y, z); add(rope);
+  const geo = new THREE.PlaneGeometry(d.w, SHEET_H, 10, 4);
+  const mat = new THREE.MeshLambertMaterial({ map: sheetTexture(i), side: THREE.DoubleSide });
+  const sheet = new THREE.Mesh(geo, mat); sheet.position.set(0, y0 + LINE_Y - SHEET_H / 2, z); add(sheet);
+  for (const s of [-1, 1]){ const peg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, 0.12), mats.spike); peg.position.set(s * (d.w / 2 - 0.3), LINE_Y - 0.05 + y0, z + 0.02); sheet.parent.add(peg); peg.userData.follow = s; d['peg' + s] = peg; }
+  const base = geo.attributes.position.array.slice();
+  return { ...d, sheet, base, hitCool: 0 };
+}
+function updateLaundry(time){
+  for (const L0 of laundry){
+    const x = laundryX(L0, time);
+    L0.sheet.position.x = x;
+    if (L0['peg-1']) L0['peg-1'].position.x = x - (L0.w / 2 - 0.3);
+    if (L0['peg1']) L0['peg1'].position.x = x + (L0.w / 2 - 0.3);
+    // billow: push the cloth out more toward the bottom, rippling across
+    const pos = L0.sheet.geometry.attributes.position, b = L0.base;
+    for (let i = 0; i < pos.count; i++){
+      const px = b[i * 3], py = b[i * 3 + 1], down = (SHEET_H / 2 - py) / SHEET_H;
+      pos.setZ(i, Math.sin(px * 1.3 + time * 4 + L0.ph) * 0.35 * down + Math.cos(time * 1.7 + L0.ph) * 0.4 * down);
+    }
+    pos.needsUpdate = true;
+  }
+}
+// a sock or a pair of undies blowing across the roof at chest height
+const _clothTex = {};
+function clothTexture(kind){
+  if (_clothTex[kind]) return _clothTex[kind];
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+  x.fillStyle = 'rgba(255,255,255,0.85)'; x.beginPath(); x.arc(128, 128, 118, 0, Math.PI * 2); x.fill();
+  x.lineWidth = 8; x.strokeStyle = '#ff7a59'; x.stroke();
+  x.font = '170px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(kind === 'sock' ? '🧦' : '🩲', 128, 140);
+  return (_clothTex[kind] = new THREE.CanvasTexture(c));
+}
+function spawnFlyingCloth(){
+  const kind = Math.random() < 0.55 ? 'sock' : 'undies', dir = Math.random() < 0.5 ? -1 : 1;
+  // drawn as a big emoji card so you can tell what it is at a glance on a phone
+  const g = new THREE.Group();
+  const card = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: clothTexture(kind), transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+  card.userData.noLine = true; g.add(card);
+  const m = S.m + 5 + Math.random() * 9, x = -dir * (L1_LANE + 2), y = 0.8 + Math.random() * 1.2;
+  g.position.set(x, FY(m) + y, -m); add(g);
+  flyingCloth.push({ mesh: g, m, x, y, vx: dir * (6 + Math.random() * 3), kind, hit: false });
+}
+// a shiny flat puddle with a couple of highlights
+function makePuddle(w, d){
+  const g = new THREE.Group();
+  const water = new THREE.Mesh(new THREE.CircleGeometry(1, 28), new THREE.MeshBasicMaterial({ color: 0x7cc4f0, transparent: true, opacity: 0.75, depthWrite: false }));
+  water.rotation.x = -Math.PI / 2; water.scale.set(w, d, 1); water.userData.noLine = true; g.add(water);
+  const rim = new THREE.Mesh(new THREE.RingGeometry(0.92, 1, 28), new THREE.MeshBasicMaterial({ color: 0x4a9fd8, transparent: true, opacity: 0.8, depthWrite: false }));
+  rim.rotation.x = -Math.PI / 2; rim.position.y = 0.005; rim.scale.set(w, d, 1); rim.userData.noLine = true; g.add(rim);
+  for (const [hx, hz, r] of [[-0.35, -0.25, 0.28], [0.15, -0.4, 0.14], [0.4, 0.2, 0.1]]){
+    const h = new THREE.Mesh(new THREE.CircleGeometry(r, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }));
+    h.rotation.x = -Math.PI / 2; h.position.set(hx * w, 0.01, hz * d); h.scale.set(1.6, 0.7, 1); h.userData.noLine = true; g.add(h);
+  }
+  return g;
+}
+function makePot(i){
+  const g = new THREE.Group();
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.55, 0.9, 16), LM(0xd9734a)); pot.position.y = 0.45; g.add(pot);
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.82, 0.16, 16), LM(0xc0623c)); rim.position.y = 0.92; g.add(rim);
+  const leaf = LM(0x6fbf5e), flower = LM([0xff8fb0, 0xffcf5a, 0xffffff, 0xb48cff][i % 4]);
+  for (const [x, y, z, r] of [[0, 1.25, 0, 0.42], [0.3, 1.15, 0.12, 0.3], [-0.28, 1.12, -0.1, 0.3]]){ const b = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), leaf); b.position.set(x, y, z); g.add(b); }
+  for (const [x, z] of [[0.18, 0.25], [-0.2, 0.2], [0.05, -0.3]]){ const f = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), flower); f.position.set(x, 1.45, z); g.add(f); }
+  return sbOutline(g, 0.05);
+}
+
+// ---------- 土星家 scenery: walls, windows, frames, rugs, stair rails, roof terrace ----------
+function buildHouse(level){
+  const W = L1_LANE + 0.5, floorOf = m => m < 132 ? 0 : m < 332 ? 1 : 2, WALL = [mats.wall1, mats.wall2, mats.wall3];
+  for (let m = -20; m < level.finish; m += 4) for (const s of [-1, 1]){
+    box(1, 7, 4.02, WALL[floorOf(m + 2)], s * W, 3.5, -(m + 2));
+    box(0.2, 0.4, 4.02, mats.skirting, s * (W - 0.55), 0.2, -(m + 2));
+  }
+  // windows (sky outside), picture frames, a few shelves
+  const FRAME = [0xe0584a, 0x3a6fd8, 0xffcf5a, 0x7cc79a, 0xb07cff];
+  for (let m = 6, i = 0; m < level.finish - 4; m += 11, i++){
+    const s = i % 2 ? 1 : -1;
+    if (i % 3 !== 1){
+      box(0.14, 2.6, 3.4, mats.skirting, s * (W - 0.55), 3.5, -m);
+      box(0.16, 2.2, 3.0, mats.windowSky, s * (W - 0.58), 3.5, -m);
+      box(0.18, 0.12, 3.0, mats.skirting, s * (W - 0.6), 3.5, -m);
+    } else {
+      box(0.12, 1.4, 1.8, LM(FRAME[i % FRAME.length]), s * (W - 0.56), 3.1, -m);
+      box(0.13, 1.0, 1.4, mats.skirting, s * (W - 0.58), 3.1, -m);
+    }
+  }
+  // rugs on the living-room floor (just paint, no collision)
+  for (const [m0, m1, x0, x1, c] of [[8, 26, -5, 5, 0xe0584a], [76, 86, -6, 2, 0x7cc79a], [150, 166, -3, 3, 0x3a6fd8], [236, 250, -6, 6, 0xb07cff], [440, 470, -7, 7, 0x8fd3ff], [490, 520, -7, 7, 0xffcf5a]]){
+    const r = box(x1 - x0, 0.03, m1 - m0, LM(c), (x0 + x1) / 2, 0.015, -(m0 + m1) / 2);
+  }
+  // stair rails
+  for (const [a, b] of level.stairs) for (let m = a; m <= b; m += 2) for (const s of [-1, 1]) box(0.14, 1.2, 0.14, mats.skirting, s * (L1_LANE - 0.3), 0.6, -m);
+  // floor holes upstairs: hazard tape around, the floor below in the gap
+  for (const h of level.holes){
+    box(h[3] - h[2], 0.2, h[1] - h[0], mats.wood, (h[2] + h[3]) / 2, -5, -(h[0] + h[1]) / 2);
+    for (const [x0, x1, z] of [[h[2], h[3], h[0] - 0.1], [h[2], h[3], h[1] + 0.1]]) for (let x = x0; x < x1; x += 0.6) box(0.3, 0.05, 0.14, (x * 10 | 0) % 2 ? mats.tape : mats.tapeB, x + 0.15, 0.03, -z);
+  }
+  // roof terrace: low railing past the finish, open sky
+  for (let m = level.finish; m < level.end; m += 2) for (const s of [-1, 1]) box(0.3, 1.1, 2.02, mats.skirting, s * W, 0.55, -(m + 1));
+}
+
 // ---------- build a level ----------
+let laundry = [], pots = [], flyingCloth = [], puddles = [];
 let walls = [], covers = [], turrets = [], coins = [], bars = [], hammers = [], movers = [], gateObj = null, spears = [];
 const flying = [];   // bamboo spears in the air
 let thornObjs = [], minions = [], boss = null, ghosts = [], bottles = [], coverGroup = null;
@@ -739,7 +1006,7 @@ let chaser;
 
 function buildLevel(level){
   L = level; clearWorld();
-  walls = []; covers = []; turrets = []; coins = []; bars = []; hammers = []; movers = []; gateObj = null; spears = [];
+  walls = []; covers = []; laundry = []; pots = []; flyingCloth = []; puddles = []; turrets = []; coins = []; bars = []; hammers = []; movers = []; gateObj = null; spears = [];
   flying.length = 0;
   const sky = level.scenery === 'sky';
   scene.background = new THREE.Color(sky ? 0xa9d8f2 : 0xcfe6f0);
@@ -757,6 +1024,11 @@ function buildLevel(level){
         const cx = (x0 + x1) / 2, cm = (m + m1) / 2;
         if (level.holes.some(h => inRect(h, cm, cx))) continue;
         const alt = Math.floor(m / 10) % 2;
+        if (level.scenery === 'house'){
+          const h = 1 + level.floorY(cm), roof = cm >= level.finish;
+          box(x1 - x0, h, m1 - m + 0.02, roof ? (alt ? mats.tile : mats.tileAlt) : (Math.floor(m / 2) % 2 ? mats.wood : mats.woodAlt), cx, (-1 - level.floorY(cm)) / 2, -cm);
+          continue;
+        }
         box(x1 - x0, sky ? 1.6 : 1, m1 - m + 0.02, sky ? (alt ? mats.stone : mats.stoneAlt) : (alt ? mats.ground : mats.groundAlt), cx, sky ? -0.8 : -0.5, -cm);
       }
     }
@@ -767,6 +1039,8 @@ function buildLevel(level){
       const c = new THREE.Mesh(new THREE.SphereGeometry(4 + Math.random() * 6, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
       c.position.set((Math.random() - 0.5) * 140, -14 - Math.random() * 10, -Math.random() * level.end); c.scale.y = 0.5; add(c);
     }
+  } else if (level.scenery === 'house'){
+    buildHouse(level);
   } else {
     box(1, 1.4, level.end + 40, mats.edge, -L1_LANE - 0.5, 0.2, -(level.end - 40) / 2);
     box(1, 1.4, level.end + 40, mats.edge,  L1_LANE + 0.5, 0.2, -(level.end - 40) / 2);
@@ -778,12 +1052,30 @@ function buildLevel(level){
   }
   // thorns
   thornObjs = (level.thorns || []).map((t, i) => {
-    box(t[3] - t[2], 0.3, t[1] - t[0], mats.thorn, (t[2] + t[3]) / 2, 0.15, -(t[0] + t[1]) / 2);
-    const cones = [];
+    const style = t[4] || 'thorn', cones = [], mid = (t[0] + t[1]) / 2;
+    if (style === 'lego'){
+      // scattered bricks, always there (and always hurt)
+      const LEGO = [0xe0584a, 0x3a6fd8, 0xffcf3a, 0x2e9b62, 0xf4f1ea];
+      for (let x = t[2] + 0.5; x < t[3]; x += 0.95) for (let m = t[0] + 0.4; m < t[1]; m += 0.9){
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.26, 0.32), LM(LEGO[(Math.random() * LEGO.length) | 0]));
+        b.position.set(x + (Math.random() - 0.5) * 0.4, 0.13, -(m + (Math.random() - 0.5) * 0.3)); b.rotation.y = Math.random() * 3; add(b);
+        const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.08, 8), b.material); stud.position.y = 0.16; b.add(stud);
+      }
+      return { t, cones, ph: 0, style, mid };
+    }
+    if (style === 'mat'){
+      // massage foot mat: rubber base, nubs that pop up on a cycle
+      box(t[3] - t[2], 0.12, t[1] - t[0], mats.matRubber, (t[2] + t[3]) / 2, 0.06, -mid);
+      for (let x = t[2] + 0.5; x < t[3]; x += 0.9) for (let m = t[0] + 0.45; m < t[1]; m += 0.9){
+        const c = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), mats.matNub); c.scale.y = 1.6; c.position.set(x, 0.3, -m); add(c); cones.push(c);
+      }
+      return { t, cones, ph: i * 0.55, style, mid };
+    }
+    box(t[3] - t[2], 0.3, t[1] - t[0], mats.thorn, (t[2] + t[3]) / 2, 0.15, -mid);
     for (let x = t[2] + 0.6; x < t[3]; x += 1.2) for (let m = t[0] + 0.6; m < t[1]; m += 1.2){
       const c = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.9, 6), mats.spike); c.position.set(x, 0.75, -m); add(c); cones.push(c);
     }
-    return { t, cones, ph: i * 0.55 };
+    return { t, cones, ph: i * 0.55, style, mid };
   });
   // checkpoint flags, finish line, podium
   for (const [cm, cx] of level.checkpoints.slice(1)){
@@ -799,6 +1091,9 @@ function buildLevel(level){
   // level-1 hazards
   walls = (level.slideWalls || []).map(w => ({ ...w, a: box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m), b: box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m), gapX: 0 }));
   covers = (level.covers || []).map(([m, x]) => ({ m, x, mesh: box(2.6, 2, 1.6, mats.cover, x, 1, -m, true) }));
+  laundry = (level.laundry || []).map((d, i) => makeLaundryLine(d, i));
+  puddles = (level.puddles || []).map(([m, x, w, d]) => { const g = makePuddle(w, d); g.position.set(x, 0.03, -m); add(g); return { m, x, w, d, g }; });
+  pots = (level.pots || []).map(([m, x], i) => { const g = makePot(i); g.position.set(x, 0, -m); add(g); return { m, x, g }; });
   turrets = (level.turrets || []).map((t, i) => {
     box(1.8, 1.8, 1.8, mats.turret, t.x, 0.9, -t.m, true);
     const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1.6, 12), mats.edge);
@@ -808,7 +1103,10 @@ function buildLevel(level){
   // bamboo spear launchers: a hole in the canyon wall at the spear's height
   spears = (level.spears || []).map(sp => {
     const y = SPEAR_Y[sp.kind], x = sp.side * (L1_LANE + 0.35);
-    box(0.5, 1.2, 1.6, mats.edge, x, y, -sp.m, true);
+    if (level.scenery === 'house'){
+      box(0.3, 3.2, 2.2, mats.door, sp.side * (L1_LANE + 0.1), 1.6, -sp.m);                       // a bedroom door, ajar
+      const nz = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.7, 10), mats.nozzle); nz.rotation.z = Math.PI / 2; nz.position.set(sp.side * (L1_LANE - 0.3), y, -sp.m); add(nz);
+    } else box(0.5, 1.2, 1.6, mats.edge, x, y, -sp.m, true);
     const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.2, 14), mats.hole);
     hole.rotation.z = Math.PI / 2; hole.position.set(x - sp.side * 0.3, y, -sp.m); add(hole);
     return { ...sp, y, x, hole, next: 0, armed: true };
@@ -889,7 +1187,7 @@ function buildLevel(level){
       const c = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.4, 6), chaserSpike); c.rotation.x = -Math.PI / 2; c.position.set(x, y, -1.2); chaser.add(c);
     }
   }
-  add(chaser); chaser.userData.x = 0;
+  add(chaser); chaser.userData.x = 0; chaser.userData.noLift = true;
   $('chaserLbl').textContent = level.drunk ? '酒鬼距離' : '刺牆距離';
   $('hDrankChip').hidden = !level.drunk; $('hBottles').textContent = (level.bottles || []).length;
   bottles = (level.bottles || []).map(([m, x], i) => { const g = makeBottle(i); g.position.set(x, 0, -m); add(g); return { m, x, g, state: 'up', t: 0 }; });
@@ -897,6 +1195,8 @@ function buildLevel(level){
     const g = makeGhostMom(); add(g);
     return { ...gm, m0: gm.m, g, th: i * 1.3, state: 'watch', until: 4 + i * 1.5, whipT: -9, whipCd: 0, hitDone: true, warned: false, mm: gm.m, xx: gm.x, ox: 0, om: 0, rushUntil: 0, rushCd: 0 };
   });
+  if (level.floorY) for (const o of world.children) if (!o.userData.noLift) o.position.y += level.floorY(-o.position.z);
+  if (level.scenery === 'house'){ mats.wall.color.set(0x9a6a3e); mats.cover.color.set(0xf2a65a); } else { mats.wall.color.set(0xa08a74); mats.cover.color.set(0xb0bcc8); }
   document.getElementById('hFinish').textContent = level.finish;
   layoutWalls(0);
 }
@@ -929,16 +1229,17 @@ const S = { phase: 'menu', time: 0 };
 function reset(){
   Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, knockX: 0, slowUntil: 0, downUntil: 0,
     swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, cpX: 0, time: 0, caught: 0, pits: 0, shot: 0, hits: 0, rockNext: 0,
-    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99, knocked: 0, drank: 0, whipped: 0, reflected: 0, bossCried: 0, hinted: {}, drunkStunUntil: 0, drunkWhipped: 0 });
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99, knocked: 0, drank: 0, whipped: 0, reflected: 0, bossCried: 0, sheeted: 0, potBumped: 0, slipUntil: 0, slipVm: 0, slipVx: 0, slipPud: null, slideChain: 0, bestChain: 0, slides: 0, windNext: 0, windDir: 0, windAt: 0, flyNext: 0, hinted: {}, drunkStunUntil: 0, drunkWhipped: 0 });
   for (const f of flying) world.remove(f.mesh); flying.length = 0;
   for (const sp of spears){ sp.next = 0; sp.armed = true; }
   for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
   for (const b of bullets) world.remove(b.mesh); bullets.length = 0;
   clearShots(); hushBubbles();
   for (const pk of pukes) world.remove(pk.sp); pukes.length = 0;
-  for (const b of bottles){ b.state = 'up'; b.t = 0; b.g.visible = true; b.g.rotation.set(0, 0, 0); b.g.position.set(b.x, 0, -b.m); }
+  for (const b of bottles){ b.state = 'up'; b.t = 0; b.g.visible = true; b.g.rotation.set(0, 0, 0); b.g.position.set(b.x, FY(b.m), -b.m); }
   for (const [i, gh] of ghosts.entries()){ gh.th = i * 1.3; gh.state = 'watch'; gh.until = 4 + i * 1.5; gh.whipCd = 0; gh.hitDone = true; gh.warned = false; gh.ox = gh.om = 0; gh.rushUntil = 0; gh.rushCd = 0; }
-  for (const mn of minions){ mn.m = mn.hm; mn.x = mn.hx; mn.stunUntil = 0; mn.next = 1 + Math.random() * 1.5; }
+  for (const mn of minions){ mn.m = mn.hm; mn.x = mn.hx; mn.stunUntil = 0; mn.next = 1 + Math.random() * 1.5; mn.windAt = 0; }
+  for (const fc of flyingCloth) world.remove(fc.mesh); flyingCloth.length = 0;
   if (boss){ boss.nextBarrel = 0; boss.nextFire = 1.5; boss.stunUntil = 0; }
   for (const c of coins){ c.taken = false; c.mesh.visible = true; }
   if (gateObj){ gateObj.door.position.y = 2.5; gateObj.pad.material = gateObj.post.material = mats.switchOff; }
@@ -950,7 +1251,7 @@ addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT') return;
   if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
   if ((e.code === 'Enter' || e.code === 'Space') && S.phase !== 'run' && S.phase !== 'count'){ e.preventDefault(); startRun(L); return; }
-  if (e.code === 'KeyR' && (S.phase === 'run' || S.phase === 'count')){ startRun(L); return; }
+  if (e.code === 'KeyR' && (S.phase === 'run' || S.phase === 'count')){ startRun(L, S.easy); return; }
   keys[e.code] = true;
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
@@ -963,7 +1264,7 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 
 // Buttons: each finger is captured by the button it pressed, so sliding off
 // it or pressing two at once can't leave a key stuck.
-for (const [id, code] of [['tJump','Space'],['tBat','KeyF'],['tDash','ShiftLeft'],['tCrouch','KeyC']]){
+for (const [id, code] of [['tJump','Space'],['tBat','KeyF'],['tDash','ShiftLeft']]){
   const el = document.getElementById(id);
   el.addEventListener('pointerdown', e => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch(_){} keys[code] = true; el.classList.add('on'); });
   const off = () => { keys[code] = false; el.classList.remove('on'); };
@@ -1052,8 +1353,13 @@ function renderLevelButtons(){
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn lvl';
     const best = bestTime(lv);
     b.innerHTML = `▶ 開始跑<small>${best ? '我的最佳 ' + best + ' 秒' : lv.short}</small>`;
-    b.onclick = () => startRun(lv);
+    b.onclick = () => playWithIntro(lv, false);
     card.appendChild(b);
+    if (lv.drunk){
+      const e = document.createElement('button'); e.type = 'button'; e.className = 'btn ghost easy';
+      e.innerHTML = '🐣 手殘版<small>慢一點、少一點，不上排行榜</small>'; e.onclick = () => playWithIntro(lv, true);
+      card.appendChild(e);
+    }
     card.insertAdjacentHTML('beforeend', boardHtml(boards[lv.id], myName));
     wrap.appendChild(card);
   }
@@ -1067,19 +1373,56 @@ async function loadBoards(){
   if (S.phase === 'menu') renderLevelButtons();
 }
 renderLevelButtons(); loadBoards();
+// ---------- first-time intro: the camera visits each character, a card says what they do ----------
+const INTRO = [
+  { at: 'drunk',  title: '🍺 酒鬼大叔', text: '從玄關一路逃上頂樓陽台！他一直在後面追你，被他從後面抱住會被定住，還會吐你一身！' },
+  { at: 'bottle', title: '🍾 路上的酒', text: '撞倒加金幣。漏掉的會被酒鬼喝掉，他會越跑越快——左上角看他喝了幾瓶。' },
+  { at: 'ghost',  title: '👻 鬼媽媽',   text: '看到你就衝過來抽熱熔膠條，抽到會跌坐、變慢。等她低頭逛網拍再衝過去！酒鬼喝超過一半，她會改去抽酒鬼。' },
+  { at: 'kid',    title: '🧸 小屁孩',   text: '頂樓遊戲室的小屁孩坐在地上丟玩具車跟遙控器。看他舉手就閃開，或按「揮棒」把小車、遙控器打回去！' },
+  { at: 'all',    title: '👕 頂樓曬衣場', text: '最後在頂樓陽台：大風會把你吹歪、床單擋路、襪子內褲亂飛，地上的盆栽要跳過去。' },
+  { at: 'all',    title: '⚠️ 路上的機關', text: '🦶 按摩腳墊會冒凸點　🧱 樂高踩到很痛　🛏 看影子躲樓上丟的東西　💦 房門口的水槍要跳過　🕳 樓上地板破洞，掉下去要重爬樓梯' },
+  { at: 'all',    title: '🎮 怎麼操作', text: isTouch ? '左邊搖桿移動；右邊「跳」（空中再按一次＝二段跳）、「衝刺」、「揮棒」；左上「重來」。'
+                                                  : 'WASD 移動・空白鍵跳（空中再按＝二段跳）・Shift 衝刺・F 揮棒・R 重來' },
+];
+let introStep = -1, introThen = null;
+function showIntro(then){
+  introThen = then || null; introStep = 0;
+  $('startCard').hidden = true; $('intro').hidden = false; drawIntro();
+}
+function drawIntro(){
+  const it = INTRO[introStep];
+  $('introTitle').textContent = it.title; $('introText').textContent = it.text;
+  $('introDots').textContent = INTRO.map((_, i) => i === introStep ? '●' : '○').join('');
+  $('introNext').textContent = introStep < INTRO.length - 1 ? '下一個 ▶' : (introThen ? '開跑！' : '知道了');
+  const card = document.querySelector('.introCard'); card.style.animation = 'none'; void card.offsetWidth; card.style.animation = '';
+}
+function endIntro(){
+  introStep = -1; $('intro').hidden = true;
+  try { localStorage.setItem('etfm-intro-seen', '1'); } catch(_){}
+  if (introThen){ const f = introThen; introThen = null; f(); } else $('startCard').hidden = false;
+}
+$('introNext').onclick = () => { if (introStep < INTRO.length - 1){ introStep++; drawIntro(); } else endIntro(); };
+$('introSkip').onclick = endIntro;
+$('howBtn').onclick = () => showIntro(null);
+function playWithIntro(lv, easy){
+  let seen = false; try { seen = !!localStorage.getItem('etfm-intro-seen'); } catch(_){}
+  if (!seen && lv.drunk && coverGroup && !needLogin()) showIntro(() => startRun(lv, easy)); else startRun(lv, easy);
+}
 function needLogin(){ return !!API && !authToken; }
-function startRun(level){
+const EZ = (normal, easy) => S.easy ? easy : normal;
+function startRun(level, easy){
   if (needLogin()){ showAuth(); return; }
   if (API) fetch(API + '/race_start', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ level: level.id, device: DEVICE }) }).catch(() => {});
   if (level !== L || !chaser) buildLevel(level);
-  reset(); $('startCard').hidden = true; $('endCard').hidden = true; $('hint').hidden = true;
+  reset(); S.easy = !!easy; $('startCard').hidden = true; $('endCard').hidden = true; $('hint').hidden = true;
+  $('easyChip').hidden = !S.easy;
   if (coverGroup) coverGroup.userData.beat = -1;
   $('gateChip').hidden = true;
   S.phase = 'count'; S.countAt = performance.now();
   if (L.drunk) say(chaser, '你先跑我再追，追到我就對你嘿嘿嘿～', 4, { name: '酒鬼大叔', y: 4.6 });
 }
-$('againBtn').onclick = () => startRun(L);
-$('restartBtn').addEventListener('click', e => { e.preventDefault(); $('restartBtn').blur(); startRun(L); });
+$('againBtn').onclick = () => startRun(L, S.easy);
+$('restartBtn').addEventListener('click', e => { e.preventDefault(); $('restartBtn').blur(); startRun(L, S.easy); });
 // still inside LINE (it didn't hand over): tell them how to get full screen
 if (/\bLine\//i.test(navigator.userAgent)){ $('lineHint').hidden = false; $('lineHintX').onclick = () => { $('lineHint').hidden = true; }; }
 $('menuBtn').onclick = () => { S.phase = 'menu'; $('endCard').hidden = true; renderLevelButtons(); loadBoards(); $('startCard').hidden = false; };
@@ -1090,7 +1433,7 @@ function clearShots(){
 }
 function respawn(reason){
   clearShots();
-  S.m = S.cp + 2; S.x = S.cpX; S.y = 0; S.vy = 0; S.knockV = 0; S.knockX = 0; S.slowUntil = 0; S.downUntil = S.time + 0.6;
+  S.m = S.cp + 2; S.x = S.cpX; S.y = 0; S.vy = 0; S.knockV = 0; S.knockX = 0; S.slowUntil = 0; S.downUntil = S.time + 0.6; S.slipUntil = 0; S.slideChain = 0;
   S.wallM = Math.min(S.wallM, S.cp - 25);
   for (const sp of spears) if (sp.m > S.m){ sp.next = 0; sp.armed = true; }
   flash(reason);
@@ -1101,11 +1444,11 @@ function finish(){
   if (newBest){ try { localStorage.setItem(bestKey(L), String(t)); } catch(e){} }
   const misses = missesOf(), clean = misses === 0;
   const reward = S.coins + L.finishBonus + (clean ? 10 : 0);
-  $('endTitle').textContent = L.short + ' 通關！';
+  $('endTitle').textContent = L.short + (S.easy ? '（🐣 手殘版）' : '') + ' 通關！';
   $('rTime').textContent = t + ' 秒'; $('rBest').textContent = (newBest ? t : prevBest) + ' 秒' + (newBest ? ' 🆕' : '');
   $('rCoins').textContent = S.coins; $('rCaught').textContent = S.caught + ' 次'; $('rFails').textContent = misses + (clean ? ' 👑 完美' : ' 次');
   // level 1: achievements; the title is the best thing you did this run
-  if (L.achievements){
+  if (L.achievements && !S.easy){
     const got = L.achievements.filter(a => a.test({ ...S, misses, t }));
     let have = []; const key = 'etfm-ach-' + L.id + '-' + (localStorage.getItem('etfm-username') || 'guest');
     try { have = JSON.parse(localStorage.getItem(key) || '[]'); } catch(_){}
@@ -1123,6 +1466,11 @@ function finish(){
     return;
   }
   $('rAch').hidden = true;
+  if (S.easy){
+    $('rTitle').textContent = '🐣 手殘版通關！成就跟排行榜要正常版才算喔';
+    $('endCard').hidden = false; $('againBtn').focus(); $('rRank').textContent = '';
+    claimReward(reward, t, misses); return;
+  }
   const title = clean ? '👑 完美過關' : S.pits >= 3 ? (L.id === 2 ? '☁️ 高空墜落專家' : '🕳 坑底常客') : S.caught >= 3 ? (L.drunk ? '🍺 酒鬼的好麻吉' : '🦔 刺牆的好朋友')
     : S.hits >= 4 ? '🍢 被烤肉棒串起來' : S.speared >= 4 ? '🎋 竹箭靶子' : S.shot >= 3 ? '🎯 人肉標靶' : S.coins >= 30 ? '💰 撿錢達人' : '🏃 穩穩跑完';
   $('rTitle').textContent = '稱號：' + title;
@@ -1137,7 +1485,7 @@ async function claimReward(coins, time, misses){
   if (!authToken){ el.textContent = `獎金 $${coins} — 先登入，下次跑完就會存進帳號`; return; }
   el.textContent = `獎金 $${coins} 存入中…`;
   try {
-    const r = await fetch(API + '/race_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ coins, time, level: L.id, misses, device: DEVICE }) });
+    const r = await fetch(API + '/race_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ coins, time, level: S.easy ? 0 : L.id, misses, device: DEVICE }) });   // level 0 = coins only, no board
     const j = await r.json().catch(() => ({}));
     if (r.ok){
       el.textContent = `獎金 +$${j.coins} 已存入帳號（現在 $${j.money}）`;
@@ -1228,12 +1576,12 @@ function spitFire(x, m, r, speed, angle, from){
   const dx = S.x - x, dm = S.m - m, d = Math.hypot(dx, dm) || 1;
   const ca = Math.cos(angle), sa = Math.sin(angle);
   const ux = (dx * ca - dm * sa) / d, um = (dx * sa + dm * ca) / d;
-  const mesh = from === 'minion' ? makeFireball(r) : makeRemote(); add(mesh);
+  const mesh = from === 'minion' ? makeFireball(r) : makeRemote(); if (from !== 'minion') mesh.scale.setScalar(1.9); add(mesh);
   fireballs.push({ x, m, vx: ux * speed, vm: um * speed, mesh, back: false, life: 4, r, from });
 }
 // thorn state: 1 = up (hurts), 0.35 = poking (about to come up), 0 = down (safe)
 function thornLevel(o, time){
-  if (!L.thornCycle) return 1;
+  if (!L.thornCycle || o.style === 'lego') return 1;
   const p = ((time + o.ph) % L.thornCycle) / L.thornCycle;
   return p < 0.5 ? 1 : p > 0.86 ? 0.35 : 0;
 }
@@ -1241,10 +1589,13 @@ function step(dt){
   S.time += dt;
   if (L.drunk){
     if (S.time > 1.2) hint('bottle');
-    if (S.m > 132) hint('thorn');
+    if (S.m > 36) hint('thorn');
+    if (S.m > 144) hint('spear');
     if (ghosts.some(g => g.mm - S.m > 0 && g.mm - S.m < 26)) hint('ghost');
     if (S.m > 222) hint('rock');
     if (S.m > 428) hint('kids');
+    if (S.m > 477) hint('laundry');
+    if (S.slides === 1) hint('puddle');
     if (boss && S.m > boss.from) hint('boss');
     if (S.drank > bottles.length / 2) hint('ghostDrunk');
   }
@@ -1271,16 +1622,20 @@ function step(dt){
   // sprint works in any direction you're actually moving (the gate run is sideways)
   const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && (fwd > 0 || (L.lateral >= 1 && side !== 0));
   if (wantSprint && !S.tired && S.stamina > 0.02){ S.stamina = Math.max(0, S.stamina - STAMINA_DRAIN * dt); if (S.stamina === 0) S.tired = true; }
-  else { S.stamina = Math.min(1, S.stamina + STAMINA_FILL * dt); if (S.stamina > 0.35) S.tired = false; }
+  else { S.stamina = Math.min(1, S.stamina + STAMINA_FILL * dt); if (S.stamina > 0.15) S.tired = false; }
   let speed = (wantSprint && !S.tired && S.stamina > 0.02) ? SPRINT : RUN;
   if (S.time < S.slowUntil) speed *= 0.45;
   // crouch (hold C / Ctrl / 蹲): shorter body for high spears, slow, no sprint
-  S.crouch = !!(keys.KeyC || keys.ControlLeft || keys.ControlRight) && S.onGround && !down;
+  S.crouch = false;   // crouching was dropped (Bernie: too many buttons for too little use)
   if (S.crouch) speed = RUN * CROUCH_SPEED;
   S.moving = (fwd !== 0 || side !== 0) && !down;
   const prevM = S.m, prevX = S.x;
-  S.m += (fwd * speed - S.knockV) * dt;
-  S.x += (side * speed * L.lateral + S.knockX) * dt;
+  const slipping = S.time < S.slipUntil;
+  if (slipping){ S.m += (S.slipVm - S.knockV) * dt; S.x += (S.slipVx + S.knockX) * dt; S.moving = true; }
+  else {
+    S.m += (fwd * speed - S.knockV) * dt;
+    S.x += (side * speed * L.lateral + S.knockX) * dt;
+  }
   S.knockV = Math.max(0, S.knockV - 25 * dt);
   S.knockX *= Math.max(0, 1 - 6 * dt);
   // carried by a moving platform
@@ -1302,7 +1657,27 @@ function step(dt){
   const g = groundAt(S.m, S.x);
   if (g && S.y <= 0 && S.y > -0.8){ S.y = 0; S.vy = 0; S.onGround = true; S.djUsed = false; S.jumped = false; S.onMover = g.mover || null; }
   else if (!g || S.y < 0){ S.onGround = false; if (!g) S.onMover = null; }
-  if (S.y < -5){ S.pits++; respawn(L.scenery === 'sky' ? '掉下去了！回檢查點' : '掉坑了！回檢查點'); return; }
+  if (S.y < -5){
+    S.pits++;
+    if (L.scenery === 'house'){ S.cp = S.m >= 325 ? 325 : 125; S.cpX = 0; respawn('🕳 咚！掉到樓下了，再爬一次樓梯'); return; }
+    respawn(L.scenery === 'sky' ? '掉下去了！回檢查點' : '掉坑了！回檢查點'); return;
+  }
+
+  // ---- puddles: skate straight on, the way you were going ----
+  if (S.onGround && S.y <= 0.05 && !down){
+    for (const pd of puddles){
+      const u = (S.m - pd.m) / pd.d, v = (S.x - pd.x) / pd.w;
+      if (u * u + v * v > 1 || pd === S.slipPud) continue;
+      let vm = S.time < S.slipUntil ? S.slipVm : S.vmS, vx = S.time < S.slipUntil ? S.slipVx : S.vxS;
+      const sp = Math.hypot(vm, vx), MINS = L.slip.minSpeed;
+      if (sp < MINS){ if (sp < 0.5){ vm = MINS; vx = 0; } else { vm *= MINS / sp; vx *= MINS / sp; } }
+      S.slipVm = vm; S.slipVx = vx; S.slipUntil = S.time + L.slip.time; S.slipPud = pd; S.slides++;
+      S.slideChain++; S.bestChain = Math.max(S.bestChain, S.slideChain);
+      flash(S.slideChain >= 3 ? `🛼 溜冰 ${S.slideChain} 連發！` : '💦 滑～～');
+      break;
+    }
+  }
+  if (S.time > S.slipUntil + 0.3) S.slipPud = null;
 
   // ---- solid blocks ----
   const block = (m, half, x0, x1, top) => {
@@ -1311,40 +1686,76 @@ function step(dt){
   };
   for (const w of walls){ block(w.m, 0.5, -L1_LANE, w.gapX - 2.25, 4.5); block(w.m, 0.5, w.gapX + 2.25, L1_LANE, 4.5); }
   for (const c of covers) block(c.m, 0.8, c.x - 1.3, c.x + 1.3, 2);
+  for (const pt of pots){
+    const before = S.m;
+    block(pt.m, 0.65, pt.x - 0.75, pt.x + 0.75, 1.1);
+    if (S.m !== before && !pt.bumped){ pt.bumped = true; S.potBumped++; flash('🪴 撞到盆栽了！跳過去'); }
+  }
+  // gusts: a warning arrow first, then you're shoved sideways for a moment
+  const WD = L.wind;
+  if (WD && S.m > WD.from && S.m < WD.to){
+    if (!S.windNext) S.windNext = S.time + 1.5;
+    if (!S.windDir && S.time > S.windNext - WD.warn){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; flash(S.windDir < 0 ? '⬅️ 🌬 大風要來了！' : '🌬 大風要來了！➡️'); }
+    if (S.windDir && S.time > S.windAt && S.time < S.windAt + WD.gust) S.x += S.windDir * WD.push * dt;
+    if (S.windDir && S.time > S.windAt + WD.gust){ S.windDir = 0; S.windNext = S.time + WD.every * (0.8 + Math.random() * 0.4); }
+    if (S.time > (S.flyNext || 0)){ S.flyNext = S.time + WD.flyEvery * EZ(1, 1.8); spawnFlyingCloth(); }
+  }
+  for (let i = flyingCloth.length - 1; i >= 0; i--){
+    const fc = flyingCloth[i];
+    fc.x += fc.vx * dt; fc.mesh.position.x = fc.x; fc.mesh.rotation.z = Math.sin(S.time * 5 + i) * 0.5; fc.mesh.position.y = FY(fc.m) + fc.y + Math.sin(S.time * 6 + i) * 0.2;
+    if (!fc.hit && Math.abs(S.m - fc.m) < 0.7 && Math.abs(S.x - fc.x) < 0.7 && Math.abs((S.y || 0) + 1 - fc.y) < 0.9 && hurt('hit', fc.kind === 'sock' ? '🧦 被飛來的襪子打到！' : '🩲 內褲糊臉！', 4)) fc.hit = true;
+    if (Math.abs(fc.x) > L1_LANE + 3){ world.remove(fc.mesh); flyingCloth.splice(i, 1); }
+  }
+  for (const L0 of laundry){
+    if (S.time < L0.hitCool || S.y > SHEET_H + 0.2) continue;
+    const sx = laundryX(L0, S.time);
+    if (Math.abs(S.m - L0.m) < 0.55 && Math.abs(S.x - sx) < L0.w / 2 + 0.3 && hurt('hit', '👕 被床單糊一臉！', 7)){
+      L0.hitCool = S.time + 1.2; S.sheeted++;
+      S.knockX = (S.x >= sx ? 1 : -1) * 4;
+    }
+  }
   if (L.gate && S.time >= S.gateOpenUntil) block(L.gate.m, 0.5, L.gate.x0, L.gate.x1, 5);
 
   // ---- level 1 hazards ----
   if (S.y < 0.6) for (const o of thornObjs){
     const t = o.t;
     if (thornLevel(o, S.time) === 1 && S.m >= t[0] && S.m <= t[1] && S.x >= t[2] - 0.3 && S.x <= t[3] + 0.3 && S.time > S.slowUntil){
-      S.knockV = 7; S.slowUntil = S.time + 1; S.vy = 5; S.y = 0.05; S.thorned++; flash('🌵 被荊棘刺到！'); break;
+      S.knockV = 7; S.slowUntil = S.time + 1; S.vy = 5; S.y = 0.05; S.thorned++;
+      flash(o.style === 'lego' ? '🧱 踩到樂高！痛死了' : o.style === 'mat' ? '🦶 踩到按摩腳墊！好痛' : '🌵 被荊棘刺到！'); break;
     }
   }
   const rz = (L.rocks || []).find(z => S.m > z[0] && S.m < z[1]);
   if (rz && S.time > S.rockNext){
-    S.rockNext = S.time + rz[2];
+    S.rockNext = S.time + rz[2] * EZ(1, 1.9);
     // aimed rocks land where you'll be if you keep doing what you're doing
     // (your real speed and sideways drift over the 1.25 s fall)
-    const aimed = Math.random() < rz[3], FALL = 1.25;
+    const aimed = Math.random() < rz[3] * EZ(1, 0.4), FALL = 1.25;
     const m = Math.min(rz[1] - 1, aimed ? S.m + Math.max(0, S.vmS) * FALL + (Math.random() - 0.5) * 1.6 : S.m + 6 + Math.random() * 16);
     const x = aimed ? Math.max(-L1_LANE + 1.2, Math.min(L1_LANE - 1.2, S.x + S.vxS * FALL + (Math.random() - 0.5) * 1.6)) : (Math.random() * 2 - 1) * (L1_LANE - 1.2);
-    const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), mats.shadow); shadow.rotation.x = -Math.PI / 2; shadow.position.set(x, 0.02, -m); add(shadow);
-    const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1), mats.rock); mesh.position.set(x, 18, -m); add(mesh);
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), mats.shadow); shadow.rotation.x = -Math.PI / 2; shadow.position.set(x, 0.04 + FY(m), -m); add(shadow);
+    let mesh;
+    if (L.scenery === 'house'){
+      const k = (Math.random() * 3) | 0;
+      mesh = k === 0 ? new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 1.2), mats.pillow)
+           : k === 1 ? new THREE.Mesh(new THREE.SphereGeometry(0.8, 14, 10), mats.ball)
+           : new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.7, 0.6, 16, 1, true), mats.basin);
+    } else mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1), mats.rock);
+    mesh.position.set(x, 18 + FY(m), -m); add(mesh);
     rocks.push({ x, m, t: 0, shadow, mesh, landed: false });
   }
   for (let i = rocks.length - 1; i >= 0; i--){
     const r = rocks[i]; r.t += dt;
     const k = Math.max(0, (r.t - 1.0) / 0.25);
-    r.mesh.position.y = Math.max(1.1, 18 - 17 * k * k); r.mesh.rotation.x += dt * 3;
+    r.mesh.position.y = FY(r.m) + Math.max(0.8, 18 - 17 * k * k); r.mesh.rotation.x += dt * 3;
     r.shadow.scale.setScalar(0.6 + Math.min(1, r.t) * 0.4);
     if (!r.landed && k >= 1){
       r.landed = true;
       // after a hit you get 1.8 s to get up and moving before the next one can count
-      if (S.time > S.rockSafe && Math.hypot(S.x - r.x, S.m - r.m) < 1.9 && S.y < 2){ r.hitDone = true; S.rockSafe = S.time + 1.8; S.downUntil = S.time + 1; S.knockV = 3; S.rocked++; flash('🪨 被石頭砸到！'); }
+      if (S.time > S.rockSafe && Math.hypot(S.x - r.x, S.m - r.m) < 1.9 && S.y < 2){ r.hitDone = true; S.rockSafe = S.time + 1.8; S.downUntil = S.time + 1; S.knockV = 3; S.rocked++; flash(L.scenery === 'house' ? '🛏 被樓上丟下來的東西砸到！' : '🪨 被石頭砸到！'); }
     }
     // a landed rock sits there for a moment: run into it and you trip
     if (r.landed && !r.hitDone && r.t < 2.0 && S.time > S.rockSafe && Math.hypot(S.x - r.x, S.m - r.m) < 1.35 && S.y < 1.0){
-      r.hitDone = true; S.rockSafe = S.time + 1.8; S.knockV = 6; S.slowUntil = S.time + 0.6; S.rocked++; flash('🪨 撞到石頭！');
+      r.hitDone = true; S.rockSafe = S.time + 1.8; S.knockV = 6; S.slowUntil = S.time + 0.6; S.rocked++; flash(L.scenery === 'house' ? '🛏 被地上的東西絆倒！' : '🪨 撞到石頭！');
     }
     if (r.t > 2.2){ world.remove(r.mesh); world.remove(r.shadow); r.mesh.geometry.dispose(); r.shadow.geometry.dispose(); rocks.splice(i, 1); }
   }
@@ -1393,7 +1804,7 @@ function step(dt){
     if (huntDrunk && !gh.hunting){ gh.hunting = true; say(gh.g, '喝那麼多！給我過來！', 2, { name: '鬼媽媽', y: 3.7 }); }
     if (!huntDrunk) gh.hunting = false;
     if (!huntDrunk && watching && !gh.warned && ahead > 0 && ahead < 14){ gh.warned = true; say(gh.g, '皮在癢了嗎？', 2, { name: '鬼媽媽', y: 3.7 }); }
-    if (!huntDrunk && watching && ahead > -2 && ahead < 12 && S.time > gh.rushCd){ gh.rushUntil = S.time + 1.4; gh.rushCd = S.time + 2.6; }
+    if (!S.easy && !huntDrunk && watching && ahead > -2 && ahead < 12 && S.time > gh.rushCd){ gh.rushUntil = S.time + 1.4; gh.rushCd = S.time + 2.6; }
     const rushing = watching && (huntDrunk || S.time < gh.rushUntil);
     // offset from her loop: chase her target while rushing, drift back otherwise
     const aimX = huntDrunk ? drX : S.x, aimM = huntDrunk ? drM : S.m;
@@ -1408,8 +1819,11 @@ function step(dt){
     if (L.drunk && !S.heldUntil && S.time > S.drunkStunUntil && S.time > gh.whipCd && S.time > (gh.drunkCd || 0) && Math.hypot(drX - gh.xx, drM - gh.mm) < reach){
       gh.whipT = S.time; gh.whipCd = S.time + 1.2; gh.hitDone = true; gh.drunkCd = S.time + (huntDrunk ? 1.5 : 4);
       S.wallM -= huntDrunk ? 9 : 5; S.drunkStunUntil = S.time + (huntDrunk ? 1.6 : 1.0); S.boost = Math.max(0, S.boost - (huntDrunk ? 2 : 1)); S.drunkWhipped++;
-      say(gh.g, '熱熔膠一條十塊錢！', 1.8, { name: '鬼媽媽', y: 3.7 }); say(chaser, '痛痛痛～', 1.6, { name: '酒鬼大叔', y: 4.6 });
-      flash('👻 鬼媽媽去抽酒鬼了！'); gh.rushUntil = 0;
+      // he's behind you, off screen — so make it loud: purple stamp (yours are red), his scream as a caption, a little reward
+      say(gh.g, '熱熔膠一條十塊錢！', 1.8, { name: '鬼媽媽', y: 3.7 });
+      say(chaser, DRUNK_OUCH[S.drunkWhipped % DRUNK_OUCH.length], 3, { name: '酒鬼大叔', y: 4.6 });
+      impact(huntDrunk ? '酒鬼被抽爆！' : '啪！酒鬼中招', '#b07cff', 0.25);
+      S.coins += 2; flash('😈 借刀殺人 +2🪙'); gh.rushUntil = 0;
       continue;
     }
     if (huntDrunk) continue;                                      // busy with him: leaves you alone
@@ -1433,35 +1847,43 @@ function step(dt){
     const dm = S.m - mn.m, dx = S.x - mn.x, d = Math.hypot(dm, dx) || 1;
     if (mn.m - S.m > 22 || S.m - mn.m > 3) continue;           // only when you're coming at them
     if (d < 1.1 && S.y < 1.2 && hurt('hit', '👶 被小屁孩絆倒！', 6)) S.knockX = -dx / d * 5;
+    if (mn.m > S.m + 2 && !mn.windAt && S.time > mn.next - (MN.windup || 0)) mn.windAt = S.time;   // arm goes up: the tell
     if (mn.m > S.m + 2 && S.time > mn.next){
-      mn.next = S.time + MN.fireEvery * (0.8 + Math.random() * 0.4); mn.throwT = S.time;
+      mn.windAt = 0;
+      mn.next = S.time + MN.fireEvery * EZ(1, 1.7) * (0.8 + Math.random() * 0.4); mn.throwT = S.time;
       mn.car = !mn.car;
       if (mn.car){
         const mesh = makeCar(); mesh.scale.setScalar(0.75); add(mesh);
-        barrels.push({ x: mn.x, m: mn.m - 0.8, vx: dx / d * MN.carSpeed, vm: dm / d * MN.carSpeed, mesh, minM: mn.m - 30 });
+        barrels.push({ x: mn.x, m: mn.m - 0.8, vx: dx / d * MN.carSpeed, vm: dm / d * MN.carSpeed, mesh, minM: mn.m - 30, kid: true });
       } else spitFire(mn.x, mn.m - 0.8, 0.28, MN.fireSpeed, 0, 'kid');
     }
   }
   // ---- end boss: barrels down the road + fire breath ----
   if (boss && S.m > boss.from && S.time > boss.stunUntil){
     if (S.time > boss.nextBarrel){
-      boss.nextBarrel = S.time + boss.barrelEvery * (0.75 + Math.random() * 0.5); boss.throwT = S.time;
+      boss.nextBarrel = S.time + boss.barrelEvery * EZ(1, 1.7) * (0.75 + Math.random() * 0.5); boss.throwT = S.time;
       if ((boss.throws = (boss.throws || 0) + 1) % 3 === 1) say(boss.g, '咻咻咻', 0.9, { name: '小屁孩', y: 9.6 });
       const bx = Math.random() < 0.6 ? S.x + (Math.random() - 0.5) * 3 : (Math.random() * 2 - 1) * (L1_LANE - 1.5);
       const mesh = makeBarrel(); add(mesh);
       barrels.push({ x: Math.max(-L1_LANE + 1, Math.min(L1_LANE - 1, bx)), m: boss.m - 9, vx: 0, vm: -boss.barrelSpeed, mesh, minM: boss.from - 30 });
     }
     if (S.time > boss.nextFire){
-      boss.nextFire = S.time + boss.fireEvery * (0.85 + Math.random() * 0.3); boss.fireT = S.time;
+      boss.nextFire = S.time + boss.fireEvery * EZ(1, 1.6) * (0.85 + Math.random() * 0.3); boss.fireT = S.time;
       for (const a of [-0.22, 0, 0.22]) spitFire(0, boss.m - 3, 0.5, boss.fireSpeed, a, 'boss');
     }
   }
   for (let i = barrels.length - 1; i >= 0; i--){
     const b = barrels[i];
     b.m += b.vm * dt; b.x += b.vx * dt;
-    let gone = b.m < b.minM || Math.abs(b.x) > L1_LANE + 1;
+    let gone = (!b.back && b.m < b.minM) || Math.abs(b.x) > L1_LANE + 1;
     for (const c of covers) if (Math.abs(b.m - c.m) < 1.2 && Math.abs(b.x - c.x) < 2) gone = true;
-    if (!gone && Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.2 && S.y < 1.3 && hurt('hit', '🚗 被小車撞飛！', 10)) gone = true;
+    if (b.kid && swinging && !b.back && b.m > S.m && b.m - S.m < 2.8 && Math.abs(b.x - S.x) < 1.9){
+      b.back = true; S.reflected++; b.vm = Math.abs(b.vm) + 6; b.vx = -b.vx * 0.3; b.maxM = b.m + 30; flash('⚾ 小車打回去！');
+    }
+    if (b.back){
+      if (b.m > b.maxM) gone = true;
+      for (const mn of minions) if (!gone && Math.hypot(b.m - mn.m, b.x - mn.x) < 1.3){ mn.stunUntil = S.time + 3; gone = true; flash('💫 小屁孩被自己的車撞哭了！'); say(mn.g, '哇～～', 1.5, { name: '小屁孩', y: 2.6 }); }
+    } else if (!gone && Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.2 && S.y < 1.3 && hurt('hit', '🚗 被小車撞飛！', 10)) gone = true;
     if (gone){ world.remove(b.mesh); barrels.splice(i, 1); }
   }
   for (let i = fireballs.length - 1; i >= 0; i--){
@@ -1469,7 +1891,7 @@ function step(dt){
     f.m += f.vm * dt; f.x += f.vx * dt; f.life -= dt;
     let gone = f.life <= 0 || Math.abs(f.x) > L1_LANE + 1;
     if (swinging && !f.back && f.m > S.m && f.m - S.m < 2.8 && Math.abs(f.x - S.x) < 1.9){
-      f.back = true; S.reflected++; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash(f.from === 'minion' ? '⚾ 火球打回去！' : '⚾ 遙控器打回去！');
+      f.back = true; S.reflected++; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash('⚾ 遙控器打回去！');
     }
     for (const c of covers) if (Math.abs(f.m - c.m) < 0.9 && Math.abs(f.x - c.x) < 1.3) gone = true;
     if (!gone && !f.back && Math.abs(f.m - S.m) < 0.75 && Math.abs(f.x - S.x) < 0.85 && S.y < 1.9 && hurt('shot', f.from === 'minion' ? '🔥 被火球燒到！' : '📺 被遙控器砸到！', 7)) gone = true;
@@ -1493,16 +1915,21 @@ function step(dt){
       const flight = Math.abs(sp.x - S.x) / SPEAR_SPEED;
       if (sp.m - S.m <= pace * (SPEAR_WARN + flight)){ sp.next = S.time + SPEAR_WARN; sp.armed = false; }
     } else if (!sp.armed && !sp.next){
-      sp.next = S.time + sp.period;                                        // already passed its trigger: periodic
+      sp.next = S.time + sp.period * EZ(1, 1.5);                                        // already passed its trigger: periodic
     }
     if (sp.next && S.time >= sp.next){
-      sp.next = S.time + sp.period;
+      sp.next = S.time + sp.period * EZ(1, 1.5);
       for (const off of [-1.3, 0, 1.3]){
         const mesh = new THREE.Group();
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.6, 8), mats.spear); shaft.rotation.z = Math.PI / 2; mesh.add(shaft);
-        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 8), mats.spearTip); tip.rotation.z = sp.side > 0 ? Math.PI / 2 : -Math.PI / 2; tip.position.x = -sp.side * 1.5; mesh.add(tip);
-        const sx = sp.x - sp.side * Math.abs(off) * 0.8;                    // middle spear leads a little
-        mesh.position.set(sx, sp.y, -(sp.m + off)); add(mesh);
+        if (L.scenery === 'house'){
+          const jet = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 2.4, 10), mats.water); jet.rotation.z = Math.PI / 2; mesh.add(jet);
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), mats.water); head.position.x = -sp.side * 1.2; mesh.add(head);
+        } else {
+          const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.6, 8), mats.spear); shaft.rotation.z = Math.PI / 2; mesh.add(shaft);
+          const tip = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 8), mats.spearTip); tip.rotation.z = sp.side > 0 ? Math.PI / 2 : -Math.PI / 2; tip.position.x = -sp.side * 1.5; mesh.add(tip);
+        }
+        const sx = sp.x - sp.side * Math.abs(off) * 0.8;                    // middle one leads a little
+        mesh.position.set(sx, sp.y + FY(sp.m), -(sp.m + off)); add(mesh);
         flying.push({ x: sx, m: sp.m + off, y: sp.y, vx: -sp.side * SPEAR_SPEED, side: sp.side, mesh, hit: false });
       }
     }
@@ -1514,7 +1941,8 @@ function step(dt){
     if (!f.hit && Math.abs(f.m - S.m) < 0.6 && Math.abs(f.x - S.x) < 0.9 && S.y < f.y + 0.2 && S.y + bodyH > f.y - 0.2){
       for (const g of flying) if (Math.abs(g.m - f.m) < 3 && g.side === f.side) g.hit = true;   // one hit per volley
       S.knockV = 5; S.slowUntil = S.time + 0.7; S.speared++;
-      flash(f.y < 1 ? '🎋 被竹箭射到！要跳過去' : '🎋 被竹箭射到！要蹲下來');
+      if (L.scenery === 'house'){ flash('💦 被水槍噴到！看不清楚了'); impact('噗滋！', '#4aa8ff', 0.25); screenFx('water', 1.5); }
+      else { flash('🎋 被竹箭射到！要跳過去'); impact('中箭！', '#c27a00', 0.35); screenFx('daze', 1.0); }
     }
     if (Math.abs(f.x) > L1_LANE + 1.5){ world.remove(f.mesh); f.mesh.traverse(o => o.geometry && o.geometry.dispose()); flying.splice(i, 1); }
   }
@@ -1572,7 +2000,7 @@ function step(dt){
   const holdWall = L.gate && S.m >= sectionStart('⑤') && !S.gatePassed;
   if (holdWall) S.wallM = Math.min(S.wallM, L.gate.wallBarrier);
   else if (S.time < S.drunkStunUntil){ /* whipped by a ghost mom: rubbing his butt */ }
-  else S.wallM += (gapNow > (L.leash || WALL_LEASH) ? WALL_CATCHUP : sectionAt(S.m).wall + Math.min(4, S.boost) * 0.3) * dt;   // each bottle a bit faster, never faster than you running
+  else S.wallM += (gapNow > (L.leash || WALL_LEASH) ? WALL_CATCHUP : sectionAt(S.m).wall * EZ(1, 0.85) + Math.min(4, S.boost) * 0.3) * dt;   // each bottle a bit faster, never faster than you running
   if (L.drunk){
     if (gapNow < 6 && S.time - S.nearSaidAt > 7){ S.nearSaidAt = S.time; say(chaser, '你出現啦，我好高興！！', 2, { name: '酒鬼大叔', y: 4.6 }); }
     // bottles: knock them over; the ones you leave, he drinks (and gets faster)
@@ -1603,17 +2031,27 @@ function step(dt){
 }
 function sectionStart(prefix){ const s = L.sections.find(s => s.name.startsWith(prefix)); return s ? s.from : Infinity; }
 
-const _camTarget = new THREE.Vector3();
+const _camTarget = new THREE.Vector3(), _camLook = new THREE.Vector3(0, 2.6, 1.2), _camLookTarget = new THREE.Vector3();
+// where the intro camera looks on the cover: [x, unused, z, height]
+const INTRO_FOCUS = { drunk: [-1.9, 0, 3.4, 2.6], bottle: [1.6, 0, -2.4, 0.9], ghost: [3.6, 0, 1.8, 2.4], kid: [-3.4, 0, -1.2, 1.6] };
 function render(dt, clock){
   const g = me.group, running = S.phase === 'run', t = running ? S.time : clock;
-  g.position.set(S.x || 0, Math.max(-6, S.y || 0), -(S.m || 0));
+  g.position.set(S.x || 0, FY(S.m || 0) + Math.max(-6, S.y || 0), -(S.m || 0));
   const down = running && S.time < S.downUntil;
   g.rotation.z = down ? 1.2 : 0;
   g.rotation.y += ((running ? -(S.side || 0) * 0.35 : 0) - g.rotation.y) * Math.min(1, dt * 10);
   if (S.flipT){ S.flipT += dt / 0.38; g.rotation.x = -Math.PI * 2 * (1 - Math.pow(1 - Math.min(1, S.flipT), 2)); if (S.flipT >= 1){ S.flipT = 0; g.rotation.x = 0; } }
   if (running && S.moving && S.onGround) S.runPhase += dt * 16;
   const sw = Math.sin(S.runPhase || 0) * (running && S.moving ? 0.7 : 0);
-  me.legL.rotation.x = sw; me.legR.rotation.x = -sw; me.armL.rotation.x = -sw * 0.6; me.armR.rotation.x = sw * 0.6;
+  if (me.eddie){
+    animateEddie(me, { t: clock, dt, moving: running && S.moving, phase: S.runPhase || 0, onGround: !running || S.onGround !== false,
+      down, victory: S.phase === 'done', swinging: running && S.time < S.swingUntil });
+  } else { me.legL.rotation.x = sw; me.legR.rotation.x = -sw; me.armL.rotation.x = -sw * 0.6; me.armR.rotation.x = sw * 0.6; }
+  if (running && S.time < S.slipUntil){
+    const w = Math.sin(clock * 18) * 0.35;
+    me.armL.rotation.set(-0.4 + w, 0, -1.9); me.armR.rotation.set(-0.4 - w, 0, 1.9);
+    me.legL.rotation.x = 0.35; me.legR.rotation.x = -0.35;
+  }
   me.armL.rotation.y *= 0.7; me.armR.rotation.y *= 0.7;
   // crouch: squash the avatar down (a Q-style blob, so this reads well)
   const baseS = me.group.userData.baseScale || (me.group.userData.baseScale = me.group.scale.x);
@@ -1626,6 +2064,7 @@ function render(dt, clock){
   // +th swings the head to x = 7.2·sin(th), y = 9 − 7.2·cos(th) — same as the hit test
   for (const h of hammers) h.pivot.rotation.z = h.amp * Math.sin(t * h.speed + h.ph);
   for (const mv of movers) mv.mesh.position.x = moverX(mv.mv, t);
+  if (laundry.length) updateLaundry(t);
   if (gateObj){
     const open = running && S.time < S.gateOpenUntil;
     gateObj.door.position.y += ((open ? -4.6 : 2.5) - gateObj.door.position.y) * Math.min(1, dt * 12);
@@ -1634,26 +2073,35 @@ function render(dt, clock){
   for (const c of coins) if (!c.taken) c.mesh.rotation.z += dt * 3;
   for (const b of bullets) b.mesh.position.set(b.x, 1.3, -b.m);
   for (const o of thornObjs){
-    const want = [ -0.45, 0.2, 0.75 ][thornLevel(o, t) === 1 ? 2 : thornLevel(o, t) > 0 ? 1 : 0];
+    const lv = thornLevel(o, t) === 1 ? 2 : thornLevel(o, t) > 0 ? 1 : 0;
+    const want = FY(o.mid) + (o.style === 'mat' ? [-0.05, 0.15, 0.3] : [-0.45, 0.2, 0.75])[lv];
     for (const c of o.cones) c.position.y += (want - c.position.y) * Math.min(1, dt * 18);
   }
   for (const mn of minions){
     const stun = running && S.time < mn.stunUntil;
-    mn.g.position.set(mn.x, 0, -mn.m);
-    mn.g.rotation.y = Math.atan2((S.x || 0) - mn.x, mn.m - (S.m || 0));
-    const thr = running ? S.time - (mn.throwT || -9) : 9;
-    mn.g.userData.armR.rotation.x = thr < 0.4 ? -2.4 * Math.sin(thr / 0.4 * Math.PI) : 0;
-    mn.g.rotation.z = stun ? Math.sin(t * 14) * 0.12 : 0;
+    mn.g.position.set(mn.x, FY(mn.m), -mn.m);
+    mn.g.rotation.y = Math.atan2((S.x || 0) - mn.x, mn.m - (S.m || 0));   // the +z-facing wrapper turns toward you
+    const thr = running ? S.time - (mn.throwT || -9) : 9, wind = running && mn.windAt ? Math.min(1, (S.time - mn.windAt) / 0.3) : 0;
+    const k = mn.g.userData.kid;
+    // wind-up: arm cocked back over the head; release: snaps forward
+    mn.g.userData.armR.rotation.x = wind > 0 ? 2.6 * wind : thr < 0.35 ? 2.6 * (1 - thr / 0.35) - 1.2 * Math.sin(thr / 0.35 * Math.PI) : 0;
+    if (k){
+      const held = !(thr < 0.6);   // next throw alternates: car, remote, car…
+      k.toy.visible = held && !mn.car; k.remote.visible = held && !!mn.car;
+      k.face.set(stun ? 'cry' : wind > 0 || thr < 0.4 ? 'naughty' : 'smile');
+      k.head.rotation.z = stun ? Math.sin(t * 14) * 0.15 : 0;
+    }
+    mn.g.rotation.z = stun ? Math.sin(t * 14) * 0.08 : 0;
   }
   if (boss){
     const thr = running ? S.time - boss.throwT : 9, fir = running ? S.time - boss.fireT : 9, stun = running && S.time < boss.stunUntil;
     boss.g.userData.armR.rotation.x = thr < 0.5 ? -2.4 * Math.sin(thr / 0.5 * Math.PI) : 0;
     boss.g.userData.armL.rotation.z = stun ? 0.8 : Math.sin(t * 2) * 0.15;
-    boss.g.position.y = fir < 0.4 ? Math.sin(fir / 0.4 * Math.PI) * 0.5 : 0;
+    boss.g.position.y = FY(boss.m) + (fir < 0.4 ? Math.sin(fir / 0.4 * Math.PI) * 0.5 : 0);
     boss.g.rotation.z = stun ? Math.sin(t * 12) * 0.08 : 0;
   }
-  for (const b of barrels){ b.mesh.position.set(b.x, 0.45 * b.mesh.scale.y, -b.m); b.mesh.rotation.y = Math.atan2(b.vx, -b.vm); }
-  for (const f of fireballs){ f.mesh.position.set(f.x, f.from === 'minion' ? 1.0 : 1.2, -f.m); if (f.from !== 'minion'){ f.mesh.rotation.y += dt * 14; f.mesh.rotation.x += dt * 6; } else f.mesh.scale.setScalar(1 + Math.sin(t * 20 + f.x) * 0.12); }
+  for (const b of barrels){ b.mesh.position.set(b.x, FY(b.m) + 0.45 * b.mesh.scale.y, -b.m); b.mesh.rotation.y = Math.atan2(b.vx, -b.vm); }
+  for (const f of fireballs){ f.mesh.position.set(f.x, FY(f.m) + (f.from === 'minion' ? 1.0 : 1.2), -f.m); if (f.from !== 'minion'){ f.mesh.rotation.y += dt * 14; f.mesh.rotation.x += dt * 6; } else f.mesh.scale.setScalar(1 + Math.sin(t * 20 + f.x) * 0.12); }
   for (const f of flying) f.mesh.position.x = f.x;
   for (const sp of spears) sp.hole.material = (running && sp.next && sp.next - S.time < SPEAR_WARN) ? mats.holeHot : mats.hole;
   if (L.drunk){
@@ -1661,11 +2109,10 @@ function render(dt, clock){
     cu.x += ((S.x || 0) - cu.x) * Math.min(1, dt * (held ? 20 : 2.5));
     chaser.position.set(cu.x, 0, -(S.wallM || -WALL_START_GAP));
     const sore = running && S.time < S.drunkStunUntil;
-    const ph = t * 9, sw = held || sore ? 0 : Math.sin(ph) * 0.8;
-    cu.legL.rotation.x = sw; cu.legR.rotation.x = -sw;
-    cu.armL.rotation.x = held ? -1.5 : -sw * 0.7; cu.armR.rotation.x = held ? -1.5 : sw * 0.7;   // arms forward = the hug
-    chaser.rotation.z = sore ? 0.35 + Math.sin(t * 14) * 0.08 : Math.sin(t * 2.3) * 0.12;          // staggering / ouch
-    chaser.position.y = held ? 0 : Math.abs(Math.sin(ph)) * 0.25;
+    const ph = t * 9;
+    poseDrunk(cu, held ? 'hug' : sore ? 'sore' : 'run', ph, t);
+    chaser.rotation.z = held ? 0 : Math.sin(t * 2.3) * 0.06;                                      // a happy drunk sway
+    chaser.position.y = FY(S.wallM || 0) + (held ? 0 : sore ? Math.abs(Math.sin(t * 16)) * 0.3 : Math.abs(Math.sin(ph)) * 0.18);
     const see = running && !held && (S.m - S.wallM) < 7;             // see-through when he's right behind you
     for (const m of cu.mats){ m.opacity = see ? 0.35 : 1; m.depthWrite = !see; }
   } else chaser.position.set(0, 0, -(S.wallM || -WALL_START_GAP));
@@ -1673,7 +2120,7 @@ function render(dt, clock){
   for (const b of bottles) if (b.state === 'down' && b.t < 1){ b.t += dt * 4; b.g.rotation.z = -b.dir * Math.min(1, b.t) * Math.PI / 2; b.g.position.x = b.x - b.dir * Math.min(1, b.t) * 0.5; }
   for (const gh of ghosts){
     const shop = gh.state !== 'watch';
-    gh.g.position.set(gh.xx, 0.25 + Math.sin(t * 2.5 + gh.th) * 0.15, -gh.mm);
+    gh.g.position.set(gh.xx, FY(gh.mm) + 0.25 + Math.sin(t * 2.5 + gh.th) * 0.15, -gh.mm);
     gh.g.rotation.y = Math.atan2((S.x || 0) - gh.xx, gh.mm - (S.m || 0)) + (shop ? Math.PI : 0);
     gh.g.userData.phone.visible = shop;
     gh.g.userData.armL.rotation.x = shop ? -1.1 : 0;
@@ -1683,13 +2130,14 @@ function render(dt, clock){
   }
   // camera: high and behind; level 2 follows you fully sideways (the gate spur)
   const pf = camera.aspect < 1 ? 1.55 : 1;                         // upright phone: pull back so the road fits
-  _camTarget.set((S.x || 0) * L.camFollow, 9 * camZoom * pf, -(S.m || 0) + 8 * camZoom * pf);
+  const fyc = FY(S.m || 0);
+  _camTarget.set((S.x || 0) * L.camFollow, fyc + 9 * camZoom * pf, -(S.m || 0) + 8 * camZoom * pf);
   const cover = S.phase === 'menu' && coverGroup;
   if (coverGroup) coverGroup.visible = !!cover;
   if (cover){
     // drunk sneaks up behind you, arms out, on the cover
-    const cu = chaser.userData; chaser.position.set(-1.9, 0, 3.4); cu.x = -1.9; chaser.rotation.z = Math.sin(t * 2.3) * 0.1;
-    cu.armL.rotation.x = cu.armR.rotation.x = -1.3; cu.legL.rotation.x = 0.4; cu.legR.rotation.x = -0.4;
+    const cu = chaser.userData; chaser.position.set(-1.9, 0, 3.4); cu.x = -1.9; chaser.rotation.z = 0;
+    poseDrunk(cu, 'cover', 0, t);
     for (const m of cu.mats){ m.opacity = 1; m.depthWrite = true; }
     me.group.position.set(0, 0, 0); me.group.rotation.set(0, 0, 0);
     // a little life on the cover: ghost floats and swings, the kid flails, lines take turns
@@ -1697,27 +2145,37 @@ function render(dt, clock){
     cg.gm.position.y = 0.25 + Math.sin(t * 2.2) * 0.2; cg.gm.userData.armR.rotation.x = -1.2 - Math.sin(t * 3) * 1.0;
     cg.kid.userData.armR.rotation.x = -1.2 - Math.sin(t * 6) * 1.1; cg.kid.userData.armL.rotation.x = -1.2 + Math.sin(t * 6) * 1.1;
     const beat = Math.floor(t / 2.6) % 3;
-    if (beat !== cg.beat){
+    if (beat !== cg.beat && introStep < 0){
       cg.beat = beat;
       if (beat === 0) say(chaser, '你先跑我再追～', 2.2, { y: 4.6 });
       else if (beat === 1) say(cg.gm, '皮在癢了嗎？', 2.2, { y: 3.7 });
-      else say(cg.kid, '咻咻咻！', 2.2, { y: 3.3 });
+      else { const KID = ['媽媽～媽媽～', '我要媽媽！', '咻咻咻！']; cg.kidLine = ((cg.kidLine || 0) + 1) % KID.length; say(cg.kid, KID[cg.kidLine], 2.2, { y: 3.3 }); }
     }
     const wide = innerWidth >= 860 || (innerWidth >= 600 && innerWidth > innerHeight);
-    if (wide){ _camTarget.set(Math.sin(t * 0.18) * 2.2 - 2.5, 3.0, -10.5); }
-    else { _camTarget.set(Math.sin(t * 0.18) * 1.2, 4.0, -17.5); }      // upright/narrow: back off so the whole family fits
-    camera.position.lerp(_camTarget, Math.min(1, dt * 2));
-    if (wide) camera.lookAt(-2.4, 2.6, 2); else camera.lookAt(0, 2.6, 1.2);
+    const focus = introStep >= 0 ? INTRO_FOCUS[INTRO[introStep].at] : null;
+    if (focus){
+      // intro: close-up on that character, a little lower and from the front
+      const portrait = camera.aspect < 1;
+      _camTarget.set(focus[0] * 0.7 + Math.sin(t * 0.5) * 0.4, focus[3] + 1.2, focus[2] - (portrait ? 9 : 6));
+      _camLook.lerp(_camLookTarget.set(focus[0], focus[3] - 0.3, focus[2]), Math.min(1, dt * 4));
+    } else {
+      if (wide){ _camTarget.set(Math.sin(t * 0.18) * 2.2 - 2.5, 3.0, -10.5); _camLookTarget.set(-2.4, 2.6, 2); }
+      else { _camTarget.set(Math.sin(t * 0.18) * 1.2, 4.0, -17.5); _camLookTarget.set(0, 2.6, 1.2); }   // upright/narrow: back off so the whole family fits
+      _camLook.lerp(_camLookTarget, Math.min(1, dt * 3));
+    }
+    if (!cg.camReady){ camera.position.copy(_camTarget); _camLook.copy(_camLookTarget); cg.camReady = true; }   // first frame: start in place, no swoop
+    camera.position.lerp(_camTarget, Math.min(1, dt * (focus ? 3 : 2)));
+    camera.lookAt(_camLook);
     renderer.render(scene, camera); updateBubbles();
     return;
   }
   const hug = running && L.drunk && S.heldUntil;                    // swing round to the side to show the hug
-  if (hug) _camTarget.set((S.x || 0) + 7, 4.2, -(S.m || 0) + 2);
+  if (hug) _camTarget.set((S.x || 0) + 7, fyc + 4.2, -(S.m || 0) + 2);
   if (!Number.isFinite(camera.position.x + camera.position.y + camera.position.z)) camera.position.copy(_camTarget);
   camera.position.lerp(_camTarget, Math.min(1, dt * (hug ? 10 : 6)));
   if (performance.now() / 1000 < shakeUntil){ camera.position.x += (Math.random() - 0.5) * shakeAmp; camera.position.y += (Math.random() - 0.5) * shakeAmp; }
-  if (hug) camera.lookAt(S.x || 0, 2, -(S.m || 0) + 0.5);
-  else camera.lookAt((S.x || 0) * (L.camFollow >= 1 ? 1 : 0.4), 0.5, -(S.m || 0) - 12);
+  if (hug) camera.lookAt(S.x || 0, fyc + 2, -(S.m || 0) + 0.5);
+  else camera.lookAt((S.x || 0) * (L.camFollow >= 1 ? 1 : 0.4), FY((S.m || 0) + 12) + 0.5, -(S.m || 0) - 12);
   const near = running && !L.drunk && (S.m - S.wallM) < 9;
   chaserMat.opacity = chaserSpike.opacity = near ? 0.35 : 1;
   chaserMat.depthWrite = chaserSpike.depthWrite = !near;

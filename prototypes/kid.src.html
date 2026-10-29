@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>小屁孩原型</title>
+<!--
+  SOURCE — edit this file, then run:  python tools/build_proto.py kid
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+  :root{
+    --sb-paper:#fff8ec; --sb-ink:#5b3a29; --sb-text:#4a3426; --sb-muted:#9a7d5f;
+    --sb-gold-soft:#ffcf5a; --sb-sky:#6fb3e0;
+    --sb-font:"Fredoka","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    color-scheme:light;
+  }
+  html,body{height:100%}
+  body{margin:0;position:fixed;inset:0;overflow:hidden;color:var(--sb-text);font-family:var(--sb-font);
+       background:radial-gradient(circle at 50% 60%,#fff6e4,#ffe1ea 75%);user-select:none;-webkit-user-select:none;touch-action:none}
+  #stage{position:fixed;inset:0}
+  #head{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);text-align:center;pointer-events:none;z-index:2}
+  #head h1{margin:0;font:900 30px var(--sb-font);color:#ffcf5a;-webkit-text-stroke:3px var(--sb-ink);paint-order:stroke fill;letter-spacing:2px;white-space:nowrap}
+  #head p{margin:2px 0 0;font:700 14px var(--sb-font);color:var(--sb-muted)}
+  #bar{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:0 16px;z-index:2}
+  .btn{font:700 15px var(--sb-font);background:var(--sb-gold-soft);color:var(--sb-ink);border:2.5px solid var(--sb-ink);border-radius:999px;
+       padding:7px 16px;cursor:pointer;box-shadow:0 4px 0 rgba(91,58,41,.35)}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(91,58,41,.35)}
+  .btn:focus-visible{outline:3px solid var(--sb-sky);outline-offset:2px}
+  #tip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));font:600 12px var(--sb-font);color:var(--sb-muted);pointer-events:none;white-space:nowrap;z-index:2}
+  @media (max-height:520px){ #head h1{font-size:20px;-webkit-text-stroke:2px var(--sb-ink)} #head p{font-size:11px} .btn{font-size:13px;padding:5px 12px} #tip{display:none} }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="head"><h1>小屁孩</h1><p>原型：土星家的小屁孩（照片版，旁邊可叫出艾迪比身高）</p></div>
+<div id="tip">手指拖曳可以轉</div>
+<div id="bar">
+  <button class="btn" id="bWalk">🚼 搖搖擺擺走</button>
+  <button class="btn" id="bSit">🪑 坐地上</button>
+  <button class="btn" id="bThrow">🧸 丟東西</button>
+  <button class="btn" id="bClap">👏 拍手笑</button>
+  <button class="btn" id="bCry">😭 大哭</button>
+  <button class="btn" id="bNaughty">😈 壞笑</button>
+  <button class="btn" id="bEddie">👦 艾迪</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*@@INCLUDE:LOOK@@*/
+
+/*@@INCLUDE:AVATAR@@*/
+
+(() => {
+const $ = id => document.getElementById(id);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+$('stage').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+scene.add(new THREE.HemisphereLight(0xfff2dc, 0xb9d99c, 0.8));
+const sun = new THREE.DirectionalLight(0xffeccc, 0.55); sun.position.set(-3, 6, -6); scene.add(sun);
+function fit(){ const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.fov = w < h ? 44 : 30; camera.updateProjectionMatrix(); }
+addEventListener('resize', fit); fit();
+
+const LM = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+const flat = c => new THREE.MeshBasicMaterial({ color: c });
+function part(parent, geo, mat, x, y, z, noLine){ const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); if (noLine) m.userData.noLine = true; parent.add(m); return m; }
+const S = (r, w, h) => new THREE.SphereGeometry(r, w || 24, h || 16);
+
+// the kid comes from the shared AVATAR block (island.html)
+const kid = buildKid(); scene.add(kid.g);
+let eddie = null;
+
+// ---------- moves ----------
+let yaw = 0, t = 0, act = null, actT = 0, walking = false, sitting = false, blinkAt = 2, blinkT = -1;
+const ease = k => k * k * (3 - 2 * k);
+const btn = (id, f) => $(id).addEventListener('click', f);
+btn('bWalk', () => { walking = !walking; act = null; kid.face.set(walking ? 'happy' : 'smile'); });
+btn('bSit', () => { sitting = !sitting; walking = false; });
+btn('bThrow', () => { act = 'throw'; actT = 0; walking = false; kid.face.set('naughty'); });
+btn('bClap', () => { act = 'clap'; actT = 0; walking = false; kid.face.set('happy'); });
+btn('bCry', () => { act = 'cry'; actT = 0; walking = false; kid.face.set('cry'); });
+btn('bNaughty', () => { act = 'naughty'; actT = 0; walking = false; kid.face.set('naughty'); });
+btn('bEddie', () => {
+  if (eddie){ scene.remove(eddie.group); eddie = null; kid.g.position.x = 0; return; }
+  eddie = buildEddieAvatar(DEFAULT_CUSTOM, { bat: false }); eddie.group.position.x = -1.6; scene.add(eddie.group); kid.g.position.x = 0.9;
+});
+let drag = null;
+renderer.domElement.addEventListener('pointerdown', e => { drag = e.clientX; });
+addEventListener('pointermove', e => { if (drag === null) return; yaw += (e.clientX - drag) * 0.01; drag = e.clientX; });
+addEventListener('pointerup', () => { drag = null; });
+
+const [aL, aR] = kid.arms, [lL, lR] = kid.legs, eL = aL.userData.elbow, eR = aR.userData.elbow, kL = lL.userData.knee, kR = lR.userData.knee;
+let last = 0;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = last ? Math.min(0.05, Math.max(0, (now - last) / 1000)) : 0.016; last = now; t += dt;
+  kid.g.rotation.y = yaw;
+  for (const j of [aL, aR, lL, lR, eL, eR, kL, kR, kid.head, kid.body]) j.rotation.set(0, 0, 0);
+  kid.body.position.set(0, 0, 0);
+  kid.toy.visible = act === 'throw' ? actT < 0.45 : true;
+  // idle: breathing + rocking
+  const br = Math.sin(t * 2.6);
+  kid.torso.scale.set(1 + br * 0.02, 0.95 + br * 0.025, 0.9);
+  aL.rotation.z = -0.35; aR.rotation.z = 0.35; eL.rotation.x = eR.rotation.x = 0.4;
+  kid.head.rotation.z = Math.sin(t * 1.3) * 0.05;
+  if (sitting){ lL.rotation.x = lR.rotation.x = 1.45; lL.rotation.z = -0.25; lR.rotation.z = 0.25; kid.body.position.y = -0.24; }
+  if (walking){
+    // toddler waddle: rock side to side, short stiff steps, arms out for balance
+    const p = t * 7, w = Math.sin(p);
+    kid.body.rotation.z = w * 0.14; kid.body.position.y = Math.abs(Math.cos(p)) * 0.06;
+    lL.rotation.x = w * 0.45; lR.rotation.x = -w * 0.45; kL.rotation.x = -Math.max(0, Math.cos(p)) * 0.5; kR.rotation.x = -Math.max(0, -Math.cos(p)) * 0.5;
+    aL.rotation.z = -1.1 + w * 0.15; aR.rotation.z = 1.1 + w * 0.15;
+    kid.head.rotation.z = -w * 0.1;
+  }
+  if (act === 'throw'){
+    actT += dt;
+    const wind = actT < 0.3 ? ease(actT / 0.3) : 0, fling = actT >= 0.3 && actT < 0.5 ? ease((actT - 0.3) / 0.2) : actT >= 0.5 ? 1 - ease(Math.min(1, (actT - 0.5) / 0.5)) : 0;
+    aR.rotation.x = -2.6 * wind + 1.2 * fling * (actT >= 0.3 ? 1 : 0) - (actT >= 0.3 && actT < 0.5 ? 2.6 * (1 - fling) : 0);
+    eR.rotation.x = 0.9 * wind;
+    kid.body.rotation.y = -0.35 * wind + 0.35 * fling;
+    kid.body.rotation.x = 0.1 * wind - 0.15 * fling;
+    if (actT > 1.1){ act = null; kid.face.set('smile'); }
+  } else if (act === 'clap'){
+    actT += dt;
+    const c = Math.abs(Math.sin(actT * 10));
+    aL.rotation.x = aR.rotation.x = -1.3; aL.rotation.z = -0.35 * c - 0.05; aR.rotation.z = 0.35 * c + 0.05;
+    eL.rotation.x = eR.rotation.x = 0.6;
+    kid.body.position.y = Math.abs(Math.sin(actT * 5)) * 0.1; kid.head.rotation.x = -0.15;
+    if (actT > 2.2){ act = null; kid.face.set('smile'); }
+  } else if (act === 'cry'){
+    actT += dt;
+    // tantrum: stomp, fists up, head back, wailing
+    const s = Math.sin(actT * 14);
+    kid.head.rotation.x = -0.35 + s * 0.04;
+    aL.rotation.z = -2.2 + s * 0.3; aR.rotation.z = 2.2 - s * 0.3; eL.rotation.x = eR.rotation.x = 0.8;
+    lL.rotation.x = Math.max(0, s) * 0.4; lR.rotation.x = Math.max(0, -s) * 0.4;
+    kid.body.position.y = Math.abs(s) * 0.04;
+    kid.tears.forEach((m, i) => { const k = (actT * 1.6 + i * 0.4) % 1; m.position.y = 1.55 - 0.1 - 1.05 - k * 0.35; m.scale.set(0.8, 1.5, 0.5); });
+    if (actT > 2.6){ act = null; kid.face.set('smile'); }
+  } else if (act === 'naughty'){
+    actT += dt;
+    // sneaky: crouch, look side to side, rub hands
+    const k = ease(Math.min(1, actT / 0.3));
+    kid.body.position.y = -0.08 * k; kL.rotation.x = kR.rotation.x = -0.5 * k; lL.rotation.x = lR.rotation.x = 0.3 * k;
+    kid.head.rotation.y = Math.sin(actT * 3) * 0.5;
+    aL.rotation.x = aR.rotation.x = -1.0; aL.rotation.z = -0.3 - Math.sin(actT * 12) * 0.12; aR.rotation.z = 0.3 + Math.sin(actT * 12) * 0.12; eL.rotation.x = eR.rotation.x = 0.9;
+    if (actT > 2.4){ act = null; kid.face.set('smile'); }
+  }
+  // blink (only when the plain eyes are showing)
+  blinkAt -= dt;
+  if (blinkAt <= 0 && blinkT < 0){ blinkT = 0; blinkAt = 2 + Math.random() * 3; }
+  if (blinkT >= 0){ blinkT += dt; kid.face.blink(Math.sin(Math.min(1, blinkT / 0.16) * Math.PI)); if (blinkT > 0.16){ blinkT = -1; kid.face.blink(0); } }
+  if (eddie) animateEddie(eddie, { t, dt, moving: false, onGround: true });
+  const mobile = innerWidth < innerHeight;
+  camera.position.set(0, eddie ? 1.9 : 1.3, eddie ? (mobile ? -12 : -10) : (mobile ? -8.5 : -7));
+  camera.lookAt(0, eddie ? 1.4 : 0.95, 0);
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

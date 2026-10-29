@@ -110,3 +110,41 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 海嘯島的「逃離土星」按鈕在 github.io 上連到新網址；新網址的「回海嘯島」連回舊網址。帳號/金幣/排行榜同一台伺服器、同網域，登入共用。
 - 第一關改名「家庭聚會」：酒鬼大叔（取代刺牆）、鬼媽媽 ×4、地上小屁孩 ×6、小屁孩大魔王、12 個成就（存在玩家瀏覽器 localStorage）。
 - 家庭小遊戲藍圖：`docs/PLAN-家庭小遊戲.md`（未動工）。
+
+## 2026-10-29 — 家庭小遊戲第二款「熱熔膠條之夜」MVP（還沒 commit、還沒上架）
+
+- 原始碼 `family/gluenight.src.html` → `python tools/build_family.py` 產出 `gluenight.html`（繪本畫風一樣從 island.html 抄 LOOK 區塊）
+- 試玩連結（單機、不連伺服器）：https://claude.ai/artifact/2V9EGsXkb4Ch6D6tMZ5oFk ；更新：`python tools/build_family.py --preview <檔>` 再發布到同一個 artifact
+- 玩法：第一人稱書桌，桌上鏡子看得到背後的門；4 種偷玩（畫畫/漫畫/YouTube/打電動，越爽越難藏）、裝乖、翻頁；嬤嬤 away→腳步預兆→（假動作走掉）或開門看；被抓＝熱熔膠條「咻—啪」＋怒氣；連抓兩次嬤嬤守門；撐到 10 點過關
+- 難度用機器人模擬調過：只看漫畫穩過、YouTube 要反應快、一直打電動必爆
+- 還沒做：金幣入帳海嘯島帳號／排行榜、首頁「家庭小遊戲」入口、真人手感測試
+- ⚠️ 本機測試另開 `.claude/launch.json` 的 `etfm-family`（port 8767），跟 etfm-web 8765 分開
+## 2026-10-29 — 土星之家 H1（公司 PC，分支上、還沒上架）
+- 方向（Bernie）：**一個遊戲、很多關卡**。大廳＝自己的 3D 家 → 出門選關卡：逃離土星／恐怖考前複習夜（原熱熔膠條之夜）／**土星拆家王**（原拆家寶寶，還沒做）。海嘯撿錢不再當入口。藍圖 `docs/PLAN-土星之家.md`
+- 原始碼 `home/home.src.html` → `python tools/build_home.py [--preview 檔]` → `home.html`
+- 試玩連結：https://claude.ai/artifact/7CVMoMJmmk3GrbZScdNTsQ
+- 做了：8×8 房間、11 件家具（買／擺／轉／收）、4 地板 4 壁紙、門→選關卡、點地板走路；存在瀏覽器（`etfm-home-v1`），試玩錢 777
+- 下一步 H2：伺服器存 `home`、扣真的金幣；H3：關卡結束「回家」；H4：首頁改成土星之家
+
+## 2026-10-29 — 遊戲名稱：艾迪的幻想世界＋主角原型
+- 整個遊戲叫 **艾迪的幻想世界**；大廳＝土星之家；關卡：逃離土星／恐怖考前複習夜／土星拆家王
+- 主角艾迪原型（照 Bernie 兒子的照片做 Q 版）：`prototypes/eddie.src.html` → `python tools/build_proto.py eddie [--preview 檔]`
+  - 試玩：https://claude.ai/artifact/11zvrShMMHSVBgN43xA17Z
+  - 特徵：黑色短髮頭頂往上抓、兩側短、開口大笑、粗眉、白 T、軍綠短褲、白鞋黑襪、白手環、星空背包、橘色猩猩圍巾（可開關）
+- 還沒做：把艾迪放進土星之家和各關當預設角色
+
+## 2026-10-29 — 艾迪進關卡（公司 PC，分支上、還沒上架）
+- 每個關卡的玩家都是艾迪（`buildAvatar` 遇到 `custom.hero !== 'custom'` 就改用 `buildEddieAvatar`）
+- 艾迪骨架 v2：頭、手肘、膝蓋、表情（笑／大笑／嚇到／哭哭／得意＋眨眼）；共用動作 `animateEddie(A, o)`（都在 island.html 的 AVATAR 區）
+  - ⚠️ 面向 -z：膝蓋往後折＝rotation.x 負、手肘往前彎＝正（曾經寫反過）
+- 試玩：逃離土星艾迪版 https://claude.ai/artifact/2r6p37955RvFwrHZZc9fP5 ／土星之家 https://claude.ai/artifact/7CVMoMJmmk3GrbZScdNTsQ ／艾迪原型 https://claude.ai/artifact/11zvrShMMHSVBgN43xA17Z
+- 舊的「逃離土星」試玩 `…1GfYgGkd…` 是艾迪之前的版本
+
+## 2026-10-29 — 逃離土星第一關後段重做（分支上、還沒上架）
+- 共用小屁孩 `buildKid()`（island.html AVATAR 區，照 Bernie 照片：黑短髮瀏海、白T淺藍短褲、赤腳）；原型 https://claude.ai/artifact/4KMMx6mQamrWN8R3XiNfsu
+- ⑤ 頂樓遊戲室（430–478）：小屁孩丟小車／遙控器輪流，**手上先拿著下一發**＋舉手壞笑預告；兩種都能揮棒打回去讓他哭（成就「全壘打王」）。中間的掩體拿掉了
+- ⑥ 頂樓曬衣場（478–530）：大風（先跳箭頭警告再推人）、飛襪子🧦／內褲🩲（大圖示卡）、床單、盆栽
+- 全屋 36 灘水窪（`LEVEL1.puddles`）：踩到照原方向溜冰 0.8 秒不能轉向、不扣血；成就「🛼 溜冰高手」連滑 3 灘不受傷
+- 警告字改粉圓體（Huninn）＋貼紙底（`.flash` 奶油膠囊、`#impact` 彩色貼紙）
+- 髒髒度：Bernie 說只當成就、不影響玩法 → **還沒做**
+- 下一步：第二關（LEVEL2 天空機關城）要重新規劃主題

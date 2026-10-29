@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>艾迪原型</title>
+<!--
+  SOURCE — edit this file, then run:  python tools/build_proto.py eddie
+  Writes prototypes/eddie.html with the storybook look copied from island.html.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+  :root{
+    --sb-paper:#fff8ec; --sb-ink:#5b3a29; --sb-text:#4a3426; --sb-muted:#9a7d5f; --sb-line:#e2c9a0;
+    --sb-gold-soft:#ffcf5a; --sb-sky:#6fb3e0;
+    --sb-font:"Fredoka","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    color-scheme:light;
+  }
+  html,body{height:100%}
+  body{margin:0;position:fixed;inset:0;overflow:hidden;color:var(--sb-text);font-family:var(--sb-font);
+       background:radial-gradient(circle at 50% 60%,#fff6e4,#cfe6f0 75%);user-select:none;-webkit-user-select:none;touch-action:none}
+  #stage{position:fixed;inset:0}
+  #head{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);text-align:center;pointer-events:none;z-index:2}
+  #head h1{margin:0;font:900 30px var(--sb-font);color:#ffcf5a;-webkit-text-stroke:3px var(--sb-ink);paint-order:stroke fill;letter-spacing:2px;white-space:nowrap}
+  #head p{margin:2px 0 0;font:700 14px var(--sb-font);color:var(--sb-muted)}
+  #bar{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:0 16px;z-index:2}
+  .btn{font:700 15px var(--sb-font);background:var(--sb-gold-soft);color:var(--sb-ink);border:2.5px solid var(--sb-ink);border-radius:999px;
+       padding:7px 16px;cursor:pointer;box-shadow:0 4px 0 rgba(91,58,41,.35)}
+  .btn[aria-pressed="true"]{background:var(--sb-ink);color:#fff}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(91,58,41,.35)}
+  .btn:focus-visible{outline:3px solid var(--sb-sky);outline-offset:2px}
+  #tip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));font:600 12px var(--sb-font);color:var(--sb-muted);pointer-events:none;white-space:nowrap;z-index:2}
+  @media (max-height:520px){ #head h1{font-size:20px;-webkit-text-stroke:2px var(--sb-ink)} #head p{font-size:11px} .btn{font-size:13px;padding:5px 12px} #tip{display:none} }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="head"><h1>艾迪的幻想世界</h1><p>主角原型：艾迪</p></div>
+<div id="tip">手指拖曳可以轉艾迪</div>
+<div id="bar">
+  <button class="btn" id="bWave">👋 揮手</button>
+  <button class="btn" id="bRun">🏃 跑步</button>
+  <button class="btn" id="bJump">⬆ 跳</button>
+  <button class="btn" id="bDance">🕺 勝利舞</button>
+  <button class="btn" id="bHit">💥 被打到</button>
+  <button class="btn" id="bFace">😄 笑</button>
+  <button class="btn" id="bSpin">🔄 轉一圈</button>
+  <button class="btn" id="bScarf" aria-pressed="true">🦧 猩猩圍巾</button>
+  <button class="btn" id="bBag" aria-pressed="true">🎒 背包</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*@@INCLUDE:LOOK@@*/
+
+/*@@INCLUDE:AVATAR@@*/
+
+(() => {
+const $ = id => document.getElementById(id);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+$('stage').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+scene.add(new THREE.HemisphereLight(0xfff2dc, 0xb9d99c, 0.8));
+const sun = new THREE.DirectionalLight(0xffeccc, 0.55); sun.position.set(-3, 6, -6); scene.add(sun);
+function fit(){
+  const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w / h;
+  camera.fov = w < h ? 44 : 30; camera.updateProjectionMatrix();
+}
+addEventListener('resize', fit); fit();
+
+const LM = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+const flat = c => new THREE.MeshBasicMaterial({ color: c });
+function part(parent, geo, mat, x, y, z, noLine){ const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); if (noLine) m.userData.noLine = true; parent.add(m); return m; }
+const S = (r, w, h) => new THREE.SphereGeometry(r, w || 24, h || 16);
+
+// Eddie comes from the shared AVATAR block (island.html)
+const ed = buildEddie(); scene.add(ed.g);
+
+// ---------- poses (v2 rig: head, elbows, knees, face) ----------
+// Everything is procedural: a few sine waves per move plus eased one-shots.
+let yaw = 0, spin = 0, t = 0;
+let running = false, act = null, actT = 0, jumpT = -1;
+let blinkAt = 2, blinkT = -1, lookAt = 3, lookT = -1, lookDir = 0;
+let exprIdx = 0;
+const EXPRS = [['smile', '😄 笑'], ['laugh', '😆 大笑'], ['surprised', '😮 嚇到'], ['sad', '😢 哭哭'], ['smug', '😏 得意']];
+const btn = (id, on) => $(id).addEventListener('click', on);
+btn('bWave', () => { act = 'wave'; actT = 0; });
+btn('bRun', () => { running = !running; $('bRun').setAttribute('aria-pressed', String(running)); });
+btn('bJump', () => { if (jumpT < 0) jumpT = 0; });
+btn('bDance', () => { act = 'dance'; actT = 0; ed.face.set('laugh'); });
+btn('bHit', () => { act = 'hit'; actT = 0; ed.face.set('surprised'); });
+btn('bFace', () => { exprIdx = (exprIdx + 1) % EXPRS.length; ed.face.set(EXPRS[exprIdx][0]); $('bFace').textContent = EXPRS[exprIdx][1]; });
+btn('bSpin', () => { spin = Math.PI * 2; });
+btn('bScarf', () => { ed.scarf.visible = !ed.scarf.visible; $('bScarf').setAttribute('aria-pressed', String(ed.scarf.visible)); });
+btn('bBag', () => { ed.bag.visible = !ed.bag.visible; $('bBag').setAttribute('aria-pressed', String(ed.bag.visible)); });
+let drag = null;
+renderer.domElement.addEventListener('pointerdown', e => { drag = e.clientX; });
+addEventListener('pointermove', e => { if (drag === null) return; yaw += (e.clientX - drag) * 0.01; drag = e.clientX; });
+addEventListener('pointerup', () => { drag = null; });
+
+const ease = k => k * k * (3 - 2 * k);
+const [armL, armR] = ed.arms, [legL, legR] = ed.legs;
+const elbowL = armL.userData.elbow, elbowR = armR.userData.elbow, kneeL = legL.userData.knee, kneeR = legR.userData.knee;
+function reset(){
+  for (const o of [armL, armR, legL, legR, elbowL, elbowR, kneeL, kneeR, ed.head, ed.body]) o.rotation.set(0, 0, 0);
+  ed.body.position.set(0, 0, 0); ed.body.scale.set(1, 1, 1); ed.torso.scale.set(1, 1.08, 0.88);
+}
+let last = 0;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = last ? Math.min(0.05, Math.max(0, (now - last) / 1000)) : 0.016; last = now; t += dt;
+  if (spin > 0){ const s = Math.min(spin, dt * 6); spin -= s; yaw += s; }
+  ed.g.rotation.y = yaw;
+  reset();
+
+  // idle: breathing, slight sway, relaxed bent elbows
+  const breath = Math.sin(t * 2.1);
+  ed.torso.scale.set(1 + breath * 0.012, 1.08 + breath * 0.02, 0.88 + breath * 0.01);
+  armL.rotation.z = -0.14 - breath * 0.02; armR.rotation.z = 0.14 + breath * 0.02;
+  elbowL.rotation.x = -(-0.25); elbowR.rotation.x = -(-0.25);
+  ed.body.rotation.z = Math.sin(t * 0.9) * 0.02;
+
+  // blink every few seconds
+  blinkAt -= dt;
+  if (blinkAt <= 0 && blinkT < 0){ blinkT = 0; blinkAt = 2.5 + Math.random() * 3; }
+  if (blinkT >= 0){ blinkT += dt; ed.face.blink(Math.sin(Math.min(1, blinkT / 0.16) * Math.PI)); if (blinkT > 0.16){ blinkT = -1; ed.face.blink(0); } }
+  // look around now and then
+  lookAt -= dt;
+  if (lookAt <= 0 && lookT < 0 && !running && !act){ lookT = 0; lookDir = Math.random() < 0.5 ? -1 : 1; lookAt = 4 + Math.random() * 4; }
+  if (lookT >= 0){ lookT += dt; const k = lookT < 0.4 ? ease(lookT / 0.4) : lookT < 1.4 ? 1 : 1 - ease(Math.min(1, (lookT - 1.4) / 0.4)); ed.head.rotation.y = lookDir * 0.55 * k; ed.head.rotation.z = -lookDir * 0.08 * k; if (lookT > 1.8) lookT = -1; }
+
+  if (running){
+    const p = t * 10, sw = Math.sin(p);
+    legL.rotation.x = sw * 0.9; legR.rotation.x = -sw * 0.9;
+    kneeL.rotation.x = -(Math.max(0, Math.cos(p)) * 1.3 + 0.1);         // the leg swinging forward folds at the knee
+    kneeR.rotation.x = -(Math.max(0, -Math.cos(p)) * 1.3 + 0.1);
+    armL.rotation.x = -sw * 0.9; armR.rotation.x = sw * 0.9;
+    elbowL.rotation.x = -(-1.2); elbowR.rotation.x = -(-1.2);                 // pumping, bent arms
+    ed.body.rotation.x = -0.18;                                         // lean into the run
+    ed.body.rotation.y = sw * 0.12;                                     // shoulders twist against the hips
+    ed.head.rotation.x = 0.12; ed.head.rotation.y = -sw * 0.06;          // head stays steady-ish
+    ed.body.position.y = Math.abs(Math.cos(p)) * 0.14;
+    for (const [i, s] of ed.hairSpikes.entries()) s.rotation.y = Math.sin(t * 9 + i) * 0.1;
+  }
+
+  if (act === 'wave'){
+    actT += dt;
+    const k = ease(Math.min(1, actT / 0.25)) * (actT > 1.7 ? 1 - ease(Math.min(1, (actT - 1.7) / 0.25)) : 1);
+    armR.rotation.z = 0.14 + 2.5 * k; armR.rotation.x = -0.25 * k;
+    elbowR.rotation.z = Math.sin(actT * 13) * 0.55 * k;                  // the forearm waves from the elbow
+    elbowR.rotation.x = -(-0.5 * k);
+    ed.head.rotation.z = -0.12 * k; ed.body.rotation.z = -0.05 * k;
+    if (actT > 1.95) act = null;
+  } else if (act === 'dance'){
+    actT += dt;
+    const b = Math.sin(actT * 9), up = Math.abs(Math.sin(actT * 4.5));
+    armL.rotation.z = -2.4 - b * 0.3; armR.rotation.z = 2.4 - b * 0.3;   // hands up, pumping
+    elbowL.rotation.x = -(-0.6); elbowR.rotation.x = -(-0.6);
+    ed.body.rotation.z = b * 0.15; ed.head.rotation.z = -b * 0.18;
+    legL.rotation.z = -0.15; legR.rotation.z = 0.15;
+    kneeL.rotation.x = -(up * 0.6); kneeR.rotation.x = -((1 - up) * 0.6);
+    ed.body.position.y = up * 0.25;
+    if (actT > 2.6){ act = null; ed.face.set(EXPRS[exprIdx][0]); }
+  } else if (act === 'hit'){
+    actT += dt;
+    const k = actT < 0.12 ? ease(actT / 0.12) : 1 - ease(Math.min(1, (actT - 0.12) / 0.8));
+    ed.body.rotation.x = 0.35 * k;                                     // knocked back
+    ed.head.rotation.x = -0.3 * k;
+    armL.rotation.z = -1.3 * k; armR.rotation.z = 1.3 * k; armL.rotation.x = armR.rotation.x = -0.6 * k;
+    elbowL.rotation.x = elbowR.rotation.x = -(-0.9 * k);
+    legL.rotation.x = 0.3 * k; kneeL.rotation.x = -(0.6 * k);
+    ed.body.position.z = 0.3 * k;
+    if (actT > 1.0){ act = null; ed.face.set(EXPRS[exprIdx][0]); }
+  }
+
+  // jump: crouch (anticipation) → stretch in the air → squash on landing
+  if (jumpT >= 0){
+    jumpT += dt;
+    const C = 0.18, AIR = 0.55, L = 0.2;
+    if (jumpT < C){
+      const k = ease(jumpT / C);
+      kneeL.rotation.x = kneeR.rotation.x = -(1.0 * k); legL.rotation.x = legR.rotation.x = 0.5 * k;
+      ed.body.position.y = -0.22 * k; ed.body.scale.set(1 + 0.08 * k, 1 - 0.1 * k, 1 + 0.08 * k);
+      armL.rotation.x = armR.rotation.x = 0.6 * k;
+    } else if (jumpT < C + AIR){
+      const u = (jumpT - C) / AIR, y = 4 * u * (1 - u) * 1.6;
+      ed.body.position.y = y;
+      const st = 1 + 0.08 * (1 - u);
+      ed.body.scale.set(1 / Math.sqrt(st), st, 1 / Math.sqrt(st));
+      armL.rotation.z = -2.2; armR.rotation.z = 2.2; elbowL.rotation.x = elbowR.rotation.x = -(-0.4);
+      kneeL.rotation.x = -(0.9 * u); kneeR.rotation.x = -(0.4 + 0.5 * u);     // tuck the legs
+      legL.rotation.x = 0.4 * u; legR.rotation.x = 0.25;
+    } else if (jumpT < C + AIR + L){
+      const k = 1 - ease((jumpT - C - AIR) / L);
+      ed.body.scale.set(1 + 0.12 * k, 1 - 0.14 * k, 1 + 0.12 * k);
+      ed.body.position.y = -0.18 * k; kneeL.rotation.x = kneeR.rotation.x = -(0.8 * k);
+    } else jumpT = -1;
+  }
+
+  const mobile = innerWidth < innerHeight;
+  camera.position.set(0, 2.1, mobile ? -12 : -10.5);
+  camera.lookAt(0, 1.6, 0);
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
