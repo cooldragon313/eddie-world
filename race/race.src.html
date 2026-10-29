@@ -49,6 +49,12 @@
   .meter.warn i{background:var(--sb-gold-soft)} .meter.danger i{background:var(--sb-red)}
   .meter.stam{height:9px} .meter.stam i{background:var(--sb-sky)} .meter.stam.tired i{background:#cdb999}
   #danger{position:fixed;inset:auto 0 0 0;height:38vh;z-index:4;pointer-events:none;opacity:0;background:linear-gradient(to top,rgba(200,30,40,.7),rgba(200,30,40,0))}
+  .bubble{position:fixed;z-index:7;transform:translate(-50%,-100%);background:#fff;border:2.5px solid var(--sb-ink);border-radius:14px;padding:4px 10px;
+    font:800 15px/1.3 var(--sb-font);color:var(--sb-ink);white-space:nowrap;pointer-events:none;box-shadow:0 3px 0 rgba(91,58,41,.3);display:none}
+  .bubble::after{content:"";position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);border:8px solid transparent;border-top-color:var(--sb-ink);border-bottom:0}
+  .bubble.cap{transform:translateX(-50%);top:auto !important;bottom:calc(132px + env(safe-area-inset-bottom,0px));background:rgba(40,28,20,.88);color:#fff;border-color:#1c120c;white-space:normal;max-width:88vw;text-align:center}
+  .bubble.cap::before{content:attr(data-name) "：";color:#ffcf5a}
+  .bubble.cap::after{display:none}
   .flash{position:fixed;left:50%;top:24%;transform:translateX(-50%);z-index:8;font-weight:900;font-size:22px;color:#fff;-webkit-text-stroke:1.5px var(--sb-ink);pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
   .flash.on{opacity:1}
   .big{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9;pointer-events:none;font-size:96px;font-weight:700;color:var(--sb-paper);-webkit-text-stroke:3px var(--sb-ink)}
@@ -128,7 +134,7 @@
   <span class="chip">🪙 <b id="hCoins">0</b></span>
 </div>
 <div class="hud tr">
-  <span class="lbl">刺牆距離</span>
+  <span class="lbl" id="chaserLbl">刺牆距離</span>
   <div class="meter" id="meter"><i id="meterBar"></i></div>
   <span class="lbl">衝刺體力</span>
   <div class="meter stam" id="stam"><i id="stamBar"></i></div>
@@ -137,6 +143,7 @@
 </div>
 <div id="danger"></div>
 <div class="flash" id="flash"></div>
+<div id="bubbles"></div>
 <button id="restartBtn" type="button" hidden>🔄 重來</button>
 <div id="lineHint" hidden>LINE 裡不能全螢幕：點右上角 ⋯ 選「用預設瀏覽器開啟」<button type="button" id="lineHintX">知道了</button></div>
 <div class="big" id="count" hidden></div>
@@ -168,7 +175,7 @@
     <span>時間</span><b id="rTime">0</b>
     <span>最佳紀錄</span><b id="rBest">—</b>
     <span>撿到金幣</span><b id="rCoins">0</b>
-    <span>被刺牆追到</span><b id="rCaught">0</b>
+    <span>被追到</span><b id="rCaught">0</b>
     <span>失誤（被打中・掉下去・被追到）</span><b id="rFails">0</b>
   </div>
   <p id="rTitle" style="font-weight:900;font-size:18px"></p>
@@ -211,7 +218,8 @@ const BODY_H = 2.2, CROUCH_H = 1.1, CROUCH_SPEED = 0.55;
 // ---------- LEVEL 1: 荊棘峽谷 (unchanged numbers from the released version) ----------
 const LEVEL1 = {
   id: 1, name: '第一關 荊棘峽谷', short: '荊棘峽谷',
-  blurb: '刺牆從背後追上來！衝過地坑、會冒出來的荊棘、落石、機關牆、火焰怪，還有終點的大魔王。',
+  blurb: '酒鬼大叔從背後追上來！撞倒路上的酒、躲開鬼媽媽的熱熔膠條、衝過火焰怪，終點還有小屁孩大魔王。',
+  drunk: true,
   finish: 530, end: 560, finishBonus: 15, scenery: 'canyon', lateral: 0.8, camFollow: 0.6,
   clampX: L1_LANE - 0.5,
   checkpoints: [[0, 0], [30, 0], [130, 0], [230, 0], [330, 0], [430, 0]],
@@ -233,6 +241,11 @@ const LEVEL1 = {
   minions: { from: 440, to: 526, count: 10, speed: 2.6, fireEvery: 2.8, fireSpeed: 8 },
   // the end boss behind the podium: rolls barrels down the road and breathes fire
   boss: { m: 554, from: 455, barrelEvery: 1.7, barrelSpeed: 9, fireEvery: 3.0, fireSpeed: 10 },
+  // bottles on the road: knock them over, or the drunk drinks them and speeds up
+  bottles: [[20,-3],[36,4],[56,5],[80,-5],[100,3],[128,-2],[150,5],[178,-5],[240,3],[262,-4],[300,5],[340,-3],[365,4],[410,-4],[445,5],[490,-5]],
+  // ghost mom patrols an O or an upright 8 and whips you with a glue stick;
+  // while she's shopping on her phone she doesn't look (safe to pass)
+  ghostMoms: [{ m: 280, x: 0, path: 'O', r: 5, speed: 0.55 }, { m: 384, x: 0, path: '8', w: 4, h: 7, speed: 0.45 }],
   // Bamboo spears from the canyon walls: 'low' = jump over, 'high' = crouch under.
   // The hole glows red 0.7 s before each shot; its height tells you which.
   spears: [
@@ -357,6 +370,10 @@ const mats = {
   fire: new THREE.MeshBasicMaterial({ color: 0xff8a1e }), fireCore: new THREE.MeshBasicMaterial({ color: 0xffe066 }),
   fireBack: new THREE.MeshBasicMaterial({ color: 0x2e9b62 }),
   barrel: LM(0xb0753a), barrelBand: LM(0x5b3a29), boss: LM(0x7a4fb0), bossBelly: LM(0xd9c2f0),
+  skin: LM(0xffd9b8), track: LM(0x3a6fd8), trackStripe: LM(0xffffff), hairBlack: LM(0x1c1410), nose: LM(0xe0584a), headband: LM(0xe0584a),
+  ghostDress: LM(0xf4f1ea), ghostSkin: LM(0xe6e2da), glue: new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0.85 }),
+  phone: new THREE.MeshBasicMaterial({ color: 0x8fd3ff }), diaper: LM(0xffffff), shirt: LM(0xffcf5a), remote: LM(0x2a2a30), wheel: LM(0x222222),
+  bottleG: LM(0x2e9b62), bottleB: LM(0x8a5a2a),
 };
 
 // Everything a level builds goes into one group so switching levels is a clean swap
@@ -367,6 +384,7 @@ const box = (w, h, d, mat, x, y, z, outline) => {
   o.position.set(x, y, z); add(o); if (outline) sbOutline(o, 0.05); return o;
 };
 function clearWorld(){
+  if (typeof clearBubbles === 'function') clearBubbles();
   scene.remove(world);
   world.traverse(o => { if (o.geometry && !o.userData.sharedGeo) o.geometry.dispose(); });
   world = new THREE.Group(); scene.add(world);
@@ -399,57 +417,163 @@ function makeMinion(){
   }
   return g;
 }
-// The boss's face is drawn on a canvas: a chubby, grumpy kid-king (Eddie)
+// ---------- speech bubbles (above a 3D object, or a caption when it's off screen) ----------
+const bubbleList = [], _bv = new THREE.Vector3();
+function say(obj, text, dur, opts){
+  let b = obj.userData.bubble;
+  if (!b){
+    const el = document.createElement('div'); el.className = 'bubble'; $('bubbles').appendChild(el);
+    b = obj.userData.bubble = { el, obj, until: 0 }; bubbleList.push(b);
+  }
+  b.y = (opts && opts.y) || 4; b.el.dataset.name = (opts && opts.name) || '';
+  b.el.textContent = text; b.until = performance.now() / 1000 + (dur || 2);
+}
+function updateBubbles(){
+  const now = performance.now() / 1000;
+  for (const b of bubbleList){
+    if (now > b.until){ b.el.style.display = 'none'; continue; }
+    b.obj.getWorldPosition(_bv); _bv.y += b.y; _bv.project(camera);
+    b.el.style.display = 'block';
+    if (_bv.z > 1 || Math.abs(_bv.x) > 1.02 || _bv.y > 1.02 || _bv.y < -1.02){ b.el.classList.add('cap'); b.el.style.left = '50%'; }
+    else { b.el.classList.remove('cap'); b.el.style.left = ((_bv.x + 1) / 2 * innerWidth) + 'px'; b.el.style.top = ((1 - _bv.y) / 2 * innerHeight) + 'px'; }
+  }
+}
+function clearBubbles(){ for (const b of bubbleList) b.el.remove(); bubbleList.length = 0; }
+function hushBubbles(){ for (const b of bubbleList) b.until = 0; }
+
+// ---------- drunk uncle (the chaser in level 1) ----------
+function makeDrunk(){
+  const g = new THREE.Group(), u = g.userData;
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.7, 1.0), mats.track); torso.position.y = 2.55; g.add(torso); sbOutline(torso, 0.05);
+  for (const sx of [-0.55, 0.55]){ const st = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.7, 1.02), mats.trackStripe); st.position.set(sx, 2.55, 0); g.add(st); }
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 12), mats.track); belly.position.set(0, 2.25, -0.35); g.add(belly);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 12), mats.skin); head.position.y = 3.95; g.add(head); sbOutline(head, 0.05);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), mats.nose); nose.position.set(0, 3.9, -0.68); g.add(nose);
+  for (const sx of [-0.45, 0.45]){ const ck = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), mats.nose); ck.position.set(sx, 3.78, -0.55); g.add(ck); }
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.72, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), mats.hairBlack); hair.position.y = 4.0; g.add(hair);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.73, 0.73, 0.16, 18, 1, true), mats.headband); band.position.y = 4.18; g.add(band);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.6, 8), mats.hairBlack); tail.position.set(0, 4.05, 0.78); tail.rotation.x = -2.2; g.add(tail);   // little ponytail
+  const knot = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), mats.headband); knot.position.set(0, 4.25, 0.68); g.add(knot);
+  for (const sx of [-1, 1]){
+    const arm = new THREE.Group(); arm.position.set(sx * 0.95, 3.25, 0);
+    const a = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.18, 1.3, 10), mats.track); a.position.y = -0.6; arm.add(a);
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), mats.skin); h.position.y = -1.3; arm.add(h);
+    g.add(arm); u[sx < 0 ? 'armL' : 'armR'] = arm;
+    const leg = new THREE.Group(); leg.position.set(sx * 0.4, 1.7, 0);
+    const l = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.22, 1.5, 10), mats.track); l.position.y = -0.75; leg.add(l);
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.7), mats.trackStripe); shoe.position.set(0, -1.55, -0.12); leg.add(shoe);
+    g.add(leg); u[sx < 0 ? 'legL' : 'legR'] = leg;
+  }
+  g.scale.setScalar(0.9);
+  const own = new Map();
+  g.traverse(o => { if (o.isMesh && o.material){ if (!own.has(o.material)){ const c = o.material.clone(); c.transparent = true; own.set(o.material, c); } o.material = own.get(o.material); } });
+  u.mats = [...own.values()];
+  return g;
+}
+function mosaicTexture(){
+  const c = document.createElement('canvas'); c.width = c.height = 8; const x = c.getContext('2d');
+  const pal = ['#c9b458', '#a8b04a', '#e0c890', '#8a9a3a', '#d8a860', '#b8c070'];
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++){ x.fillStyle = pal[(Math.random() * pal.length) | 0]; x.fillRect(i, j, 1, 1); }
+  const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; return t;
+}
+function puke(){
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: mosaicTexture() }));
+  // on the ground behind his feet, well clear of the player (the mosaic is the puke, never you)
+  sp.scale.set(1.7, 1.1, 1); sp.position.set(S.x - 0.3, 0.45, -(S.m - 2.6)); add(sp);
+  pukes.push({ sp, until: S.time + 2.6 });
+}
+// bottles on the road
+function makeBottle(i){
+  const g = new THREE.Group(), mat = i % 2 ? mats.bottleG : mats.bottleB;
+  const b = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 0.9, 12), mat); b.position.y = 0.45; g.add(b); sbOutline(b, 0.03);
+  const n = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, 0.45, 10), mat); n.position.y = 1.1; g.add(n);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.1, 10), mats.gold); cap.position.y = 1.36; g.add(cap);
+  const lab = new THREE.Mesh(new THREE.CylinderGeometry(0.305, 0.305, 0.35, 12, 1, true), mats.trackStripe); lab.position.y = 0.45; g.add(lab);
+  return g;
+}
+
+// ---------- ghost mom (white dress, hair over her face, glue stick) ----------
+function makeGhostMom(){
+  const g = new THREE.Group(), u = g.userData;
+  const dress = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 1.15, 2.4, 18), mats.ghostDress); dress.position.y = 1.2; g.add(dress); sbOutline(dress, 0.05);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), mats.ghostSkin); head.position.y = 2.75; g.add(head);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.57, 14, 10), mats.hairBlack); hair.position.set(0, 2.86, -0.04); g.add(hair);
+  const veil = new THREE.Mesh(new THREE.BoxGeometry(0.98, 1.7, 0.12), mats.hairBlack); veil.position.set(0, 2.3, 0.48); g.add(veil);   // hair over the face
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.9, 0.2), mats.hairBlack); back.position.set(0, 2.1, -0.38); g.add(back);
+  for (const sx of [-1, 1]){
+    const arm = new THREE.Group(); arm.position.set(sx * 0.62, 2.2, 0.1);
+    const a = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 1.0, 8), mats.ghostSkin); a.position.y = -0.5; arm.add(a);
+    if (sx > 0){ const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.9, 10), mats.glue); stick.rotation.x = Math.PI / 2; stick.position.set(0, -1.0, 0.85); arm.add(stick); }
+    else { const ph = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.45, 0.05), mats.phone); ph.position.set(0, -1.05, 0.15); arm.add(ph); u.phone = ph; }
+    g.add(arm); u[sx < 0 ? 'armL' : 'armR'] = arm;
+  }
+  return g;
+}
+function ghostPos(gh){
+  if (gh.path === '8') return { x: gh.x + gh.w * Math.sin(2 * gh.th), m: gh.m0 + gh.h * Math.sin(gh.th) };
+  return { x: gh.x + gh.r * Math.cos(gh.th), m: gh.m0 + gh.r * Math.sin(gh.th) };
+}
+const GHOST_LINES = ['熱熔膠一條十塊錢！', '給我認真點好嗎！'];
+
+// ---------- little-kid boss (sits at the end, throws toy cars and remotes) ----------
 function bossFaceTexture(){
   const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
-  x.fillStyle = '#ffd9b8'; x.beginPath(); x.ellipse(128, 136, 112, 108, 0, 0, Math.PI * 2); x.fill();
+  x.fillStyle = '#ffe0c4'; x.beginPath(); x.ellipse(128, 132, 116, 112, 0, 0, Math.PI * 2); x.fill();
   x.lineWidth = 8; x.strokeStyle = '#5b3a29'; x.stroke();
-  x.fillStyle = 'rgba(255,120,120,.55)'; for (const cx of [62, 194]){ x.beginPath(); x.ellipse(cx, 160, 26, 18, 0, 0, Math.PI * 2); x.fill(); }
-  x.fillStyle = '#3b2a20'; x.beginPath(); x.ellipse(128, 40, 100, 34, 0, Math.PI, 0); x.fill();        // hair
-  x.strokeStyle = '#2a1a12'; x.lineWidth = 12; x.lineCap = 'round';
-  x.beginPath(); x.moveTo(60, 88); x.lineTo(108, 106); x.moveTo(196, 88); x.lineTo(148, 106); x.stroke();   // angry brows
-  x.fillStyle = '#fff'; for (const cx of [88, 168]){ x.beginPath(); x.ellipse(cx, 126, 20, 16, 0, 0, Math.PI * 2); x.fill(); }
-  x.fillStyle = '#2a1a12'; for (const cx of [94, 162]){ x.beginPath(); x.arc(cx, 128, 9, 0, Math.PI * 2); x.fill(); }
-  x.fillStyle = '#7a1f1f'; x.beginPath(); x.moveTo(72, 180); x.quadraticCurveTo(128, 236, 184, 180); x.closePath(); x.fill();   // big grin
-  x.fillStyle = '#fff'; for (const tx of [92, 164]){ x.beginPath(); x.moveTo(tx - 10, 182); x.lineTo(tx + 10, 182); x.lineTo(tx, 200); x.closePath(); x.fill(); }
-  const t = new THREE.CanvasTexture(c); return t;
+  x.fillStyle = 'rgba(255,110,110,.55)'; for (const cx of [58, 198]){ x.beginPath(); x.ellipse(cx, 160, 28, 20, 0, 0, Math.PI * 2); x.fill(); }
+  x.strokeStyle = '#3b2a20'; x.lineWidth = 9; x.lineCap = 'round';
+  x.beginPath(); x.moveTo(66, 92); x.lineTo(104, 104); x.moveTo(190, 92); x.lineTo(152, 104); x.stroke();     // grumpy brows
+  x.fillStyle = '#2a1a12'; for (const cx of [90, 166]){ x.beginPath(); x.ellipse(cx, 128, 17, 21, 0, 0, Math.PI * 2); x.fill(); }
+  x.fillStyle = '#fff'; for (const cx of [95, 171]){ x.beginPath(); x.arc(cx, 121, 6, 0, Math.PI * 2); x.fill(); }
+  x.fillStyle = '#b8323a'; x.beginPath(); x.ellipse(128, 192, 30, 22, 0, 0, Math.PI * 2); x.fill();        // yelling mouth
+  x.fillStyle = '#ff8a8a'; x.beginPath(); x.ellipse(128, 202, 16, 9, 0, 0, Math.PI * 2); x.fill();
+  return new THREE.CanvasTexture(c);
 }
-function bossNameSprite(){
+function bossNameSprite(text){
   const c = document.createElement('canvas'); c.width = 512; c.height = 112; const x = c.getContext('2d');
   x.fillStyle = 'rgba(91,58,41,.92)'; x.beginPath(); x.roundRect ? x.roundRect(4, 4, 504, 104, 40) : x.rect(4, 4, 504, 104); x.fill();
-  x.fillStyle = '#ffcf5a'; x.font = '900 64px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('EDDIE 大魔王', 256, 58);
+  x.fillStyle = '#ffcf5a'; x.font = '900 64px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 256, 58);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
   sp.scale.set(7, 1.55, 1); return sp;
 }
 function makeBoss(){
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(2.6, 22, 16), mats.boss); body.scale.set(1, 1.05, 0.85); body.position.y = 2.7; g.add(body); sbOutline(body, 0.08);
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(1.8, 18, 12), mats.bossBelly); belly.position.set(0, 2.3, 1.4); belly.scale.z = 0.5; g.add(belly);
-  const face = new THREE.Mesh(new THREE.CircleGeometry(1.55, 32), new THREE.MeshBasicMaterial({ map: bossFaceTexture() }));
-  face.position.set(0, 5.3, 1.32); face.rotation.x = -0.25; g.add(face);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(1.7, 20, 14), mats.boss); head.position.set(0, 5.3, 0.1); head.scale.z = 0.7; g.add(head);
-  for (let i = 0; i < 5; i++){   // crown
-    const sp = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.9, 8), mats.gold); sp.position.set(-1 + i * 0.5, 7.15, 0.3); g.add(sp);
+  const diaper = new THREE.Mesh(new THREE.SphereGeometry(2.0, 20, 14), mats.diaper); diaper.scale.y = 0.75; diaper.position.y = 1.5; g.add(diaper); sbOutline(diaper, 0.07);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1.75, 20, 14), mats.shirt); body.position.y = 2.9; g.add(body); sbOutline(body, 0.07);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(1.9, 22, 16), mats.skin); head.position.y = 5.4; g.add(head); sbOutline(head, 0.07);
+  const face = new THREE.Mesh(new THREE.CircleGeometry(1.5, 32), new THREE.MeshBasicMaterial({ map: bossFaceTexture() }));
+  face.position.set(0, 5.3, 1.95); face.rotation.x = -0.2; g.add(face);
+  const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.9, 8), mats.hairBlack); tuft.position.set(0, 7.5, 0); tuft.rotation.z = 0.4; g.add(tuft);
+  for (const sx of [-1, 1]){
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.4, 10, 8), mats.skin); ear.position.set(sx * 1.85, 5.4, 0); g.add(ear);
+    const arm = new THREE.Group(); arm.position.set(sx * 1.9, 3.6, 0.3);
+    const a = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), mats.skin); a.scale.y = 1.6; a.position.y = -0.7; arm.add(a);
+    g.add(arm); g.userData[sx < 0 ? 'armL' : 'armR'] = arm;
+    const leg = new THREE.Mesh(new THREE.SphereGeometry(0.75, 12, 10), mats.skin); leg.position.set(sx * 1.2, 0.6, 1.6); leg.scale.z = 1.4; g.add(leg);
   }
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(1.35, 1.35, 0.35, 20, 1, true), mats.gold); band.position.set(0, 6.7, 0.2); g.add(band);
-  for (const s of [-1, 1]){
-    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.2, 8), mats.horn); horn.position.set(s * 1.6, 6.4, 0); horn.rotation.z = -s * 0.6; g.add(horn);
-    const arm = new THREE.Group(); arm.position.set(s * 2.5, 4.0, 0.3);
-    const a = new THREE.Mesh(new THREE.SphereGeometry(0.75, 14, 10), mats.boss); a.scale.y = 1.6; a.position.y = -0.9; arm.add(a);
-    g.add(arm); g.userData[s < 0 ? 'armL' : 'armR'] = arm;
-    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.9, 14, 10), mats.boss); foot.position.set(s * 1.3, 0.35, 0.8); foot.scale.y = 0.55; g.add(foot);
-  }
-  const name = bossNameSprite(); name.position.set(0, 8.6, 0); g.add(name);
-  // barrel stack beside him
-  for (const [bx, by] of [[3.6, 0.75], [4.9, 0.75], [4.25, 2.05]]){
-    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.3, 14), mats.barrel); b.position.set(bx, by, -0.5); g.add(b);
+  const name = bossNameSprite('小屁孩大魔王'); name.position.set(0, 8.8, 0); g.add(name);
+  // toy pile beside him
+  for (const [bx, bz] of [[3.4, 0.6], [4.4, -0.4], [3.9, -1.4]]){ const car = makeCar(); car.position.set(bx, 0.45, bz); car.rotation.y = bx; g.add(car); }
+  for (const [bx, bz] of [[-3.6, 0.4], [-4.3, -0.8]]){ const r = makeRemote(); r.position.set(bx, 0.1, bz); r.rotation.y = bz; g.add(r); }
+  return g;
+}
+const CAR_COLORS = [0xe0584a, 0x3a6fd8, 0xffcf5a, 0x2e9b62, 0xf4f1ea];
+function makeCar(){
+  const g = new THREE.Group(), mat = LM(CAR_COLORS[(Math.random() * CAR_COLORS.length) | 0]);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.45, 1.7), mat); g.add(body); sbOutline(body, 0.04);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.4, 0.85), mats.phone); cab.position.set(0, 0.42, 0.1); g.add(cab);
+  for (const [wx, wz] of [[-0.52, -0.55], [0.52, -0.55], [-0.52, 0.55], [0.52, 0.55]]){
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.16, 12), mats.wheel); w.rotation.z = Math.PI / 2; w.position.set(wx, -0.22, wz); g.add(w);
   }
   return g;
 }
-function makeBarrel(){
+function makeBarrel(){ return makeCar(); }
+function makeRemote(){
   const g = new THREE.Group();
-  const b = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 1.5, 16), mats.barrel); b.rotation.z = Math.PI / 2; g.add(b); sbOutline(b, 0.04);
-  for (const o of [-0.45, 0.45]){ const r = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.12, 16), mats.barrelBand); r.rotation.z = Math.PI / 2; r.position.x = o; g.add(r); }
+  const b = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.95), mats.remote); g.add(b);
+  for (const [bx, bz, c] of [[0, -0.3, mats.nose], [-0.09, 0, mats.phone], [0.09, 0, mats.phone], [0, 0.2, mats.gold]]){
+    const k = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), c); k.position.set(bx, 0.08, bz); g.add(k);
+  }
   return g;
 }
 function makeFireball(r){
@@ -468,7 +592,8 @@ function hurt(kind, text, knock){
 // ---------- build a level ----------
 let walls = [], covers = [], turrets = [], coins = [], bars = [], hammers = [], movers = [], gateObj = null, spears = [];
 const flying = [];   // bamboo spears in the air
-let thornObjs = [], minions = [], boss = null;
+let thornObjs = [], minions = [], boss = null, ghosts = [], bottles = [];
+const pukes = [];
 const fireballs = [], barrels = [];
 const chaserMat = new THREE.MeshLambertMaterial({ color: 0x8a3fa0, transparent: true, opacity: 1 });
 const chaserSpike = new THREE.MeshLambertMaterial({ color: 0xe0584a, transparent: true, opacity: 1 });
@@ -604,13 +729,22 @@ function buildLevel(level){
     const mesh = new THREE.Mesh(coinGeo, mats.coin); mesh.userData.sharedGeo = true; mesh.rotation.x = Math.PI / 2; mesh.position.set(x, 1, -m); add(mesh);
     coins.push({ m, x, mesh, taken: false });
   }
-  // the chaser
-  chaser = new THREE.Group();
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(L1_LANE * 2 + 2, 4, 1.2), chaserMat); slab.position.y = 2; chaser.add(slab);
-  for (let x = -L1_LANE; x <= L1_LANE; x += 1.3) for (let y = 0.6; y < 4; y += 1.3){
-    const c = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.4, 6), chaserSpike); c.rotation.x = -Math.PI / 2; c.position.set(x, y, -1.2); chaser.add(c);
+  // the chaser: a drunk uncle in level 1, the spike wall elsewhere
+  if (level.drunk){ chaser = makeDrunk(); }
+  else {
+    chaser = new THREE.Group();
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(L1_LANE * 2 + 2, 4, 1.2), chaserMat); slab.position.y = 2; chaser.add(slab);
+    for (let x = -L1_LANE; x <= L1_LANE; x += 1.3) for (let y = 0.6; y < 4; y += 1.3){
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.4, 6), chaserSpike); c.rotation.x = -Math.PI / 2; c.position.set(x, y, -1.2); chaser.add(c);
+    }
   }
-  add(chaser);
+  add(chaser); chaser.userData.x = 0;
+  $('chaserLbl').textContent = level.drunk ? '酒鬼距離' : '刺牆距離';
+  bottles = (level.bottles || []).map(([m, x], i) => { const g = makeBottle(i); g.position.set(x, 0, -m); add(g); return { m, x, g, state: 'up', t: 0 }; });
+  ghosts = (level.ghostMoms || []).map((gm, i) => {
+    const g = makeGhostMom(); add(g);
+    return { ...gm, m0: gm.m, g, th: i * 1.3, state: 'watch', until: 5 + i * 2, whipT: -9, whipCd: 0, hitDone: true, warned: false, mm: gm.m, xx: gm.x };
+  });
   document.getElementById('hFinish').textContent = level.finish;
   layoutWalls(0);
 }
@@ -643,12 +777,15 @@ const S = { phase: 'menu', time: 0 };
 function reset(){
   Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, knockX: 0, slowUntil: 0, downUntil: 0,
     swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, cpX: 0, time: 0, caught: 0, pits: 0, shot: 0, hits: 0, rockNext: 0,
-    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0 });
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99 });
   for (const f of flying) world.remove(f.mesh); flying.length = 0;
   for (const sp of spears){ sp.next = 0; sp.armed = true; }
   for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
   for (const b of bullets) world.remove(b.mesh); bullets.length = 0;
-  clearShots();
+  clearShots(); hushBubbles();
+  for (const pk of pukes) world.remove(pk.sp); pukes.length = 0;
+  for (const b of bottles){ b.state = 'up'; b.t = 0; b.g.visible = true; b.g.rotation.set(0, 0, 0); b.g.position.set(b.x, 0, -b.m); }
+  for (const [i, gh] of ghosts.entries()){ gh.th = i * 1.3; gh.state = 'watch'; gh.until = 5 + i * 2; gh.whipCd = 0; gh.hitDone = true; gh.warned = false; }
   for (const mn of minions){ mn.m = mn.hm; mn.x = mn.hx; mn.stunUntil = 0; mn.next = 1 + Math.random() * 1.5; }
   if (boss){ boss.nextBarrel = 0; boss.nextFire = 1.5; boss.stunUntil = 0; }
   for (const c of coins){ c.taken = false; c.mesh.visible = true; }
@@ -786,6 +923,7 @@ function startRun(level){
   reset(); $('startCard').hidden = true; $('endCard').hidden = true;
   $('gateChip').hidden = true;
   S.phase = 'count'; S.countAt = performance.now();
+  if (L.drunk) say(chaser, '你先跑我再追，追到我就對你嘿嘿嘿～', 4, { name: '酒鬼大叔', y: 4.6 });
 }
 $('againBtn').onclick = () => startRun(L);
 $('restartBtn').addEventListener('click', e => { e.preventDefault(); $('restartBtn').blur(); startRun(L); });
@@ -813,7 +951,7 @@ function finish(){
   $('endTitle').textContent = L.short + ' 通關！';
   $('rTime').textContent = t + ' 秒'; $('rBest').textContent = (newBest ? t : prevBest) + ' 秒' + (newBest ? ' 🆕' : '');
   $('rCoins').textContent = S.coins; $('rCaught').textContent = S.caught + ' 次'; $('rFails').textContent = misses + (clean ? ' 👑 完美' : ' 次');
-  const title = clean ? '👑 完美過關' : S.pits >= 3 ? (L.id === 2 ? '☁️ 高空墜落專家' : '🕳 坑底常客') : S.caught >= 3 ? '🦔 刺牆的好朋友'
+  const title = clean ? '👑 完美過關' : S.pits >= 3 ? (L.id === 2 ? '☁️ 高空墜落專家' : '🕳 坑底常客') : S.caught >= 3 ? (L.drunk ? '🍺 酒鬼的好麻吉' : '🦔 刺牆的好朋友')
     : S.hits >= 4 ? '🍢 被烤肉棒串起來' : S.speared >= 4 ? '🎋 竹箭靶子' : S.shot >= 3 ? '🎯 人肉標靶' : S.coins >= 30 ? '💰 撿錢達人' : '🏃 穩穩跑完';
   $('rTitle').textContent = '稱號：' + title;
   $('endCard').hidden = false; $('againBtn').focus();
@@ -917,7 +1055,7 @@ function spitFire(x, m, r, speed, angle, from){
   const dx = S.x - x, dm = S.m - m, d = Math.hypot(dx, dm) || 1;
   const ca = Math.cos(angle), sa = Math.sin(angle);
   const ux = (dx * ca - dm * sa) / d, um = (dx * sa + dm * ca) / d;
-  const mesh = makeFireball(r); add(mesh);
+  const mesh = from === 'boss' ? makeRemote() : makeFireball(r); add(mesh);
   fireballs.push({ x, m, vx: ux * speed, vm: um * speed, mesh, back: false, life: 4, r, from });
 }
 // thorn state: 1 = up (hurts), 0.35 = poking (about to come up), 0 = down (safe)
@@ -928,6 +1066,16 @@ function thornLevel(o, time){
 }
 function step(dt){
   S.time += dt;
+  // caught by the drunk: held for a moment (hug from behind, then he throws up)
+  if (S.heldUntil){
+    if (S.time < S.heldUntil){
+      S.wallM = S.m - 0.9;
+      if (!S.puked && S.time > S.heldUntil - 0.65){ S.puked = true; puke(); say(chaser, '嘔～～', 1, { name: '酒鬼大叔', y: 4.6 }); }
+      return;
+    }
+    S.heldUntil = 0; S.wallM = S.m - 14; S.downUntil = 0;
+    say(chaser, '喝三杯先……', 2, { name: '酒鬼大叔', y: 4.6 });
+  }
   const down = S.time < S.downUntil;
   // joystick (analog, small dead zone, full speed at ~3/4 reach) or keyboard
   const jx = Math.abs(joy.x) > 0.15 ? joy.x : 0, jy = Math.abs(joy.y) > 0.15 ? joy.y : 0;
@@ -1042,6 +1190,27 @@ function step(dt){
     if (gone){ world.remove(b.mesh); b.mesh.geometry.dispose(); bullets.splice(i, 1); }
   }
 
+  // ---- ghost moms: patrol an O / 8, whip when they're looking and you're close ----
+  for (const gh of ghosts){
+    gh.th += gh.speed * dt;
+    const pos = ghostPos(gh); gh.xx = pos.x; gh.mm = pos.m;
+    const near = Math.abs(gh.mm - S.m) < 28;
+    if (S.time > gh.until){
+      gh.state = gh.state === 'watch' ? 'shop' : 'watch';
+      gh.until = S.time + (gh.state === 'watch' ? 5 + Math.random() * 2.5 : 3 + Math.random() * 1.5);
+      if (gh.state === 'shop' && near) say(gh.g, '喔喔喔～OO 又出新包包來逛逛', 2.6, { name: '鬼媽媽', y: 3.7 });
+    }
+    if (gh.mm - S.m > 30) gh.warned = false;
+    const d = Math.hypot(S.x - gh.xx, S.m - gh.mm);
+    if (gh.state !== 'watch') continue;
+    if (!gh.warned && gh.mm > S.m && gh.mm - S.m < 14){ gh.warned = true; say(gh.g, '皮在癢了嗎？', 2, { name: '鬼媽媽', y: 3.7 }); }
+    if (d < 3.2 && S.time > gh.whipCd){ gh.whipT = S.time; gh.whipCd = S.time + 1.3; gh.hitDone = false; }
+    if (!gh.hitDone && S.time > gh.whipT + 0.35){
+      gh.hitDone = true;
+      if (d < 3.0 && S.y < 2 && hurt('hit', '💢 被熱熔膠條抽到！', 7)) say(gh.g, GHOST_LINES[(Math.random() * GHOST_LINES.length) | 0], 2, { name: '鬼媽媽', y: 3.7 });
+    }
+  }
+
   // ---- fire monsters: wake when you're close, waddle toward you, spit fire ----
   const MN = L.minions;
   for (const mn of minions){
@@ -1061,6 +1230,7 @@ function step(dt){
   if (boss && S.m > boss.from && S.time > boss.stunUntil){
     if (S.time > boss.nextBarrel){
       boss.nextBarrel = S.time + boss.barrelEvery * (0.75 + Math.random() * 0.5); boss.throwT = S.time;
+      say(boss.g, '咻咻咻', 0.9, { name: '小屁孩', y: 9.6 });
       const bx = Math.random() < 0.6 ? S.x + (Math.random() - 0.5) * 3 : (Math.random() * 2 - 1) * (L1_LANE - 1.5);
       const mesh = makeBarrel(); add(mesh);
       barrels.push({ x: Math.max(-L1_LANE + 1, Math.min(L1_LANE - 1, bx)), m: boss.m - 9, mesh, roll: 0 });
@@ -1075,7 +1245,7 @@ function step(dt){
     b.m -= boss.barrelSpeed * dt; b.roll += boss.barrelSpeed * dt / 0.72;
     let gone = b.m < boss.from - 30;
     for (const c of covers) if (Math.abs(b.m - c.m) < 1.2 && Math.abs(b.x - c.x) < 2) gone = true;
-    if (!gone && Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.2 && S.y < 1.3 && hurt('hit', '🛢 被大魔王的桶子撞飛！', 10)) gone = true;
+    if (!gone && Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.2 && S.y < 1.3 && hurt('hit', '🚗 被小車撞飛！', 10)) gone = true;
     if (gone){ world.remove(b.mesh); barrels.splice(i, 1); }
   }
   for (let i = fireballs.length - 1; i >= 0; i--){
@@ -1083,13 +1253,13 @@ function step(dt){
     f.m += f.vm * dt; f.x += f.vx * dt; f.life -= dt;
     let gone = f.life <= 0 || Math.abs(f.x) > L1_LANE + 1;
     if (swinging && !f.back && f.m > S.m && f.m - S.m < 2.8 && Math.abs(f.x - S.x) < 1.9){
-      f.back = true; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash('⚾ 火球打回去！');
+      f.back = true; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash(f.from === 'boss' ? '⚾ 遙控器打回去！' : '⚾ 火球打回去！');
     }
     for (const c of covers) if (Math.abs(f.m - c.m) < 0.9 && Math.abs(f.x - c.x) < 1.3) gone = true;
-    if (!gone && !f.back && Math.abs(f.m - S.m) < 0.75 && Math.abs(f.x - S.x) < 0.85 && S.y < 1.9 && hurt('shot', '🔥 被火球燒到！', 7)) gone = true;
+    if (!gone && !f.back && Math.abs(f.m - S.m) < 0.75 && Math.abs(f.x - S.x) < 0.85 && S.y < 1.9 && hurt('shot', f.from === 'boss' ? '📺 被遙控器砸到！' : '🔥 被火球燒到！', 7)) gone = true;
     if (!gone && f.back){
       for (const mn of minions) if (Math.hypot(f.m - mn.m, f.x - mn.x) < 1.1){ mn.stunUntil = S.time + 3; gone = true; flash('💫 火焰怪被打昏了！'); break; }
-      if (!gone && boss && Math.abs(f.m - boss.m) < 3 && Math.abs(f.x) < 3){ boss.stunUntil = S.time + 2.5; gone = true; flash('💥 打中大魔王！他暈了！'); }
+      if (!gone && boss && Math.abs(f.m - boss.m) < 3 && Math.abs(f.x) < 3){ boss.stunUntil = S.time + 2.5; gone = true; flash('💥 打中小屁孩！他哭了！'); say(boss.g, '哇～～～', 2, { name: '小屁孩', y: 9.6 }); }
     }
     if (gone){ world.remove(f.mesh); fireballs.splice(i, 1); }
   }
@@ -1185,8 +1355,23 @@ function step(dt){
   const gapNow = S.m - S.wallM;
   const holdWall = L.gate && S.m >= sectionStart('⑤') && !S.gatePassed;
   if (holdWall) S.wallM = Math.min(S.wallM, L.gate.wallBarrier);
-  else S.wallM += (gapNow > WALL_LEASH ? WALL_CATCHUP : sectionAt(S.m).wall) * dt;
-  if (S.wallM >= S.m - 0.6){ S.caught++; respawn('🦔 被刺牆追到！回檢查點'); }
+  else S.wallM += (gapNow > WALL_LEASH ? WALL_CATCHUP : sectionAt(S.m).wall + S.boost * 0.45) * dt;
+  if (L.drunk){
+    if (gapNow < 6 && S.time - S.nearSaidAt > 7){ S.nearSaidAt = S.time; say(chaser, '你出現啦，我好高興！！', 2, { name: '酒鬼大叔', y: 4.6 }); }
+    // bottles: knock them over; the ones you leave, he drinks (and gets faster)
+    for (const b of bottles){
+      if (b.state !== 'up') continue;
+      if (Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.0 && S.y < 1.4){ b.state = 'down'; b.t = 0; b.dir = Math.sign(S.x - b.x) || 1; S.coins++; flash('🍾 酒瓶撞倒！'); }
+      else if (S.wallM >= b.m){ b.state = 'drunk'; b.g.visible = false; S.boost = Math.min(6, S.boost + 1); say(chaser, '嗝～好喝！', 1.5, { name: '酒鬼大叔', y: 4.6 }); flash('🍺 酒鬼喝了一瓶，變快了！'); }
+    }
+  }
+  if (S.wallM >= S.m - 0.6){
+    S.caught++;
+    if (L.drunk){
+      S.heldUntil = S.time + 1.2; S.puked = false; S.wallM = S.m - 0.9; chaser.userData.x = S.x;
+      say(chaser, '抓到你了～', 1, { name: '酒鬼大叔', y: 4.6 }); flash('🍺 被酒鬼從後面抱住了！');
+    } else respawn('🦔 被刺牆追到！回檢查點');
+  }
   if (S.m >= L.finish) finish();
   // HUD
   $('hSec').textContent = sectionAt(S.m).name; $('hTime').textContent = S.time.toFixed(1);
@@ -1246,20 +1431,46 @@ function render(dt, clock){
     boss.g.position.y = fir < 0.4 ? Math.sin(fir / 0.4 * Math.PI) * 0.5 : 0;
     boss.g.rotation.z = stun ? Math.sin(t * 12) * 0.08 : 0;
   }
-  for (const b of barrels){ b.mesh.position.set(b.x, 0.72, -b.m); b.mesh.rotation.x = -b.roll; }
-  for (const f of fireballs){ f.mesh.position.set(f.x, f.from === 'boss' ? 1.2 : 1.0, -f.m); f.mesh.scale.setScalar(1 + Math.sin(t * 20 + f.x) * 0.12); }
+  for (const b of barrels) b.mesh.position.set(b.x, 0.45, -b.m);
+  for (const f of fireballs){ f.mesh.position.set(f.x, f.from === 'boss' ? 1.2 : 1.0, -f.m); if (f.from === 'boss'){ f.mesh.rotation.y += dt * 14; f.mesh.rotation.x += dt * 6; } else f.mesh.scale.setScalar(1 + Math.sin(t * 20 + f.x) * 0.12); }
   for (const f of flying) f.mesh.position.x = f.x;
   for (const sp of spears) sp.hole.material = (running && sp.next && sp.next - S.time < SPEAR_WARN) ? mats.holeHot : mats.hole;
-  chaser.position.set(0, 0, -(S.wallM || -WALL_START_GAP));
+  if (L.drunk){
+    const cu = chaser.userData, held = running && S.heldUntil;
+    cu.x += ((S.x || 0) - cu.x) * Math.min(1, dt * (held ? 20 : 2.5));
+    chaser.position.set(cu.x, 0, -(S.wallM || -WALL_START_GAP));
+    const ph = t * 9, sw = held ? 0 : Math.sin(ph) * 0.8;
+    cu.legL.rotation.x = sw; cu.legR.rotation.x = -sw;
+    cu.armL.rotation.x = held ? -1.5 : -sw * 0.7; cu.armR.rotation.x = held ? -1.5 : sw * 0.7;   // arms forward = the hug
+    chaser.rotation.z = Math.sin(t * 2.3) * 0.12;                                                // staggering
+    chaser.position.y = held ? 0 : Math.abs(Math.sin(ph)) * 0.25;
+    const see = running && !held && (S.m - S.wallM) < 7;             // see-through when he's right behind you
+    for (const m of cu.mats){ m.opacity = see ? 0.35 : 1; m.depthWrite = !see; }
+  } else chaser.position.set(0, 0, -(S.wallM || -WALL_START_GAP));
+  for (let i = pukes.length - 1; i >= 0; i--){ if (!running || S.time > pukes[i].until){ world.remove(pukes[i].sp); pukes.splice(i, 1); } }
+  for (const b of bottles) if (b.state === 'down' && b.t < 1){ b.t += dt * 4; b.g.rotation.z = -b.dir * Math.min(1, b.t) * Math.PI / 2; b.g.position.x = b.x - b.dir * Math.min(1, b.t) * 0.5; }
+  for (const gh of ghosts){
+    const shop = gh.state !== 'watch';
+    gh.g.position.set(gh.xx, 0.25 + Math.sin(t * 2.5 + gh.th) * 0.15, -gh.mm);
+    gh.g.rotation.y = Math.atan2((S.x || 0) - gh.xx, gh.mm - (S.m || 0)) + (shop ? Math.PI : 0);
+    gh.g.userData.phone.visible = shop;
+    gh.g.userData.armL.rotation.x = shop ? -1.1 : 0;
+    const w = running ? (S.time - gh.whipT) / 0.5 : 9;
+    gh.g.userData.armR.rotation.x = w < 0.7 ? -2.4 * (w / 0.7) : w < 1 ? -2.4 + 3.4 * ((w - 0.7) / 0.3) : 0;
+  }
   // camera: high and behind; level 2 follows you fully sideways (the gate spur)
   _camTarget.set((S.x || 0) * L.camFollow, 9 * camZoom, -(S.m || 0) + 8 * camZoom);
+  const hug = running && L.drunk && S.heldUntil;                    // swing round to the side to show the hug
+  if (hug) _camTarget.set((S.x || 0) + 7, 4.2, -(S.m || 0) + 2);
   if (!Number.isFinite(camera.position.x + camera.position.y + camera.position.z)) camera.position.copy(_camTarget);
-  camera.position.lerp(_camTarget, Math.min(1, dt * 6));
-  camera.lookAt((S.x || 0) * (L.camFollow >= 1 ? 1 : 0.4), 0.5, -(S.m || 0) - 12);
-  const near = running && (S.m - S.wallM) < 9;
+  camera.position.lerp(_camTarget, Math.min(1, dt * (hug ? 10 : 6)));
+  if (hug) camera.lookAt(S.x || 0, 2, -(S.m || 0) + 0.5);
+  else camera.lookAt((S.x || 0) * (L.camFollow >= 1 ? 1 : 0.4), 0.5, -(S.m || 0) - 12);
+  const near = running && !L.drunk && (S.m - S.wallM) < 9;
   chaserMat.opacity = chaserSpike.opacity = near ? 0.35 : 1;
   chaserMat.depthWrite = chaserSpike.depthWrite = !near;
   renderer.render(scene, camera);
+  updateBubbles();
 }
 buildLevel(LEVEL1);
 reset();
