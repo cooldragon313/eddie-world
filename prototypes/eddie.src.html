@@ -90,18 +90,14 @@ function buildEddie(){
   // head: round, a touch wider than tall
   const head = part(body, S(0.86, 32, 22), skin, 0, HY, 0); head.scale.set(1.04, 0.98, 1);
   for (const s of [-1, 1]){ const ear = part(body, S(0.19, 14, 10), skin, s * 0.9, HY - 0.04, 0.05); ear.scale.set(0.5, 1, 0.8); }
-  // hair: a buzzed fade on the sides/back (grey-black stubble over skin),
-  // longer black hair only on top, spiked up and in toward the middle
-  const buzz = LM(0x8a7569);
-  const buzzGeo = new THREE.SphereGeometry(0.885, 32, 18, 0, Math.PI * 2, 0, Math.PI * 0.6);
-  const fade = part(body, buzzGeo, buzz, 0, HY + 0.01, 0.06, true); fade.rotation.x = 0.34; fade.scale.set(1.05, 1, 1.01);
-  const crownGeo = new THREE.SphereGeometry(0.9, 32, 12, 0, Math.PI * 2, 0, Math.PI * 0.3);
-  const cap = part(body, crownGeo, hair, 0, HY + 0.05, 0.02); cap.rotation.x = 0.12; cap.scale.set(0.98, 1, 1.02);
-  const top = part(body, S(0.68, 24, 14), hair, 0, HY + 0.56, 0.02); top.scale.set(1.0, 0.4, 1.08);
+  // hair: one black shell hugging the head (no second layer = no hat brim);
+  // short on the sides just by being skin-tight, length only from the tufts on top
+  const shellGeo = new THREE.SphereGeometry(0.875, 40, 20, 0, Math.PI * 2, 0, Math.PI * 0.56);
+  const shell = part(body, shellGeo, hair, 0, HY + 0.0, 0.04); shell.rotation.x = 0.32; shell.scale.set(1.045, 0.99, 1.01);
   const hairSpikes = [];
   const tufts = [];
   for (let row = 0; row < 3; row++){
-    const n = [5, 6, 5][row], z = [-0.42, -0.05, 0.32][row], y = [0.78, 0.86, 0.8][row];
+    const n = [5, 6, 5][row], z = [-0.42, -0.05, 0.32][row], y = [0.66, 0.76, 0.7][row];
     for (let i = 0; i < n; i++){
       const x = (i - (n - 1) / 2) * 0.2 * (row === 1 ? 1.05 : 1);
       const front = row === 0, mid = Math.abs(x) < 0.15;
