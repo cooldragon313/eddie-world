@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>空拍機拍立得</title>
+<!--
+  SOURCE — edit this file, then run:  python tools/build_proto.py polaroid
+  101 跑酷 v2.5 的特效範本：空拍機跟著艾迪，走到 📷 照片點自動拍照，
+  「喀嚓」＋閃光，一張拍立得從艾迪身上彈出來、慢慢顯影，再飛進右上角的相簿。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&family=Huninn&display=swap">
+<style>
+  :root{
+    --sb-paper:#fff8ec; --sb-ink:#5b3a29; --sb-text:#4a3426; --sb-muted:#9a7d5f;
+    --sb-gold-soft:#ffcf5a; --sb-sky:#6fb3e0;
+    --sb-font:"Fredoka","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --sb-pop:"Huninn","Fredoka","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+    color-scheme:light;
+  }
+  html,body{height:100%}
+  body{margin:0;position:fixed;inset:0;overflow:hidden;color:var(--sb-text);font-family:var(--sb-font);background:#9fd0f0;
+       user-select:none;-webkit-user-select:none;touch-action:none}
+  #stage{position:fixed;inset:0}
+  #head{position:fixed;left:16px;top:calc(12px + env(safe-area-inset-top,0px));pointer-events:none;z-index:2}
+  #head h1{margin:0;font:900 24px var(--sb-font);color:#ffcf5a;-webkit-text-stroke:3px var(--sb-ink);paint-order:stroke fill;letter-spacing:1px;white-space:nowrap}
+  #head p{margin:2px 0 0;font:700 13px var(--sb-font);color:var(--sb-ink);text-shadow:0 0 4px #fff}
+  /* the album in the corner the photos fly into */
+  #album{position:fixed;right:16px;top:calc(12px + env(safe-area-inset-top,0px));z-index:3;display:flex;align-items:center;gap:6px;
+         background:var(--sb-paper);border:2.5px solid var(--sb-ink);border-radius:14px;padding:4px 10px;font:900 16px var(--sb-font);color:var(--sb-ink);box-shadow:0 3px 0 rgba(91,58,41,.3)}
+  #album b{font-size:24px}
+  #album.bump{animation:bump .45s cubic-bezier(.3,1.8,.5,1)}
+  @keyframes bump{40%{transform:scale(1.3) rotate(-6deg)}}
+  #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:4}
+  /* the polaroid */
+  .pola{position:fixed;left:0;top:0;z-index:5;width:150px;padding:9px 9px 0;background:#fffdf7;border-radius:3px;
+        box-shadow:0 10px 24px rgba(40,25,15,.35),0 2px 0 rgba(91,58,41,.25);transform-origin:50% 50%;pointer-events:none;will-change:transform}
+  .pola .img{width:132px;height:132px;background:#2a2a2a center/cover;position:relative;overflow:hidden}
+  .pola .img::after{content:'';position:absolute;inset:0;background:#3b3f45;opacity:var(--dev,1)}   /* the undeveloped film */
+  .pola p{margin:0;height:38px;display:flex;align-items:center;justify-content:center;font:18px var(--sb-pop);color:#3a5a9a;transform:rotate(-2deg);white-space:nowrap}
+  .pola .tape{position:absolute;left:50%;top:-10px;width:54px;height:20px;margin-left:-27px;background:rgba(255,214,120,.75);transform:rotate(-4deg)}
+  #toast{position:fixed;left:50%;top:22%;transform:translateX(-50%) scale(.85);z-index:6;font:18px var(--sb-pop);color:var(--sb-ink);background:var(--sb-paper);
+         border:2.5px solid var(--sb-ink);border-radius:18px;padding:6px 16px;box-shadow:0 4px 0 rgba(91,58,41,.35);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap}
+  #toast.on{opacity:1;transform:translateX(-50%) scale(1)}
+  #bar{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:0 16px;z-index:2}
+  .btn{font:700 15px var(--sb-font);background:var(--sb-gold-soft);color:var(--sb-ink);border:2.5px solid var(--sb-ink);border-radius:999px;
+       padding:8px 16px;cursor:pointer;box-shadow:0 4px 0 rgba(91,58,41,.35);touch-action:none}
+  .btn.ghost{background:#fff}
+  .btn:active,.btn.on{transform:translateY(2px);box-shadow:0 2px 0 rgba(91,58,41,.35)}
+  .btn:focus-visible{outline:3px solid var(--sb-sky);outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="head"><h1>📷 空拍機拍立得</h1><p>走到發光的 📷 框框，空拍機會自動幫艾迪拍照</p></div>
+<div id="album"><b>📖</b><span id="count">0 / 3</span></div>
+<div id="flash"></div>
+<div id="toast"></div>
+<div id="bar">
+  <button class="btn" id="left" type="button">◀</button>
+  <button class="btn" id="auto" type="button">▶ 自動走一遍</button>
+  <button class="btn" id="right" type="button">▶</button>
+  <button class="btn ghost" id="reset" type="button">↺ 重來</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*@@INCLUDE:LOOK@@*/
+
+/*@@INCLUDE:AVATAR@@*/
+
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ---------- scene: a stretch of 101's glass wall with a long window ledge ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });   // so a frame can be copied into a photo
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+$('stage').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9fd0f0);
+scene.fog = new THREE.Fog(0xb8dcf2, 40, 160);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 400);
+scene.add(new THREE.HemisphereLight(0xfff2dc, 0x8aa0b8, 0.85));
+const sun = new THREE.DirectionalLight(0xffeccc, 0.6); sun.position.set(20, 40, 30); scene.add(sun);
+function fit(){ const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.fov = w < h ? 64 : 48; camera.updateProjectionMatrix(); }
+addEventListener('resize', fit); fit();
+const LM = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+
+const glass = (() => { const c = document.createElement('canvas'); c.width = 256; c.height = 192; const x = c.getContext('2d'), w = 256, h = 192;
+  x.fillStyle = '#3f8b84'; x.fillRect(0, 0, w, h);
+  for (let i = 0; i < 6; i++){ const gx = i * w / 6; x.fillStyle = i % 2 ? '#6fb7ad' : '#86c9bf'; x.fillRect(gx + 4, 6, w / 6 - 8, h - 28); x.fillStyle = 'rgba(255,255,255,.25)'; x.fillRect(gx + 8, 10, 8, h - 40); }
+  x.fillStyle = '#2f6e68'; x.fillRect(0, h - 22, w, 22); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(10, 6); return t; })();
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(60, 18), new THREE.MeshLambertMaterial({ map: glass })); wall.position.set(0, 4, 0); scene.add(wall);
+const ledge = new THREE.Mesh(sbRoundBox(30, 0.35, 1.3, 0.1), LM(0xe9e2d4)); ledge.position.set(0, -0.175, 0.65); scene.add(ledge);
+const ac = new THREE.Mesh(sbRoundBox(1.8, 1.0, 1.4, 0.12), LM(0xf4f4f4)); ac.position.set(-6, 2.6, 0.7); scene.add(ac);
+for (let i = 0; i < 40; i++){ const h = 4 + Math.random() * 20, b = new THREE.Mesh(new THREE.BoxGeometry(4 + Math.random() * 5, h, 4), LM([0xe8d6b8, 0xc9d7e0, 0xf2c9a8, 0xbfe0cc][i % 4]));
+  b.position.set(-90 + i * 4.6, -40 + h / 2, 40 + Math.random() * 60); scene.add(b); }
+sbOutline(scene, 0.04);
+
+// ---------- Eddie ----------
+const me = buildEddieAvatar(null, { bat: false }); me.group.scale.setScalar(0.62); scene.add(me.group);
+const P = { x: -11, vx: 0, face: 1, phase: 0, pose: 0 };
+
+// ---------- the drone ----------
+const drone = (() => {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(sbRoundBox(0.62, 0.2, 0.62, 0.08), LM(0xf2f2ee)));
+  const props = [];
+  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]){
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.08), LM(0x555a60)); arm.position.set(x * 0.32, 0.02, z * 0.32); arm.rotation.y = x * z > 0 ? -Math.PI / 4 : Math.PI / 4; g.add(arm);
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.02, 16), new THREE.MeshBasicMaterial({ color: 0x9aa3ad, transparent: true, opacity: 0.55 })); p.position.set(x * 0.48, 0.1, z * 0.48); g.add(p); props.push(p);
+  }
+  const cam = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 8), LM(0x2a2a2a)); cam.position.set(0, -0.15, 0.18); g.add(cam);
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3b30 })); led.position.set(0, 0.13, 0.3); g.add(led);
+  sbOutline(g, 0.03); scene.add(g);
+  return { g, props, led, pos: new THREE.Vector3(-9, 3, 2.5) };
+})();
+
+// ---------- photo spots: a glowing frame with a camera on it ----------
+const SPOTS = [
+  { x: -5, title: '冷氣機上的艾迪' },
+  { x: 1, title: '36F・竹節上的男人' },
+  { x: 7, title: '38F・鴿屎運' },
+];
+const frameTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.strokeStyle = '#ffcf5a'; x.lineWidth = 8; x.setLineDash([16, 10]); x.strokeRect(8, 8, 112, 112);
+  x.font = '48px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('📷', 64, 66); return new THREE.CanvasTexture(c); })();
+for (const s of SPOTS){
+  s.mesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: frameTex, transparent: true, opacity: 0.85, depthWrite: false })); s.mesh.scale.set(1.6, 1.6, 1);
+  s.mesh.position.set(s.x, 1.3, 1.2); scene.add(s.mesh);
+}
+let got = 0;
+
+// ---------- sound ----------
+let ac0 = null;
+const actx = () => { if (!ac0){ try { ac0 = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac0 && ac0.state === 'suspended') ac0.resume(); return ac0; };
+addEventListener('pointerdown', actx, true); addEventListener('keydown', actx, true);
+function noise(t, dur, vol, f){ const a = ac0, b = a.createBuffer(1, Math.max(1, a.sampleRate * dur | 0), a.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const n = a.createBufferSource(); n.buffer = b; const fl = a.createBiquadFilter(); fl.type = 'highpass'; fl.frequency.value = f; const g = a.createGain(); g.gain.value = vol;
+  n.connect(fl); fl.connect(g); g.connect(a.destination); n.start(t); }
+function tone(t, type, f0, f1, dur, vol){ const a = ac0, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.02); }
+const sfx = {
+  beep(){ if (!actx()) return; const t = ac0.currentTime; tone(t, 'square', 1320, 1320, 0.06, 0.04); tone(t + 0.09, 'square', 1760, 1760, 0.06, 0.04); },
+  shutter(){ if (!actx()) return; const t = ac0.currentTime; noise(t, 0.03, 0.5, 2500); tone(t, 'square', 180, 90, 0.03, 0.15); noise(t + 0.07, 0.04, 0.4, 1800); },   // 喀—嚓
+  eject(){ if (!actx()) return; const t = ac0.currentTime; tone(t, 'sawtooth', 120, 90, 0.5, 0.05); noise(t, 0.5, 0.05, 600); },                                   // the polaroid motor
+  swish(){ if (!actx()) return; const t = ac0.currentTime; noise(t, 0.3, 0.12, 1200); },
+  pop(){ if (!actx()) return; const t = ac0.currentTime; [784, 988, 1319].forEach((f, i) => tone(t + i * 0.07, 'triangle', f, f, 0.18, 0.08)); },
+};
+function toast(msg){ const el = $('toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 1600); }
+
+// ---------- taking the photo ----------
+let shot = null;   // { spot, t0, taken }
+const droneCam = new THREE.PerspectiveCamera(42, 1, 0.1, 400);
+function snap(spot){
+  // render what the drone sees into the canvas, copy a square out of it, then the next frame draws over it again (the flash hides the swap)
+  const eye = me.group.position.clone().add(new THREE.Vector3(0, 1.0, 0));
+  droneCam.position.copy(drone.g.position); droneCam.lookAt(eye); droneCam.aspect = camera.aspect; droneCam.updateProjectionMatrix();
+  drone.g.visible = false; for (const s of SPOTS) s.mesh.visible = false;
+  renderer.render(scene, droneCam);
+  drone.g.visible = true; for (const s of SPOTS) s.mesh.visible = !s.done;
+  const src = renderer.domElement, side = Math.min(src.width, src.height), c = document.createElement('canvas'); c.width = c.height = 264;
+  c.getContext('2d').drawImage(src, (src.width - side) / 2, (src.height - side) / 2, side, side, 0, 0, 264, 264);
+  return c.toDataURL('image/jpeg', 0.8);
+}
+function polaroid(url, title){
+  // pops out of Eddie's chest, develops while it hangs there, then flies into the album
+  const v = me.group.position.clone().add(new THREE.Vector3(0, 0.9, 0)).project(camera);
+  const x0 = (v.x * 0.5 + 0.5) * innerWidth - 75, y0 = (-v.y * 0.5 + 0.5) * innerHeight - 95;
+  const el = document.createElement('div'); el.className = 'pola';
+  el.innerHTML = '<div class="tape"></div><div class="img"></div><p></p>'; el.querySelector('.img').style.backgroundImage = 'url(' + url + ')'; el.querySelector('p').textContent = title;
+  document.body.appendChild(el);
+  const midX = clamp(x0 + 30, 16, innerWidth - 166), midY = clamp(y0 - 170, 70, innerHeight - 260);
+  const al = $('album').getBoundingClientRect(), x2 = al.left + al.width / 2 - 75, y2 = al.top + al.height / 2 - 95;
+  const pop = el.animate([
+    { transform: `translate(${x0}px,${y0}px) scale(.15) rotate(0deg)`, opacity: 0 },
+    { transform: `translate(${x0 + 10}px,${y0 - 60}px) scale(.6) rotate(-14deg)`, opacity: 1, offset: 0.35 },
+    { transform: `translate(${midX}px,${midY}px) scale(1.06) rotate(-6deg)`, offset: 0.8 },
+    { transform: `translate(${midX}px,${midY}px) scale(1) rotate(-5deg)` },
+  ], { duration: 650, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' });
+  sfx.eject();
+  // developing: the grey film fades out and the picture appears
+  const img = el.querySelector('.img');
+  img.animate([{ filter: 'sepia(.9) brightness(.55) contrast(.7)' }, { filter: 'sepia(.15) brightness(1.02) contrast(1)' }], { duration: 1500, delay: 400, fill: 'forwards' });
+  const t0 = performance.now(); (function dev(){ const k = clamp((performance.now() - t0 - 400) / 1300, 0, 1); el.style.setProperty('--dev', (1 - k).toFixed(3)); if (k < 1) requestAnimationFrame(dev); })();
+  // a little wobble while you look at it, then off into the album
+  setTimeout(() => {
+    sfx.swish();
+    el.animate([
+      { transform: `translate(${midX}px,${midY}px) scale(1) rotate(-5deg)` },
+      { transform: `translate(${midX - 20}px,${midY - 20}px) scale(1.04) rotate(-12deg)`, offset: 0.25 },
+      { transform: `translate(${x2}px,${y2}px) scale(.12) rotate(25deg)`, opacity: 0.9 },
+    ], { duration: 600, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' }).onfinish = () => {
+      el.remove(); got++; $('count').textContent = got + ' / 3'; const a = $('album'); a.classList.remove('bump'); void a.offsetWidth; a.classList.add('bump'); sfx.pop();
+      toast(got === 3 ? '🎉 這一段的 3 張照片都拍到了！' : '📖 收進相簿！（' + got + ' / 3）');
+    };
+  }, 2300);
+}
+
+// ---------- controls ----------
+const keys = {}; let auto = false;
+addEventListener('keydown', e => { keys[e.code] = true; }); addEventListener('keyup', e => { keys[e.code] = false; });
+function hold(id, code){ const b = $(id); b.addEventListener('pointerdown', e => { e.preventDefault(); keys[code] = true; b.classList.add('on'); });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => { keys[code] = false; b.classList.remove('on'); }); }
+hold('left', 'ArrowLeft'); hold('right', 'ArrowRight');
+$('auto').onclick = () => { reset(); auto = true; };
+$('reset').onclick = () => reset();
+function reset(){ P.x = -11; P.vx = 0; P.face = 1; got = 0; $('count').textContent = '0 / 3'; shot = null; auto = false; for (const s of SPOTS){ s.done = false; s.mesh.visible = true; } }
+
+// ---------- loop ----------
+let last = 0;
+const camPos = new THREE.Vector3(-11, 2.6, 13), look = new THREE.Vector3();
+function frame(ms){
+  requestAnimationFrame(frame);
+  const dt = last ? Math.min(0.033, Math.max(0, (ms - last) / 1000)) : 0.016; last = ms; const t = ms / 1000;
+  // walk (frozen while the drone takes the picture)
+  let ix = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
+  if (auto) ix = P.x < 11 ? 1 : 0;
+  if (shot) ix = 0;
+  if (ix) P.face = ix;
+  P.vx += (ix * 4.2 - P.vx) * Math.min(1, dt * 10); P.x = clamp(P.x + P.vx * dt, -13, 13);
+  const moving = Math.abs(P.vx) > 0.4; if (moving) P.phase += dt * Math.abs(P.vx) * 2.6;
+  // reached a photo spot?
+  if (!shot) for (const s of SPOTS) if (!s.done && Math.abs(P.x - s.x) < 0.5){ shot = { spot: s, t0: t }; s.done = true; sfx.beep(); break; }
+  // Eddie
+  me.group.position.set(P.x, 0, 0.75);
+  const posing = shot && t - shot.t0 > 0.35;
+  me.group.rotation.y = posing ? Math.PI : -Math.PI / 2 * P.face + (P.face > 0 ? -0.5 : 0.5);
+  animateEddie(me, { t, dt, moving: moving && !shot, phase: P.phase, onGround: true });
+  if (posing){ const e = me.eddie; e.arms[1].rotation.set(2.7, 0, -0.35); e.arms[1].userData.elbow.rotation.x = 0.2; e.face.set('laugh'); }   // ✌️
+  // the drone: follows over his shoulder; for a photo it swings round in front of him
+  const want = shot ? new THREE.Vector3(P.x + 0.6, 1.9, 4.6) : new THREE.Vector3(P.x - P.face * 1.4, 2.7 + Math.sin(t * 2) * 0.12, 1.9);
+  drone.pos.lerp(want, Math.min(1, dt * (shot ? 5 : 2.5)));
+  drone.g.position.copy(drone.pos); drone.g.lookAt(P.x, 1.1, 0.75); drone.g.rotation.z += Math.sin(t * 3) * 0.05;
+  for (const p of drone.props) p.rotation.y += dt * 40;
+  drone.led.visible = shot ? Math.sin(t * 30) > 0 : Math.sin(t * 6) > 0;
+  for (const s of SPOTS) if (s.mesh.visible){ s.mesh.position.y = 1.3 + Math.sin(t * 3 + s.x) * 0.1; s.mesh.material.opacity = 0.6 + Math.sin(t * 5) * 0.25; }
+  // camera follows
+  camPos.lerp(new THREE.Vector3(P.x + P.face * 1.5, 2.6, innerWidth < innerHeight ? 15 : 12), Math.min(1, dt * 2.5));
+  camera.position.copy(camPos); look.set(P.x + P.face * 0.8, 1.6, 0); camera.lookAt(look);
+  renderer.render(scene, camera);
+  // 喀嚓: once he's posed and the drone is in place
+  if (shot && !shot.taken && t - shot.t0 > 0.75){
+    shot.taken = true; sfx.shutter();
+    const url = snap(shot.spot);
+    const f = $('flash'); f.animate([{ opacity: 0.95 }, { opacity: 0 }], { duration: 380, easing: 'ease-out' });
+    polaroid(url, shot.spot.title);
+  }
+  if (shot && t - shot.t0 > 1.4){ shot.spot.mesh.visible = false; shot = null; }
+}
+requestAnimationFrame(frame);
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__pola = { P, SPOTS, frame };   // local testing only
+</script>
+</body>
+</html>
