@@ -3931,11 +3931,15 @@ function update(now){
     const jumpBuffMul = (t < state.buffJumpUntil) ? 1.5 : 1.0;
     const onGround = Math.abs(player.position.y - floorForJump) < 0.05;
     const jumpPressed = keys['Space'] && !state._jumpHeldPrev;   // fresh press, not a held key
-    if (onGround) state.airJumpsUsed = 0;
+    if (onGround){ state.airJumpsUsed = 0; state.selfJumped = false; }
     if (keys['Space'] && onGround){
       state.vy = state.jump * jumpBuffMul;
+      state.selfJumped = true; state.jumpFromY = floorForJump;
       sfx.jump();
-    } else if (jumpPressed && !onGround && (state.upgrades.doubleJump || 0) > 0 && !state.airJumpsUsed){
+    } else if (jumpPressed && !onGround && (state.upgrades.doubleJump || 0) > 0 && !state.airJumpsUsed
+               // only as the second half of a jump you started, before you drop below where you took off
+               // (not after walking off a ledge or being knocked into the air) — same rule as the race
+               && state.selfJumped && player.position.y > state.jumpFromY - 0.2){
       // Second jump: resets the fall and kicks upward, with a flip + ring burst
       state.airJumpsUsed = 1;
       state.vy = state.jump * jumpBuffMul * doubleJumpPct(state.upgrades.doubleJump) / 100;
