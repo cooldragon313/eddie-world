@@ -265,7 +265,7 @@
   </svg>
   <div class="logoText">逃離土星</div>
   <div class="logoSub">第一關・家庭聚會</div>
-  <div class="logoCast"><span>🍺 酒鬼大叔在後面追</span><span>👻 鬼媽媽揮熱熔膠條</span><span>🧸 小屁孩大魔王</span></div>
+  <div class="logoCast"><span>🍺 酒鬼大叔在後面追</span><span>👻 鬼媽媽揮熱熔膠條</span><span>👕 頂樓曬衣場大風吹</span></div>
 </header>
 <div>
   <h1>🪐 逃離土星</h1>
@@ -1029,7 +1029,7 @@ const BODY_H = 2.2, CROUCH_H = 1.1, CROUCH_SPEED = 0.55;
 // ---------- LEVEL 1: 荊棘峽谷 (unchanged numbers from the released version) ----------
 const LEVEL1 = {
   id: 1, name: '第一關 家庭聚會', short: '家庭聚會',
-  blurb: '從土星家的玄關一路逃上頂樓陽台！酒鬼大叔在後面追，鬼媽媽、水槍、樂高、小屁孩擋路。',
+  blurb: '從土星家的玄關一路逃上頂樓陽台！酒鬼大叔在後面追，鬼媽媽、水槍、樂高擋路，最後穿過大風吹的曬衣場。',
   drunk: true, leash: 26,   // the drunk hangs further back than the spike wall did
   finish: 530, end: 560, finishBonus: 15, scenery: 'house', lateral: 0.8, camFollow: 0.6,
   clampX: L1_LANE - 0.5,
@@ -1041,7 +1041,7 @@ const LEVEL1 = {
   sections: [
     { from: 0, name: '玄關', wall: 9 }, { from: 30, name: '① 一樓客廳', wall: 9 }, { from: 125, name: '🪜 上二樓', wall: 9 },
     { from: 140, name: '② 二樓走廊', wall: 9.5 }, { from: 230, name: '③ 二樓臥室', wall: 10 }, { from: 325, name: '🪜 上三樓', wall: 10 },
-    { from: 340, name: '④ 三樓', wall: 10.5 }, { from: 430, name: '⑤ 頂樓遊戲室', wall: 9.4 },
+    { from: 340, name: '④ 三樓', wall: 10.5 }, { from: 430, name: '⑤ 頂樓曬衣場', wall: 9.4 },
   ],
   floors: [[-40, 560, -L1_LANE, L1_LANE]],
   // floor holes only upstairs (fall = back to the bottom of that floor's stairs)
@@ -1054,18 +1054,17 @@ const LEVEL1 = {
   // meteor zones: [from, to, seconds between rocks, share aimed at where you're heading]
   rocks: [[225, 330, 0.38, 0.45], [60, 125, 0.9, 0.4]],
   slideWalls: [{ m: 345, ph: 0 }, { m: 370, ph: 1.7 }, { m: 395, ph: 3.1 }, { m: 420, ph: 4.6 }],
-  covers: [[452,-3],[466,3.5],[480,-4],[494,2],[508,-2.5],[520,3]],
-  // ⑤ fire monsters: slow, walk toward you, spit fireballs; touching one hurts
-  // ⑤ little kids sitting on the floor: throw remotes (fly) and toy cars (roll) at you
-  minions: { from: 440, to: 526, count: 6, fireEvery: 2.4, fireSpeed: 8, carSpeed: 7 },
-  // the end boss behind the podium: rolls barrels down the road and breathes fire
-  boss: { m: 554, from: 455, barrelEvery: 1.7, barrelSpeed: 9, fireEvery: 3.0, fireSpeed: 10 },
+  // ⑤ 頂樓曬衣場: the wind swings bedsheets along their lines across the path
+  // (too tall to jump — time the gap), and flower pots sit in between (jump them).
+  laundry: [{ m: 444, ph: 0.0, w: 5.2 }, { m: 456, ph: 2.1, w: 5.6 }, { m: 468, ph: 4.0, w: 5.0 }, { m: 481, ph: 1.0, w: 6.0 },
+            { m: 494, ph: 3.2, w: 5.4 }, { m: 507, ph: 5.1, w: 5.8 }, { m: 519, ph: 2.6, w: 6.2 }],
+  pots: [[450, -4], [450, 4.5], [462, 1], [475, -3.5], [475, 5], [488, 0], [500, -5], [500, 3], [513, -1.5], [525, 4], [525, -4.5]],
   achievements: [
     { id: 'perfect',  name: '👑 完美過關',     desc: '一次都沒失誤',               test: s => s.misses === 0 },
     { id: 'flash',    name: '⚡ 閃電俠',       desc: '65 秒內跑完',                test: s => s.t < 65 },
     { id: 'untouch',  name: '🙅 酒鬼摸不到',   desc: '整場沒被酒鬼抱到',           test: s => s.caught === 0 },
     { id: 'sweeper',  name: '🍾 掃酒王',       desc: '路上的酒全部撞倒',           test: s => s.knocked >= 10 },
-    { id: 'crybaby',  name: '😭 把小屁孩打哭', desc: '用遙控器打中大魔王',         test: s => s.bossCried > 0 },
+    { id: 'laundry',  name: '👕 床單沒糊臉',   desc: '頂樓曬衣場一次都沒被床單打到', test: s => s.sheeted === 0 },
     { id: 'homerun',  name: '⚾ 全壘打王',     desc: '打回去 3 個遙控器或火球',     test: s => s.reflected >= 3 },
     { id: 'shopper',  name: '🛍 逛街掩護',     desc: '鬼媽媽一下都沒抽到你',       test: s => s.whipped === 0 },
     { id: 'rich',     name: '💰 撿錢達人',     desc: '撿到 30 個金幣',             test: s => s.coins >= 30 },
@@ -1523,7 +1522,7 @@ const HINTS = {
   spear:  '💦 房門口會噴水槍！水槍頭發紅就要射了，「跳」過去，噴到會看不清楚',
   rock:   '🛏 樓上會丟枕頭、球、臉盆下來，看地上的影子閃開',
   ghost:  '👻 鬼媽媽看到你會衝過來抽，抽到會跌坐、變慢喔！等她低頭逛網拍再衝過去',
-  kids:   '👶 小屁孩會丟遙控器跟小車，被砸到會被撞退、變慢；按揮棒把遙控器打回去！',
+  kids:   '👕 頂樓曬衣場：大風把床單吹過來（太高跳不過），看準空隙衝！地上的盆栽要跳過去。',
   boss:   '🧸 打回去的遙控器砸中大魔王，他會哭著暈 2.5 秒',
   ghostDrunk: '👻 酒鬼喝超過一半的酒了！鬼媽媽會改去抽他！',
 };
@@ -1548,6 +1547,63 @@ function hurt(kind, text, knock){
   S.hurtUntil = S.time + 0.9; S.knockV = knock; S.slowUntil = S.time + 0.5;
   if (kind === 'shot') S.shot++; else S.hits++;
   flash(text); return true;
+}
+
+// ---------- ⑤ 頂樓曬衣場: clotheslines with wind-blown sheets, flower pots ----------
+const SHEET_PRINTS = [
+  ['#ffffff', '#7cc79a', 'stripe'], ['#fff1d0', '#e0584a', 'dots'], ['#d8ecf8', '#6fb3e0', 'stripe'],
+  ['#ffe4ee', '#ff8fb0', 'dots'], ['#ffffff', '#ffcf5a', 'check'], ['#e9f6e6', '#5fae5a', 'dots'], ['#fff8ec', '#8a5a32', 'stripe'],
+];
+function sheetTexture(i){
+  const [bg, fg, kind] = SHEET_PRINTS[i % SHEET_PRINTS.length];
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = bg; x.fillRect(0, 0, 128, 128); x.fillStyle = fg;
+  if (kind === 'stripe') for (let k = 0; k < 8; k += 2) x.fillRect(k * 16, 0, 12, 128);
+  else if (kind === 'dots') for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++){ x.beginPath(); x.arc(16 + a * 32 + (b % 2) * 16, 16 + b * 32, 7, 0, 6.3); x.fill(); }
+  else for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) if ((a + b) % 2) x.fillRect(a * 32, b * 32, 32, 32);
+  return new THREE.CanvasTexture(c);
+}
+const SHEET_H = 3.0, LINE_Y = 3.6;
+// The sheet's centre x at a given time (shared by drawing and the hit test)
+const laundryX = (d, time) => Math.sin(time * 0.95 + d.ph) * (L1_LANE - d.w / 2 - 0.3);
+function makeLaundryLine(d, i){
+  const y0 = 0, z = -d.m;   // buildLevel lifts everything onto its floor afterwards
+  for (const s of [-1, 1]){
+    const pole = box(0.25, LINE_Y + 0.3, 0.25, mats.plank, s * (L1_LANE + 0.2), y0 + (LINE_Y + 0.3) / 2, z, true);
+    pole.userData.noLine = true;
+  }
+  const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, L1_LANE * 2 + 0.4, 6), mats.edge);
+  rope.rotation.z = Math.PI / 2; rope.position.set(0, y0 + LINE_Y, z); add(rope);
+  const geo = new THREE.PlaneGeometry(d.w, SHEET_H, 10, 4);
+  const mat = new THREE.MeshLambertMaterial({ map: sheetTexture(i), side: THREE.DoubleSide });
+  const sheet = new THREE.Mesh(geo, mat); sheet.position.set(0, y0 + LINE_Y - SHEET_H / 2, z); add(sheet);
+  for (const s of [-1, 1]){ const peg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, 0.12), mats.spike); peg.position.set(s * (d.w / 2 - 0.3), LINE_Y - 0.05 + y0, z + 0.02); sheet.parent.add(peg); peg.userData.follow = s; d['peg' + s] = peg; }
+  const base = geo.attributes.position.array.slice();
+  return { ...d, sheet, base, hitCool: 0 };
+}
+function updateLaundry(time){
+  for (const L0 of laundry){
+    const x = laundryX(L0, time);
+    L0.sheet.position.x = x;
+    if (L0['peg-1']) L0['peg-1'].position.x = x - (L0.w / 2 - 0.3);
+    if (L0['peg1']) L0['peg1'].position.x = x + (L0.w / 2 - 0.3);
+    // billow: push the cloth out more toward the bottom, rippling across
+    const pos = L0.sheet.geometry.attributes.position, b = L0.base;
+    for (let i = 0; i < pos.count; i++){
+      const px = b[i * 3], py = b[i * 3 + 1], down = (SHEET_H / 2 - py) / SHEET_H;
+      pos.setZ(i, Math.sin(px * 1.3 + time * 4 + L0.ph) * 0.35 * down + Math.cos(time * 1.7 + L0.ph) * 0.4 * down);
+    }
+    pos.needsUpdate = true;
+  }
+}
+function makePot(i){
+  const g = new THREE.Group();
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.55, 0.9, 16), LM(0xd9734a)); pot.position.y = 0.45; g.add(pot);
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.82, 0.16, 16), LM(0xc0623c)); rim.position.y = 0.92; g.add(rim);
+  const leaf = LM(0x6fbf5e), flower = LM([0xff8fb0, 0xffcf5a, 0xffffff, 0xb48cff][i % 4]);
+  for (const [x, y, z, r] of [[0, 1.25, 0, 0.42], [0.3, 1.15, 0.12, 0.3], [-0.28, 1.12, -0.1, 0.3]]){ const b = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), leaf); b.position.set(x, y, z); g.add(b); }
+  for (const [x, z] of [[0.18, 0.25], [-0.2, 0.2], [0.05, -0.3]]){ const f = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), flower); f.position.set(x, 1.45, z); g.add(f); }
+  return sbOutline(g, 0.05);
 }
 
 // ---------- 土星家 scenery: walls, windows, frames, rugs, stair rails, roof terrace ----------
@@ -1586,6 +1642,7 @@ function buildHouse(level){
 }
 
 // ---------- build a level ----------
+let laundry = [], pots = [];
 let walls = [], covers = [], turrets = [], coins = [], bars = [], hammers = [], movers = [], gateObj = null, spears = [];
 const flying = [];   // bamboo spears in the air
 let thornObjs = [], minions = [], boss = null, ghosts = [], bottles = [], coverGroup = null;
@@ -1598,7 +1655,7 @@ let chaser;
 
 function buildLevel(level){
   L = level; clearWorld();
-  walls = []; covers = []; turrets = []; coins = []; bars = []; hammers = []; movers = []; gateObj = null; spears = [];
+  walls = []; covers = []; laundry = []; pots = []; turrets = []; coins = []; bars = []; hammers = []; movers = []; gateObj = null; spears = [];
   flying.length = 0;
   const sky = level.scenery === 'sky';
   scene.background = new THREE.Color(sky ? 0xa9d8f2 : 0xcfe6f0);
@@ -1683,6 +1740,8 @@ function buildLevel(level){
   // level-1 hazards
   walls = (level.slideWalls || []).map(w => ({ ...w, a: box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m), b: box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m), gapX: 0 }));
   covers = (level.covers || []).map(([m, x]) => ({ m, x, mesh: box(2.6, 2, 1.6, mats.cover, x, 1, -m, true) }));
+  laundry = (level.laundry || []).map((d, i) => makeLaundryLine(d, i));
+  pots = (level.pots || []).map(([m, x], i) => { const g = makePot(i); g.position.set(x, 0, -m); add(g); return { m, x, g }; });
   turrets = (level.turrets || []).map((t, i) => {
     box(1.8, 1.8, 1.8, mats.turret, t.x, 0.9, -t.m, true);
     const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1.6, 12), mats.edge);
@@ -1818,7 +1877,7 @@ const S = { phase: 'menu', time: 0 };
 function reset(){
   Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, knockX: 0, slowUntil: 0, downUntil: 0,
     swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, cpX: 0, time: 0, caught: 0, pits: 0, shot: 0, hits: 0, rockNext: 0,
-    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99, knocked: 0, drank: 0, whipped: 0, reflected: 0, bossCried: 0, hinted: {}, drunkStunUntil: 0, drunkWhipped: 0 });
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99, knocked: 0, drank: 0, whipped: 0, reflected: 0, bossCried: 0, sheeted: 0, potBumped: 0, hinted: {}, drunkStunUntil: 0, drunkWhipped: 0 });
   for (const f of flying) world.remove(f.mesh); flying.length = 0;
   for (const sp of spears){ sp.next = 0; sp.armed = true; }
   for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
@@ -1966,7 +2025,7 @@ const INTRO = [
   { at: 'drunk',  title: '🍺 酒鬼大叔', text: '從玄關一路逃上頂樓陽台！他一直在後面追你，被他從後面抱住會被定住，還會吐你一身！' },
   { at: 'bottle', title: '🍾 路上的酒', text: '撞倒加金幣。漏掉的會被酒鬼喝掉，他會越跑越快——左上角看他喝了幾瓶。' },
   { at: 'ghost',  title: '👻 鬼媽媽',   text: '看到你就衝過來抽熱熔膠條，抽到會跌坐、變慢。等她低頭逛網拍再衝過去！酒鬼喝超過一半，她會改去抽酒鬼。' },
-  { at: 'kid',    title: '🧸 小屁孩',   text: '坐在地上丟遙控器跟小車。按「揮棒」把遙控器打回去！終點的小屁孩大魔王被打中會哭。' },
+  { at: 'all',    title: '👕 頂樓曬衣場', text: '最後一段在頂樓陽台：大風把床單吹過來擋路，看準空隙衝過去；地上的盆栽要跳過去。' },
   { at: 'all',    title: '⚠️ 路上的機關', text: '🦶 按摩腳墊會冒凸點　🧱 樂高踩到很痛　🛏 看影子躲樓上丟的東西　💦 房門口的水槍要跳過　🕳 樓上地板破洞，掉下去要重爬樓梯' },
   { at: 'all',    title: '🎮 怎麼操作', text: isTouch ? '左邊搖桿移動；右邊「跳」（空中再按一次＝二段跳）、「衝刺」、「揮棒」；左上「重來」。'
                                                   : 'WASD 移動・空白鍵跳（空中再按＝二段跳）・Shift 衝刺・F 揮棒・R 重來' },
@@ -2251,6 +2310,19 @@ function step(dt){
   };
   for (const w of walls){ block(w.m, 0.5, -L1_LANE, w.gapX - 2.25, 4.5); block(w.m, 0.5, w.gapX + 2.25, L1_LANE, 4.5); }
   for (const c of covers) block(c.m, 0.8, c.x - 1.3, c.x + 1.3, 2);
+  for (const pt of pots){
+    const before = S.m;
+    block(pt.m, 0.65, pt.x - 0.75, pt.x + 0.75, 1.1);
+    if (S.m !== before && !pt.bumped){ pt.bumped = true; S.potBumped++; flash('🪴 撞到盆栽了！跳過去'); }
+  }
+  for (const L0 of laundry){
+    if (S.time < L0.hitCool || S.y > SHEET_H + 0.2) continue;
+    const sx = laundryX(L0, S.time);
+    if (Math.abs(S.m - L0.m) < 0.55 && Math.abs(S.x - sx) < L0.w / 2 + 0.3 && hurt('hit', '👕 被床單糊一臉！', 7)){
+      L0.hitCool = S.time + 1.2; S.sheeted++;
+      S.knockX = (S.x >= sx ? 1 : -1) * 4;
+    }
+  }
   if (L.gate && S.time >= S.gateOpenUntil) block(L.gate.m, 0.5, L.gate.x0, L.gate.x1, 5);
 
   // ---- level 1 hazards ----
@@ -2588,6 +2660,7 @@ function render(dt, clock){
   // +th swings the head to x = 7.2·sin(th), y = 9 − 7.2·cos(th) — same as the hit test
   for (const h of hammers) h.pivot.rotation.z = h.amp * Math.sin(t * h.speed + h.ph);
   for (const mv of movers) mv.mesh.position.x = moverX(mv.mv, t);
+  if (laundry.length) updateLaundry(t);
   if (gateObj){
     const open = running && S.time < S.gateOpenUntil;
     gateObj.door.position.y += ((open ? -4.6 : 2.5) - gateObj.door.position.y) * Math.min(1, dt * 12);
