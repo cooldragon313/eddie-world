@@ -9,7 +9,7 @@
   艾迪的提案（docs/PLAN-101跑酷.md）v2：繞著 3D 的台北 101 外牆往上爬。
   跳上落腳點（窗台、冷氣機、旗桿、吊籃），碰到攀爬牆自動抓住、用握力往上爬。
   鏡頭像紀錄片的空拍機在跟拍（REC、高度計、晃動、換鏡頭）。一段 = 10 層 ≈ 1 分鐘。
-  目前做到第 2 段（20F）。
+  目前做到第 4 段（40F）。
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Huninn&family=Noto+Sans+TC:wght@500;700;900&display=swap">
@@ -263,6 +263,8 @@ const TYPES = {
   balcony: { col: 0xd9cbb4, depth: 1.4, h: 0.3 },           // decoration
   drip:    { col: 0xdfe8ee, depth: 1.6, h: 1.0 },           // a dripping air-conditioner: wet on top, you slide
   lip:     { col: 0x2f6e68, depth: 2.2, h: 0.5 },           // the bamboo section's lip sticking out over a traverse (decoration)
+  seam:    { col: 0x24584f, depth: 2.0, h: 0.35 },          // the seam between the two halves of a bamboo node (rest, but only up to 60%)
+  node:    { col: 0x2f6e68, depth: 3.4, h: 0.6 },           // the top of a bamboo node (you mantle onto it)
 };
 const ROUTE = [];   // footholds + walls in climbing order (for the "next step" marker)
 function plat(type, s0, w, y, o){ const p = Object.assign({ type, s0, s1: s0 + w, y, y0: y }, o || {}); plats.push(p); return p; }
@@ -311,8 +313,9 @@ cy += 5.0;
 branch(foot('sill', 1.4, 2.0, 2.4), -1, [['sill', 1.6, 2.2, 2.0], ['balcony', 1.6, 2.2, 2.6, { item: 'reporter' }]]);   // 📸 the TV crew
 climb(1.0, 4.5, 2.2, { chalk: true, momWall: true });   // mom's 18F window is next to its top
 branch(foot('ac',   1.4, 2.1, 2.0), -1, [['flag', 2.0, 2.1, 1.2], ['flag', 2.2, 2.0, 1.0, { item: 'coin', id: 'coin2' }]]);   // 🥇 over mom's head
-climb(1.2, 5.0, 2.6, { over: true });                        // first bulging "bamboo" wall: grip drains fast
-foot('sill', 1.2, 2.0, 2.4, { pigeon: true });
+climb(1.2, 2.5, 2.6, { over: true });                        // a small bulge: a taste of what the bamboo node (31–40F) will be
+foot('ac',   1.2, 2.2, 2.0);
+foot('sill', 1.2, 2.2, 2.4, { pigeon: true });
 checkpoint(20);                                              // y 60
 // ---- segment 3: 21–30F 冷氣機森林 — dripping ACs you slide off, two short walls back to back
 cs += 1.5;
@@ -330,29 +333,35 @@ branch(foot('sill', 1.4, 2.2, 2.4, { pigeon: true }), -1, [['flag', 1.8, 2.1, 1.
 climb(1.0, 3.0, 2.2, { chalk: true });
 checkpoint(30);                                              // y 90
 branch(toyFrom, -1, [['ac', 1.8, 2.2, 1.6], ['drip', 2.0, 2.2, 1.4, { slide: -1 }], ['sill', 2.0, 2.1, 1.6, { item: 'toy', id: 'bey' }]]);   // 🌀 Eddie's battle top 爆破貝利亞
-// ---- segment 4: 31–40F 竹節初登場 — traverse under the bamboo lip, then out over the bulge
+// ---- segment 4: 31–40F 竹節初登場 — traverse under a lip, then the bamboo node: two walls leaning
+// out over the street (steeper = more grip), a seam to catch your breath in, and a mantle over the top
 cs += 1.5;
 foot('sill', 1.0, 2.2, 2.6);                                 // breather
 foot('ac',   1.3, 2.2, 2.0);
 foot('sill', 1.5, 2.2, 1.8, { pigeon: true });
-{ // the traverse: a wide, low wall under the bamboo lip — climb sideways to its end, then up the bulge
-  const tz = wall(cs + 1.0, 6.0, cy - 0.2, cy + 2.4, { traverse: true }); ROUTE.push(tz);
-  plat('lip', tz.s0 - 0.3, 4.8, cy + 3.3, { decor: true });  // the lip over your head (you can't stand on it)
-  const oz = wall(tz.s1 - 1.8, 1.8, cy + 2.2, cy + 5.8, { over: true, bamboo: true }); ROUTE.push(oz);
-  const top = plat('sill', oz.s0 - 0.2, 2.2, cy + 5.9); ROUTE.push(top); cs = top.s1; cy = top.y;
+{ // the traverse: a wide, low wall under a lip — climb sideways to its end, then up onto the sill there
+  const tz = wall(cs + 1.0, 5.0, cy - 0.2, cy + 2.4, { traverse: true }); ROUTE.push(tz);
+  plat('lip', tz.s0 - 0.3, 3.6, cy + 3.3, { decor: true });  // the lip over your head (you can't stand on it)
+  const top = plat('sill', tz.s1 - 1.9, 2.0, cy + 2.5); ROUTE.push(top); cs = top.s1; cy = top.y;
+}
+foot('sill', 1.4, 2.2, 2.4);                                 // the foot of the node: rest up here
+const NODE = { y0: cy - 0.2, y1: cy + 8.8, out0: 0.3, out1: 3.2 };
+plat('net', 0, PER, cy - 0.6, { ring: true, net: true });    // a slip anywhere on the node lands you back here
+{
+  const lo = wall(cs + 1.0, 1.8, NODE.y0, cy + 5.0, { node: NODE });                  // lower half: leaning out a little
+  const seam = plat('seam', lo.s0, 1.8, lo.y1 + 0.1, { standOut: 1.4, mountOnly: true });   // the seam between the halves: climb onto it (a slip from above falls past it)
+  const hi = wall(lo.s0 - 0.2, 2.2, lo.y1 - 0.1, NODE.y1, { node: NODE });           // upper half, straight above (a bit wider, so a jump off the seam always grabs it)
+  const cap = plat('node', hi.s0 - 0.2, 4.0, hi.y1 + 0.1, { standOut: 2.6, nodeTop: true });   // mantle over the top
+  ROUTE.push(lo, seam, hi, cap); cs = cap.s1; cy = cap.y; Object.assign(NODE, { s0: lo.s0, s1: hi.s1, seamY: seam.y });
 }
 foot('drip', 1.4, 2.1, 1.6, { slide: 1 });
 branch(foot('flag', 1.8, 2.0, 1.2), -1, [['sill', 1.8, 2.2, 1.6], ['ac', 2.0, 2.1, 1.4, { item: 'gripup', id: 'g2' }]]);   // 💪 #2
-foot('sill', 1.6, 2.2, 1.8, { pigeon: true });
-climb(1.0, 4.0, 2.0, { chalk: true, momWall: true });          // mom's 38F window next to its top
-foot('ac',   1.5, 2.2, 1.6);
-climb(1.2, 3.2, 2.2, { over: true });
+climb(1.0, 4.0, 2.0, { chalk: true, momWall: true });          // mom's 39F window next to its top
 checkpoint(40);                                              // y 120
 // safety nets halfway up each segment: a fall costs at most 5 floors
 plat('net', 0, PER, 5 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 15 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 25 * FLOOR_H - 0.4, { ring: true, net: true });
-plat('net', 0, PER, 35 * FLOOR_H - 0.4, { ring: true, net: true });
 // mom at an 18F window (a cameo from 恐怖考前複習夜)
 // (she rides the lift up to chase him — she shows up at a window every 20 floors: 18, 38, 58 … only 18F is built so far)
 const MOM_SPOTS = walls.filter(z => z.momWall).map(z => [z.s0 - 2.6, z.y1 + 0.5]);   // next to the top of those walls (clear of the corner)
@@ -487,18 +496,41 @@ return { npc: momNpc, s: MOM_S, y: MOM_Y, said: false, love: false };
 const MOMS = MOM_SPOTS.map(([ms, my]) => makeMomAt(ms, my)), momNpc = MOMS[0].npc;
 // climbing walls: a panel with coloured holds; the bulging ones stick out
 const holdCols = [0xff6b5a, 0xffcf5a, 0x6fb3e0, 0x7cc79a, 0xc58cf0];
+// how far out from the tower a wall's face is at height y (a bamboo node leans further out the higher you go)
+const nodeK = (n, y) => clamp((y - n.y0) / (n.y1 - n.y0), 0, 1);
+const wallOut = (z, y) => z.node ? z.node.out0 + (z.node.out1 - z.node.out0) * nodeK(z.node, y) : z.over ? 0.5 : 0.08;
+function slab(s0, s1, y0, y1, out0, out1, thick, mat){
+  // a panel leaning out from out0 (bottom) to out1 (top), one piece per face
+  const g = new THREE.Group(), lean = Math.atan2(out1 - out0, y1 - y0), len = Math.hypot(out1 - out0, y1 - y0);
+  for (let f = Math.floor(s0 / SIDE); f * SIDE < s1; f++){
+    const a = Math.max(s0, f * SIDE), b = Math.min(s1, (f + 1) * SIDE); if (b - a < 0.05) continue;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(b - a, len, thick), mat);
+    m.position.copy(surf((a + b) / 2, (out0 + out1) / 2 - thick / 2, (y0 + y1) / 2)); m.rotation.order = 'YXZ'; m.rotation.set(lean, f * Math.PI / 2, 0); g.add(m);
+  }
+  return g;
+}
 for (const z of walls){
-  const g = new THREE.Group(), out = z.over ? 0.5 : 0.08;
-  g.add(meshAlong(z.s0, z.s1, z.y1, 0.12, z.y1 - z.y0, LM(z.over ? 0x2f6e68 : 0x8fa8a6), out - 0.12));
+  const g = new THREE.Group(), out = wallOut(z, z.y0);
+  if (z.node) g.add(slab(z.s0, z.s1, z.y0, z.y1, wallOut(z, z.y0), wallOut(z, z.y1), 0.16, LM(0x2f6e68)));
+  else g.add(meshAlong(z.s0, z.s1, z.y1, 0.12, z.y1 - z.y0, LM(z.over ? 0x2f6e68 : 0x8fa8a6), out - 0.12));
   for (let s = z.s0 + 0.35; s < z.s1; s += 0.7) for (let y = z.y0 + 0.4; y < z.y1; y += 0.75){
     const h = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), LM(holdCols[(Math.floor(s * 3) + Math.floor(y * 2)) % 5]));
-    h.position.copy(surf(s + Math.sin(y * 7) * 0.15, out + 0.05, y)); g.add(h);
+    h.position.copy(surf(s + Math.sin(y * 7) * 0.15, wallOut(z, y) + 0.05, y)); g.add(h);
   }
   if (z.chalk){ const c = { s: (z.s0 + z.s1) / 2, y: (z.y0 + z.y1) / 2 + 0.5, taken: false };
     const m = new THREE.Group(); const bag = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), LM(0xffffff)); bag.scale.set(1, 1.2, 0.8); m.add(bag);
     const glow = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.55, 20), new THREE.MeshBasicMaterial({ color: 0xfff3a0, transparent: true, opacity: 0.8, side: THREE.DoubleSide })); m.add(glow);
     m.position.copy(surf(c.s, out + 0.35, c.y)); m.rotation.y = faceAngle(c.s); c.mesh = m; scene.add(m); chalks.push(c); }
   sbOutline(g, 0.03); scene.add(g); z.mesh = g;
+}
+{ // the bamboo node itself: a big glass skirt leaning out round the two climbing walls, a dark seam band, a heavy cap
+  const g = new THREE.Group(), w = 3.5, glass = new THREE.CanvasTexture(glassCanvas);
+  glass.wrapS = glass.wrapT = THREE.RepeatWrapping; glass.repeat.set(2, 2);
+  g.add(slab(NODE.s0 - w, NODE.s1 + w, NODE.y0, NODE.y1, NODE.out0 - 0.15, NODE.out1 - 0.15, 0.2, new THREE.MeshLambertMaterial({ map: glass, color: 0xbfe0d8 })));
+  const k = nodeK(NODE, NODE.seamY), seamOut = NODE.out0 + (NODE.out1 - NODE.out0) * k;
+  g.add(meshAlong(NODE.s0 - w, NODE.s1 + w, NODE.seamY + 0.1, seamOut - 0.3, 0.4, LM(0x24584f), 0));
+  g.add(meshAlong(NODE.s0 - w, NODE.s1 + w, NODE.y1 + 0.1, NODE.out1 + 0.5, 0.6, LM(0x2f6e68), 0));
+  sbOutline(g, 0.04); scene.add(g);
 }
 // people in the windows: office workers, tourists taking photos (the flash pops)
 function personTex(kind){
@@ -545,6 +577,7 @@ const sfx = (() => {
     whoosh: () => hiss(1.2, 0.15, 200, 1200),
     bonk: () => { tone('sine', 180, 60, 0.25, 0.3); hiss(0.1, 0.15, 900, 300); },
     bounce: () => tone('sine', 220, 520, 0.25, 0.15),
+    mantle: () => { hiss(0.2, 0.15, 600, 1800); tone('triangle', 392, 784, 0.25, 0.1, 0.12); },
     splash: () => { hiss(0.15, 0.12, 2500, 900); },
     splat: () => { hiss(0.18, 0.3, 700, 200); tone('sine', 300, 120, 0.15, 0.12); },
     beat: () => { tone('sine', 70, 50, 0.12, 0.35); tone('sine', 65, 45, 0.12, 0.28, 0.16); },
@@ -608,7 +641,7 @@ function startAt(floor){
   P.gripMax = 100 + 25 * gripUps().length;
   // start where the route reaches this checkpoint (keeps "how far round the tower" continuous)
   const cpI = ROUTE.indexOf(on), startS = floor && cpI > 0 ? ROUTE[cpI - 1].s1 + 0.6 : 9;
-  Object.assign(P, { s: startS, y, vs: 0, vy: 0, mode: 'ground', on, wall: null, grip: P.gripMax, noGrab: 0 });
+  Object.assign(P, { s: startS, y, vs: 0, vy: 0, mode: 'ground', on, wall: null, grip: P.gripMax, noGrab: 0, slipped: false });
   for (const c of chalks){ c.taken = false; c.mesh.visible = true; }
   for (const it of ITEMS){ it.taken = false; it.mesh.visible = true; }
   for (const M of MOMS){ M.love = Math.random() < 0.5; M.npc.pose(M.love); M.said = false; }   // each window: a good day or a bad day
@@ -636,7 +669,9 @@ function step(dt){
   // cradles ride up and down
   for (const p of plats) if (p.type === 'gondola'){ const ny = p.y0 + (Math.sin(S.t * p.speed - Math.PI / 2) * 0.5 + 0.5) * p.range; p.dy = ny - (p.cur == null ? p.y0 : p.cur); p.cur = ny; p.mesh.position.y = ny - p.y0; }
   // wind (from 11F): a warned gust — the big arrow shows which way it will push
-  const gust = P.y > 30 && S.windDir && S.t > S.windAt && S.t < S.windAt + 1.6;
+  const onNode = P.mode === 'wall' && P.wall.node;
+  if (onNode && !S.windDir) S.windNext = Math.max(S.windNext, S.t + 3);   // no typhoon while you hang off a bamboo node: it comes once you're over
+  const gust = P.y > 30 && S.windDir && S.t > S.windAt && S.t < S.windAt + 1.6 && !onNode;
   if (P.y > 28){
     if (!S.windDir && S.t > S.windNext - 2){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; const w = $('wind'); w.textContent = S.windDir > 0 ? '🌬️ ➡️➡️' : '⬅️⬅️ 🌬️'; w.style.setProperty('--wx', S.windDir * 24 + 'px'); w.classList.add('on'); sfx.wind(); say(P.mode === 'wall' ? '抓緊抓緊！' : '哇！風好大！'); }
     if (S.windDir && S.t > S.windAt + 1.6){ S.windDir = 0; S.windNext = S.t + (segOf(P.y) >= 3 ? 8 : 9) + Math.random() * 3; $('wind').classList.remove('on'); }
@@ -646,22 +681,26 @@ function step(dt){
     const climbK = S.t < (P.boostUntil || 0) ? 1.45 : 1;
     P.s += ix * CLIMB * climbK * dt; P.y += iy * CLIMB * climbK * dt;
     P.climbPh += (Math.abs(ix) + Math.abs(iy)) * dt * 6;
-    P.grip -= dt * (z.over ? 30 : 13) * (gust ? 1.8 : 1) * (ix || iy ? 1 : 0.7);   // the bamboo bulge eats your grip
+    const drain = z.node ? 22 + 14 * nodeK(z.node, P.y) : z.over ? 22 : segOf(P.y) >= 4 ? 15 : 13;   // the further the node leans out, the faster it eats your grip
+    P.grip -= dt * drain * (gust ? 1.8 : 1) * (ix || iy ? 1 : 0.7);
     if (P.grip < 30 && S.t > (S.beatAt || 0)){ S.beatAt = S.t + 0.55; sfx.beat(); }
     for (const c of chalks) if (!c.taken && sDist(P.s, c.s) < 0.8 && Math.abs(P.y + 0.9 - c.y) < 1.0){ c.taken = true; c.mesh.visible = false; P.grip = P.gripMax; S.usedChalk = true; sfx.chalk(); flash('🧂 抹粉！握力補滿'); say('抹粉～滑溜溜！'); }
     { // hand over to a neighbouring wall when you climb onto it (up out of a traverse, or sideways)
-      const z2 = walls.find(w => w !== z && onSpan(w, P.s, 0.1) && P.y + 0.9 >= w.y0 && P.y + 0.3 <= w.y1 && ((iy > 0 && w.y1 > z.y1) || (ix && (P.s < z.s0 + 0.3 || P.s > z.s1 - 0.3))));
+      const z2 = walls.find(w => w !== z && !(w.node && z.node) && onSpan(w, P.s, 0.1) && P.y + 0.9 >= w.y0 && P.y + 0.3 <= w.y1 && ((iy > 0 && w.y1 > z.y1) || (ix && (P.s < z.s0 + 0.3 || P.s > z.s1 - 0.3))));
       if (z2){ P.wall = z2; if (z2.bamboo && !z2.warned){ z2.warned = true; flash('🎋 竹節外凸：從橫移牆接上去，一口氣爬！', 2.4); } } }
     if (z.traverse && !z.hinted){ z.hinted = true; flash('🧗 橫移牆：抓著往旁邊爬，到盡頭再往上', 2.6); }
     const zc = P.wall; P.s = clamp(P.s, zc.s0 + 0.1, zc.s1 - 0.1);
     if (P.wall !== z){ /* switched walls this frame */ }
     else if (P.y > z.y1 - 0.3){   // pull yourself up onto the sill at the top
       const top = plats.find(p => !p.ring && onSpan(p, P.s, 0.3) && Math.abs(p.y - z.y1) < 0.5);
-      if (top){ P.y = top.y; P.mode = 'ground'; P.on = top; P.vy = 0; P.wall = null; } else P.y = z.y1 - 0.3;
+      if (top){ P.y = top.y; P.mode = 'ground'; P.on = top; P.vy = 0; P.wall = null;
+        if (top.type === 'seam' && !S.seamHint){ S.seamHint = true; flash('😮‍💨 竹節接縫：喘口氣，握力最多回到 6 成', 2.4); say('好窄…先喘一下'); }
+        if (top.nodeTop){ P.mantleAt = S.t; sfx.mantle(); flash('🎋 翻上竹節！', 1.8); say(pick(['嘿咻——翻上來了！', '呼…竹節征服！', '我上來了！'])); } }
+      else P.y = z.y1 - 0.3;
     }
     else if (P.y < z.y0 - 0.6){ P.mode = 'air'; P.vy = 0; P.noGrab = 0.4; P.wall = null; }
     else if (fresh){ P.mode = 'air'; P.vy = JUMP_V * 0.9; P.vs = (ix || P.face) * 4; P.noGrab = 0.3; P.wall = null; sfx.jump(); }
-    if (P.mode === 'wall' && P.grip <= 0){ P.mode = 'air'; P.vy = -1; P.vs = 0; P.noGrab = 1.2; P.wall = null; S.segSlips = (S.segSlips || 0) + 1; sfx.slip(); flash('😱 手滑了！'); say('哇啊啊啊——'); }
+    if (P.mode === 'wall' && P.grip <= 0){ P.slipped = true; P.mode = 'air'; P.vy = -1; P.vs = 0; P.noGrab = 1.2; P.wall = null; S.segSlips = (S.segSlips || 0) + 1; sfx.slip(); flash('😱 手滑了！'); say('哇啊啊啊——'); }
     if (P.mode === 'wall' && P.grip < 28 && !(P.wall || z).tired){ (P.wall || z).tired = true; say(pick(['手好痠…', '快沒力了！', '撐住撐住…'])); }
   } else {
     const wet = P.mode === 'ground' && P.on && P.on.type === 'drip';
@@ -669,7 +708,8 @@ function step(dt){
     if (wet) P.vs += P.on.slide * 8 * dt;   // the water carries you toward the edge
     if (gust) P.vs += S.windDir * 9 * (wet ? 2 : 1) * dt;   // wind on a wet AC = whoosh
     if (P.mode === 'ground'){
-      if (!(P.on && P.on.type === 'drip')) P.grip = Math.min(P.gripMax, P.grip + dt * 22);   // resting takes a few seconds (not on a wet AC)
+      const rest = P.on && P.on.type === 'seam' ? P.gripMax * 0.6 : P.gripMax;   // the seam is cramped: you only get back to 60%
+      if (!(P.on && P.on.type === 'drip')) P.grip = Math.max(P.grip, Math.min(rest, P.grip + dt * 22));   // resting takes a few seconds (not on a wet AC)
       if (P.on && P.on.type === 'gondola') P.y += P.on.dy;
       P.lastGround = S.t; P.jumped = false;
     }
@@ -683,7 +723,7 @@ function step(dt){
     let landed = null;
     if (P.vy <= 0){   // land from above (one-way: you can jump up through anything)
       for (const p of plats){
-        if (p.decor) continue;
+        if (p.decor || (p.mountOnly && P.slipped)) continue;   // a slip off the node's upper half falls past the seam
         const top = p.type === 'gondola' ? (p.cur == null ? p.y0 : p.cur) : p.y;
         if (!onSpan(p, P.s, 0.25)) continue;
         if (prevY >= top - 0.06 - Math.max(0, p.dy || 0) && P.y <= top){ landed = p; P.y = top; break; }
@@ -694,9 +734,10 @@ function step(dt){
       if (drop > 5){ S.segFalls = (S.segFalls || 0) + 1; S.dripChain = 0; }
       if (landed.net && speed > 9){ P.vy = speed * 0.45; P.mode = 'air'; P.on = null; P.jumped = true; sfx.bounce(); say(pick(['好險有網子！', '彈彈彈～', '嚇死我了…'])); }
       else {
-        P.vy = 0; P.mode = 'ground'; P.on = landed; P.jumped = false;
+        P.vy = 0; P.mode = 'ground'; P.on = landed; P.jumped = false; P.slipped = false;
         if (drop > 5){ sfx.bonk(); say(pick(['唉呦好痛！', '我的屁股…', '痛痛痛…', '摔得好慘…'])); S.shake = 0.35; }
         if (landed.line && !landed.said){ landed.said = true; say(landed.line); }
+        if (landed.type === 'seam' && !S.seamHint){ S.seamHint = true; flash('😮‍💨 竹節接縫：喘口氣，握力最多回到 6 成', 2.4); say('好窄…先喘一下'); }
         if (landed.type === 'drip'){
           sfx.splash();
           if (landed.first && !S.dripHint){ S.dripHint = true; flash('💧 滴水冷氣機：上面很滑，會把你帶往箭頭方向，快跳！', 2.6); say('哇！好滑！'); }
@@ -713,7 +754,8 @@ function step(dt){
       const z = wallAt(P.s, P.y);
       if (z){ P.mode = 'wall'; P.wall = z; P.vy = 0; P.vs = 0; P.peak = null; P.jumped = true; z.tired = false; sfx.grab();
         if (z.hint && !z.hinted){ z.hinted = true; flash('🧗 抓住了！搖桿往上爬，握力用完會手滑', 2.6); }
-        if (z.over && !z.warned){ z.warned = true; flash('🎋 竹節外凸牆：握力掉很快，一口氣爬上去！', 2.6); } }
+        if (z.node && !z.node.warned){ z.node.warned = true; flash('🎋 竹節往外斜：越上面越斜、握力掉越快！中間接縫可以喘口氣', 3.0); say('哇…底下是空的！'); }
+        else if (z.over && !z.warned){ z.warned = true; flash('🧱 小凸牆：握力掉比較快，一口氣爬上去！', 2.6); } }
     }
   }
   // treasure
@@ -935,8 +977,9 @@ function updateCamera(dt, snap){
   if (S.shot === 'top' && S.t - S.shotT < 1.8){ want = pw.clone().addScaledVector(n, 6).add(new THREE.Vector3(0, 9, 0)); look = pw.clone(); }
   else {
     if (S.shot === 'top') S.shot = null;
-    const dist = portrait ? 14 : 12, side = P.face * (portrait ? 1.0 : 2.2);
-    want = pw.clone().addScaledVector(n, dist).addScaledVector(tan, side).add(new THREE.Vector3(0, portrait ? 3.2 : 2.4, 0));
+    const hang = P.mode === 'wall' && P.wall.node ? 1 : 0;   // on a bamboo node: pull back and drop a little, so you see the street under you
+    const dist = (portrait ? 14 : 12) + hang * 4, side = P.face * ((portrait ? 1.0 : 2.2) + hang * 8);   // and swing round to the side, so the lean shows
+    want = pw.clone().addScaledVector(n, dist).addScaledVector(tan, side).add(new THREE.Vector3(0, (portrait ? 3.2 : 2.4) - hang * 3.5, 0));
     look = pw.clone().addScaledVector(tan, side * 0.4).add(new THREE.Vector3(0, portrait ? 2.0 : 1.2, 0));
   }
   // a little lag + handheld wobble (more in the wind)
@@ -1019,10 +1062,13 @@ if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, plats, walls, chalks, ROU
 // ---------- Eddie's pose ----------
 function poseEddie(dt, now){
   const e = me.eddie;
-  me.group.position.copy(surf(P.s, P.mode === 'wall' ? (P.wall.over ? 0.75 : 0.4) : 0.75, P.y));
+  const wantOut = P.mode === 'wall' ? wallOut(P.wall, P.y + 1) + (P.wall.over ? 0.25 : 0.32) : P.on && P.on.standOut != null ? P.on.standOut : 0.75;
+  P.rOut = P.rOut == null ? wantOut : P.rOut + (wantOut - P.rOut) * Math.min(1, dt * 8);   // ease in and out over a node's lean
+  me.group.position.copy(surf(P.s, P.rOut, P.y));
   const fa = faceAngle(P.s);
   if (P.mode === 'wall'){
-    me.group.rotation.set(0, fa, 0);                         // facing the wall (back to the camera)
+    const n = P.wall.node, lean = n ? Math.atan2(n.out1 - n.out0, n.y1 - n.y0) : 0;
+    me.group.rotation.order = 'YXZ'; me.group.rotation.set(lean, fa, 0);   // facing the wall (back to the camera); hanging back on a node
     const c = P.climbPh, [aL, aR] = e.arms, [lL, lR] = e.legs;
     aL.rotation.set(Math.PI - 0.3 + Math.sin(c) * 0.35, 0, -0.25); aR.rotation.set(Math.PI - 0.3 - Math.sin(c) * 0.35, 0, 0.25);
     aL.userData.elbow.rotation.x = 0.4; aR.userData.elbow.rotation.x = 0.4;
@@ -1031,6 +1077,8 @@ function poseEddie(dt, now){
     if (P.grip < 30){ me.group.position.x += (Math.random() - 0.5) * 0.06; me.group.position.y += (Math.random() - 0.5) * 0.04; }   // arms shaking
   } else {
     me.group.rotation.set(0, fa + (P.face > 0 ? -1.25 : 1.25), 0);   // running along the wall, turned a bit toward the camera
+    const mk = (S.t - (P.mantleAt ?? -9)) / 0.45;
+    if (mk >= 0 && mk < 1){ me.group.position.y -= Math.sin(mk * Math.PI) * 0.5; me.group.rotation.x = Math.sin(mk * Math.PI) * 0.6; }   // 嘿咻: the mantle over the node's top
     const moving = P.mode === 'ground' && Math.abs(P.vs) > 0.6;
     if (moving) P.phase += dt * Math.abs(P.vs) * 1.7;
     animateEddie(me, { t: now, dt, moving, phase: P.phase, onGround: P.mode === 'ground', mood: S.windDir ? 'surprised' : 'smile' });
