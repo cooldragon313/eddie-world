@@ -269,8 +269,8 @@ function frame(now){
   if (blinkT >= 0){ blinkT += dt; mom.face.blink(Math.sin(Math.min(1, blinkT / 0.16) * Math.PI)); if (blinkT > 0.16){ blinkT = -1; mom.face.blink(0); } }
   if (eddie) animateEddie(eddie, { t, dt, moving: false, onGround: true });
   const mobile = innerWidth < innerHeight;
-  camera.position.set(0, 2.3, mobile ? -12.5 : -10);
-  camera.lookAt(0, 1.95, 0);
+  camera.position.set(0, 2.5, mobile ? -13 : -10.5);
+  camera.lookAt(0, 2.15, 0);
   renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);
