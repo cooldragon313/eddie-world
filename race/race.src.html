@@ -111,7 +111,7 @@
     .logoCast{display:none}
   }
   @media (max-width:859px) and (orientation:portrait), (max-width:599px){
-    #startCard{flex-direction:column;justify-content:flex-start;overflow:auto;gap:8px}
+    #startCard{flex-direction:column;justify-content:space-between;overflow:auto;gap:8px}   /* logo top, cast in the middle, panel at the bottom */
     .logo .planet{width:80px;height:54px;margin-bottom:-12px}
     .logoText{font-size:46px;-webkit-text-stroke:4px #5b3a29;text-shadow:0 5px 0 #5b3a29}
     .logoSub{font-size:15px}
@@ -869,8 +869,8 @@ function buildLevel(level){
     }
     // the cover: the whole family lined up at the start line
     coverGroup = new THREE.Group(); add(coverGroup);
-    const gm = makeGhostMom(); gm.position.set(3.6, 0.25, 1.8); gm.rotation.y = Math.PI - 0.35; gm.userData.armR.rotation.x = -2.0; coverGroup.add(gm);
-    const kid = makeKid(false); kid.scale.setScalar(0.42); kid.position.set(-3.4, 0, -1.2); kid.rotation.y = Math.PI + 0.3; kid.userData.armR.rotation.x = -2.2; coverGroup.add(kid);
+    const gm = makeGhostMom(); gm.position.set(3.6, 0.25, 1.8); gm.rotation.y = Math.PI - 0.35; gm.userData.armR.rotation.x = -2.0; coverGroup.add(gm); coverGroup.userData.gm = gm;
+    const kid = makeKid(false); kid.scale.setScalar(0.42); kid.position.set(-3.4, 0, -1.2); kid.rotation.y = Math.PI + 0.3; kid.userData.armR.rotation.x = -2.2; coverGroup.add(kid); coverGroup.userData.kid = kid;
     for (const [bx, bz, i] of [[1.6, -2.4, 0], [-1.2, -3.2, 1], [2.6, -0.6, 2]]){ const b = makeBottle(i); b.position.set(bx, 0, bz); if (i === 1) b.rotation.z = Math.PI / 2; coverGroup.add(b); }
     for (const [cx, cz] of [[-2.2, -2.4], [-4.6, 0.6]]){ const car = makeCar(); car.scale.setScalar(0.7); car.position.set(cx, 0.32, cz); car.rotation.y = cx; coverGroup.add(car); }
   }
@@ -1066,6 +1066,7 @@ function startRun(level){
   if (API) fetch(API + '/race_start', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ level: level.id, device: DEVICE }) }).catch(() => {});
   if (level !== L || !chaser) buildLevel(level);
   reset(); $('startCard').hidden = true; $('endCard').hidden = true; $('hint').hidden = true;
+  if (coverGroup) coverGroup.userData.beat = -1;
   $('gateChip').hidden = true;
   S.phase = 'count'; S.countAt = performance.now();
   if (L.drunk) say(chaser, '你先跑我再追，追到我就對你嘿嘿嘿～', 4, { name: '酒鬼大叔', y: 4.6 });
@@ -1663,10 +1664,22 @@ function render(dt, clock){
     cu.armL.rotation.x = cu.armR.rotation.x = -1.3; cu.legL.rotation.x = 0.4; cu.legR.rotation.x = -0.4;
     for (const m of cu.mats){ m.opacity = 1; m.depthWrite = true; }
     me.group.position.set(0, 0, 0); me.group.rotation.set(0, 0, 0);
+    // a little life on the cover: ghost floats and swings, the kid flails, lines take turns
+    const cg = coverGroup.userData;
+    cg.gm.position.y = 0.25 + Math.sin(t * 2.2) * 0.2; cg.gm.userData.armR.rotation.x = -1.2 - Math.sin(t * 3) * 1.0;
+    cg.kid.userData.armR.rotation.x = -1.2 - Math.sin(t * 6) * 1.1; cg.kid.userData.armL.rotation.x = -1.2 + Math.sin(t * 6) * 1.1;
+    const beat = Math.floor(t / 2.6) % 3;
+    if (beat !== cg.beat){
+      cg.beat = beat;
+      if (beat === 0) say(chaser, '你先跑我再追～', 2.2, { y: 4.6 });
+      else if (beat === 1) say(cg.gm, '皮在癢了嗎？', 2.2, { y: 3.7 });
+      else say(cg.kid, '咻咻咻！', 2.2, { y: 3.3 });
+    }
     const wide = innerWidth >= 860 || (innerWidth >= 600 && innerWidth > innerHeight);
-    _camTarget.set(Math.sin(t * 0.18) * 2.2 + (wide ? -2.5 : 0), 3.0, -10.5);
+    if (wide){ _camTarget.set(Math.sin(t * 0.18) * 2.2 - 2.5, 3.0, -10.5); }
+    else { _camTarget.set(Math.sin(t * 0.18) * 1.2, 4.0, -17.5); }      // upright/narrow: back off so the whole family fits
     camera.position.lerp(_camTarget, Math.min(1, dt * 2));
-    camera.lookAt(wide ? -2.4 : 0, wide ? 2.6 : 1.6, 2);
+    if (wide) camera.lookAt(-2.4, 2.6, 2); else camera.lookAt(0, 2.6, 1.2);
     renderer.render(scene, camera); updateBubbles();
     return;
   }
