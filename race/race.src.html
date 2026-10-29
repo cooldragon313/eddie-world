@@ -197,6 +197,8 @@
     background:rgba(255,248,236,.94);border:2px solid var(--sb-ink);border-radius:999px;padding:4px 14px;font:700 14px/1.2 var(--sb-font);color:var(--sb-ink);
     box-shadow:0 3px 0 rgba(91,58,41,.25);cursor:pointer;touch-action:manipulation}
   #restartBtn:active{transform:translateY(2px)}
+  #soundBtn{pointer-events:auto;margin-top:2px;background:rgba(255,248,236,.94);border:2px solid var(--sb-ink);border-radius:999px;padding:4px 10px;font:700 14px/1.2 var(--sb-font);
+    color:var(--sb-ink);box-shadow:0 3px 0 rgba(91,58,41,.25);cursor:pointer;touch-action:manipulation}
   #lineHint{position:fixed;z-index:40;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);max-width:92vw;
     background:#06c755;color:#fff;border-radius:14px;padding:8px 14px;font:700 14px/1.4 var(--sb-font);box-shadow:0 4px 0 rgba(0,0,0,.2);text-align:center}
   #lineHint button{margin-left:8px;background:#fff;color:#06c755;border:0;border-radius:999px;padding:2px 10px;font:inherit}
@@ -230,6 +232,7 @@
   <span class="chip">🪙 <b id="hCoins">0</b></span>
   <span class="chip" id="hDrankChip" hidden>🍺 酒鬼喝了 <b id="hDrank">0</b> / <span id="hBottles">10</span></span>
   <button id="restartBtn" type="button" hidden>🔄 重來</button>
+  <button id="soundBtn" type="button" aria-label="聲音開關">🔊</button>
 </div>
 <div class="hud tr">
   <span class="lbl" id="chaserLbl">刺牆距離</span>
@@ -704,7 +707,43 @@ function mosaicTexture(){
   for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++){ x.fillStyle = pal[(Math.random() * pal.length) | 0]; x.fillRect(i, j, 1, 1); }
   const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; return t;
 }
+// ---------- sound effects (synthesised with WebAudio; nothing to download) ----------
+// On by default, remembered per device. No background music (Bernie: songs on a loop get tiring).
+const sfx = (() => {
+  let ac = null, on = true;
+  try { on = localStorage.getItem('race.sound') !== 'off'; } catch (e) {}
+  function ctx(){ if (!ac){ try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } } if (ac && ac.state === 'suspended') ac.resume(); return ac; }
+  // browsers only allow sound after a tap/key: wake the audio up on the first one
+  const wake = () => { if (on) ctx(); };
+  addEventListener('pointerdown', wake, true); addEventListener('keydown', wake, true);
+  const ok = () => on && ctx();
+  function noise(dur){ const b = ac.createBuffer(1, Math.max(1, ac.sampleRate * dur | 0), ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const n = ac.createBufferSource(); n.buffer = b; return n; }
+  function env(node, t, a, peak, rel){ const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + rel); node.connect(g); g.connect(ac.destination); return g; }
+  function tone(type, f0, f1, dur, vol, delay){ const t = ac.currentTime + (delay || 0), o = ac.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur); env(o, t, 0.008, vol, dur); o.start(t); o.stop(t + dur + 0.05); }
+  function hiss(dur, vol, type, f0, f1, delay, q){ const t = ac.currentTime + (delay || 0), n = noise(dur + 0.05), f = ac.createBiquadFilter(); f.type = type; f.Q.value = q || 1; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dur); n.connect(f); env(f, t, 0.01, vol, dur); n.start(t); n.stop(t + dur + 0.05); }
+  return {
+    get on(){ return on; },
+    toggle(){ on = !on; try { localStorage.setItem('race.sound', on ? 'on' : 'off'); } catch (e) {} if (on) ctx(); return on; },
+    jump(){ if (ok()) tone('square', 330, 660, 0.12, 0.08); },
+    dj(){ if (ok()){ tone('square', 520, 1040, 0.1, 0.07); tone('triangle', 780, 1560, 0.12, 0.06, 0.05); } },
+    coin(){ if (ok()){ tone('square', 988, 0, 0.06, 0.06); tone('square', 1319, 0, 0.14, 0.06, 0.06); } },
+    clink(){ if (ok()){ tone('triangle', 1800, 1400, 0.12, 0.08); tone('triangle', 2400, 0, 0.1, 0.05, 0.04); } },
+    thud(){ if (ok()){ tone('sine', 140, 50, 0.22, 0.4); hiss(0.08, 0.2, 'lowpass', 900, 200); } },
+    smack(){ if (ok()){ hiss(0.12, 0.6, 'highpass', 1500, 0, 0); tone('sine', 180, 60, 0.18, 0.35); } },
+    swish(){ if (ok()) hiss(0.18, 0.25, 'bandpass', 500, 3500, 0, 2); },
+    ping(){ if (ok()){ tone('triangle', 1200, 2000, 0.08, 0.12); tone('sine', 2000, 0, 0.25, 0.06, 0.06); } },
+    splash(){ if (ok()){ hiss(0.35, 0.35, 'bandpass', 2500, 700, 0, 0.8); tone('sine', 600, 200, 0.12, 0.05); } },
+    puke(){ if (ok()){ tone('sawtooth', 180, 70, 0.5, 0.12); hiss(0.45, 0.2, 'lowpass', 1200, 300, 0.05); } },
+    wind(){ if (ok()) hiss(1.3, 0.22, 'bandpass', 300, 1100, 0, 0.7); },
+    toss(){ if (ok()) hiss(0.12, 0.15, 'bandpass', 1500, 3000, 0, 3); },
+    chime(){ if (ok()) [784, 988, 1175].forEach((f, i) => tone('triangle', f, 0, 0.22, 0.09, i * 0.08)); },
+    beep(hi){ if (ok()) tone('square', hi ? 1320 : 660, 0, hi ? 0.35 : 0.14, 0.08); },
+    fanfare(){ if (ok()) [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone('square', f, 0, i === 5 ? 0.5 : 0.12, 0.07, i * 0.11)); },
+    caught(){ if (ok()){ tone('sawtooth', 300, 90, 0.5, 0.12); hiss(0.2, 0.3, 'lowpass', 800, 200); } },
+  };
+})();
 function puke(){
+  sfx.puke();
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: mosaicTexture() }));
   // on the ground behind his feet, well clear of the player (the mosaic is the puke, never you)
   sp.scale.set(1.7, 1.1, 1); sp.position.set(S.x - 0.3, FY(S.m) + 0.45, -(S.m - 2.6)); add(sp);
@@ -825,6 +864,7 @@ function makeFireball(r){
 // big stamped word + screen flash + camera shake
 let shakeUntil = 0, shakeAmp = 0;
 function impact(text, color, shake){
+  if (/噗/.test(text)) sfx.splash(); else if (/抓到/.test(text)) sfx.caught(); else if (!/噁/.test(text)) sfx.smack();
   const el = $('impact'); el.textContent = text; el.style.background = color; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
   const f = $('impactFlash'); f.style.transition = 'none'; f.style.background = color; f.style.opacity = 0.45;
   requestAnimationFrame(() => { f.style.transition = 'opacity .45s'; f.style.opacity = 0; });
@@ -863,7 +903,7 @@ function hurt(kind, text, knock){
   if (S.time < S.hurtUntil) return false;
   S.hurtUntil = S.time + 0.9; S.knockV = knock; S.slowUntil = S.time + 0.5; S.slideChain = 0;
   if (kind === 'shot') S.shot++; else S.hits++;
-  flash(text); return true;
+  sfx.thud(); flash(text); return true;
 }
 
 // ---------- ⑤ 頂樓曬衣場: clotheslines with wind-blown sheets, flower pots ----------
@@ -1422,6 +1462,8 @@ function startRun(level, easy){
   if (L.drunk) say(chaser, '你先跑我再追，追到我就對你嘿嘿嘿～', 4, { name: '酒鬼大叔', y: 4.6 });
 }
 $('againBtn').onclick = () => startRun(L, S.easy);
+$('soundBtn').textContent = sfx.on ? '🔊' : '🔇';
+$('soundBtn').addEventListener('click', e => { e.preventDefault(); $('soundBtn').blur(); $('soundBtn').textContent = sfx.toggle() ? '🔊' : '🔇'; });
 $('restartBtn').addEventListener('click', e => { e.preventDefault(); $('restartBtn').blur(); startRun(L, S.easy); });
 // still inside LINE (it didn't hand over): tell them how to get full screen
 if (/\bLine\//i.test(navigator.userAgent)){ $('lineHint').hidden = false; $('lineHintX').onclick = () => { $('lineHint').hidden = true; }; }
@@ -1439,6 +1481,7 @@ function respawn(reason){
   flash(reason);
 }
 function finish(){
+  sfx.fanfare();
   S.phase = 'done'; $('danger').style.opacity = 0; $('gateChip').hidden = true;
   const t = +S.time.toFixed(1), prevBest = bestTime(L), newBest = !prevBest || t < prevBest;
   if (newBest){ try { localStorage.setItem(bestKey(L), String(t)); } catch(e){} }
@@ -1564,7 +1607,9 @@ function frame(now){
   last = now;
   if (S.phase === 'count'){
     const left = 3 - (performance.now() - S.countAt) / 1000, c = $('count');
-    c.hidden = false; c.textContent = left > 0 ? Math.ceil(left) : 'GO!';
+    const label = left > 0 ? Math.ceil(left) : 'GO!';
+    if (c.textContent !== String(label) || c.hidden) sfx.beep(label === 'GO!');
+    c.hidden = false; c.textContent = label;
     if (left <= -0.4){ c.hidden = true; S.phase = 'run'; }
   }
   if (S.phase === 'run') step(dt);
@@ -1650,8 +1695,8 @@ function step(dt){
   // already falling below the platform (Bernie: 跳起來再跳一次, no mid-fall saves).
   const fresh = keys.Space && !S.jumpHeld; S.jumpHeld = !!keys.Space;
   if (!down){
-    if (keys.Space && S.onGround){ S.vy = JUMP_V; S.onGround = false; S.jumped = true; }
-    else if (fresh && !S.onGround && S.jumped && !S.djUsed && S.y > -0.2){ S.vy = DJ_V; S.djUsed = true; S.flipT = 0.0001; }
+    if (keys.Space && S.onGround){ S.vy = JUMP_V; S.onGround = false; S.jumped = true; sfx.jump(); }
+    else if (fresh && !S.onGround && S.jumped && !S.djUsed && S.y > -0.2){ S.vy = DJ_V; S.djUsed = true; S.flipT = 0.0001; sfx.dj(); }
   }
   S.vy -= GRAV * dt; S.y += S.vy * dt;
   const g = groundAt(S.m, S.x);
@@ -1673,7 +1718,7 @@ function step(dt){
       if (sp < MINS){ if (sp < 0.5){ vm = MINS; vx = 0; } else { vm *= MINS / sp; vx *= MINS / sp; } }
       S.slipVm = vm; S.slipVx = vx; S.slipUntil = S.time + L.slip.time; S.slipPud = pd; S.slides++;
       S.slideChain++; S.bestChain = Math.max(S.bestChain, S.slideChain);
-      flash(S.slideChain >= 3 ? `🛼 溜冰 ${S.slideChain} 連發！` : '💦 滑～～');
+      flash(S.slideChain >= 3 ? `🛼 溜冰 ${S.slideChain} 連發！` : '💦 滑～～'); sfx.splash();
       break;
     }
   }
@@ -1695,7 +1740,7 @@ function step(dt){
   const WD = L.wind;
   if (WD && S.m > WD.from && S.m < WD.to){
     if (!S.windNext) S.windNext = S.time + 1.5;
-    if (!S.windDir && S.time > S.windNext - WD.warn){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; flash(S.windDir < 0 ? '⬅️ 🌬 大風要來了！' : '🌬 大風要來了！➡️'); }
+    if (!S.windDir && S.time > S.windNext - WD.warn){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; sfx.wind(); flash(S.windDir < 0 ? '⬅️ 🌬 大風要來了！' : '🌬 大風要來了！➡️'); }
     if (S.windDir && S.time > S.windAt && S.time < S.windAt + WD.gust) S.x += S.windDir * WD.push * dt;
     if (S.windDir && S.time > S.windAt + WD.gust){ S.windDir = 0; S.windNext = S.time + WD.every * (0.8 + Math.random() * 0.4); }
     if (S.time > (S.flyNext || 0)){ S.flyNext = S.time + WD.flyEvery * EZ(1, 1.8); spawnFlyingCloth(); }
@@ -1770,7 +1815,7 @@ function step(dt){
       bullets.push({ x: tu.x, vx: (aimX - tu.x) / flight, m: tu.m - 1.5, vm: -22, mesh, back: false });
     }
   }
-  if (keys.KeyF && S.time > S.swingCd){ S.swingUntil = S.time + SWING_DUR; S.swingCd = S.time + 0.5; }
+  if (keys.KeyF && S.time > S.swingCd){ S.swingUntil = S.time + SWING_DUR; S.swingCd = S.time + 0.5; sfx.swish(); }
   const swinging = S.time < S.swingUntil;
   for (let i = bullets.length - 1; i >= 0; i--){
     const b = bullets[i];
@@ -1850,7 +1895,7 @@ function step(dt){
     if (mn.m > S.m + 2 && !mn.windAt && S.time > mn.next - (MN.windup || 0)) mn.windAt = S.time;   // arm goes up: the tell
     if (mn.m > S.m + 2 && S.time > mn.next){
       mn.windAt = 0;
-      mn.next = S.time + MN.fireEvery * EZ(1, 1.7) * (0.8 + Math.random() * 0.4); mn.throwT = S.time;
+      mn.next = S.time + MN.fireEvery * EZ(1, 1.7) * (0.8 + Math.random() * 0.4); mn.throwT = S.time; if (Math.abs(mn.m - S.m) < 16) sfx.toss();
       mn.car = !mn.car;
       if (mn.car){
         const mesh = makeCar(); mesh.scale.setScalar(0.75); add(mesh);
@@ -1878,7 +1923,7 @@ function step(dt){
     let gone = (!b.back && b.m < b.minM) || Math.abs(b.x) > L1_LANE + 1;
     for (const c of covers) if (Math.abs(b.m - c.m) < 1.2 && Math.abs(b.x - c.x) < 2) gone = true;
     if (b.kid && swinging && !b.back && b.m > S.m && b.m - S.m < 2.8 && Math.abs(b.x - S.x) < 1.9){
-      b.back = true; S.reflected++; b.vm = Math.abs(b.vm) + 6; b.vx = -b.vx * 0.3; b.maxM = b.m + 30; flash('⚾ 小車打回去！');
+      b.back = true; S.reflected++; b.vm = Math.abs(b.vm) + 6; b.vx = -b.vx * 0.3; b.maxM = b.m + 30; flash('⚾ 小車打回去！'); sfx.ping();
     }
     if (b.back){
       if (b.m > b.maxM) gone = true;
@@ -1891,7 +1936,7 @@ function step(dt){
     f.m += f.vm * dt; f.x += f.vx * dt; f.life -= dt;
     let gone = f.life <= 0 || Math.abs(f.x) > L1_LANE + 1;
     if (swinging && !f.back && f.m > S.m && f.m - S.m < 2.8 && Math.abs(f.x - S.x) < 1.9){
-      f.back = true; S.reflected++; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash('⚾ 遙控器打回去！');
+      f.back = true; S.reflected++; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash('⚾ 遙控器打回去！'); sfx.ping();
     }
     for (const c of covers) if (Math.abs(f.m - c.m) < 0.9 && Math.abs(f.x - c.x) < 1.3) gone = true;
     if (!gone && !f.back && Math.abs(f.m - S.m) < 0.75 && Math.abs(f.x - S.x) < 0.85 && S.y < 1.9 && hurt('shot', f.from === 'minion' ? '🔥 被火球燒到！' : '📺 被遙控器砸到！', 7)) gone = true;
@@ -1990,10 +2035,10 @@ function step(dt){
   // coins
   for (const c of coins){
     if (c.taken) continue;
-    if (Math.abs(c.m - S.m) < 1.1 && Math.abs(c.x - S.x) < 1.1 && S.y < 2.2){ c.taken = true; c.mesh.visible = false; S.coins++; }
+    if (Math.abs(c.m - S.m) < 1.1 && Math.abs(c.x - S.x) < 1.1 && S.y < 2.2){ c.taken = true; c.mesh.visible = false; S.coins++; sfx.coin(); }
   }
   // checkpoints
-  for (const [cm, cx] of L.checkpoints) if (S.m >= cm && cm > S.cp){ S.cp = cm; S.cpX = cx; flash('🚩 檢查點'); }
+  for (const [cm, cx] of L.checkpoints) if (S.m >= cm && cm > S.cp){ S.cp = cm; S.cpX = cx; flash('🚩 檢查點'); sfx.chime(); }
   // the wall: your section's speed, leashed within WALL_LEASH behind; in the
   // gate section it waits behind a barrier until you're through
   const gapNow = S.m - S.wallM;
@@ -2006,7 +2051,7 @@ function step(dt){
     // bottles: knock them over; the ones you leave, he drinks (and gets faster)
     for (const b of bottles){
       if (b.state !== 'up') continue;
-      if (Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.0 && S.y < 1.4){ b.state = 'down'; b.t = 0; b.dir = Math.sign(S.x - b.x) || 1; S.coins++; S.knocked++; flash('🍾 酒瓶撞倒！'); }
+      if (Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.0 && S.y < 1.4){ b.state = 'down'; b.t = 0; b.dir = Math.sign(S.x - b.x) || 1; S.coins++; S.knocked++; flash('🍾 酒瓶撞倒！'); sfx.clink(); }
       else if (S.wallM >= b.m){ b.state = 'drunk'; b.g.visible = false; S.boost = Math.min(6, S.boost + 1); S.drank++; say(chaser, '嗝～好喝！', 1.5, { name: '酒鬼大叔', y: 4.6 }); flash('🍺 酒鬼喝了一瓶，變快了！'); }
     }
   }

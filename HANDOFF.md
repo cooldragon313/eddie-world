@@ -140,7 +140,7 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 試玩：逃離土星艾迪版 https://claude.ai/artifact/2r6p37955RvFwrHZZc9fP5 ／土星之家 https://claude.ai/artifact/7CVMoMJmmk3GrbZScdNTsQ ／艾迪原型 https://claude.ai/artifact/11zvrShMMHSVBgN43xA17Z
 - 舊的「逃離土星」試玩 `…1GfYgGkd…` 是艾迪之前的版本
 
-## 2026-10-29 — 逃離土星第一關後段重做（分支上、還沒上架）
+## 2026-10-29 — 逃離土星第一關後段重做（✅ 已上架 main 1f0fb7a ＋ saturnfamily dbac885）
 - 共用小屁孩 `buildKid()`（island.html AVATAR 區，照 Bernie 照片：黑短髮瀏海、白T淺藍短褲、赤腳）；原型 https://claude.ai/artifact/4KMMx6mQamrWN8R3XiNfsu
 - ⑤ 頂樓遊戲室（430–478）：小屁孩丟小車／遙控器輪流，**手上先拿著下一發**＋舉手壞笑預告；兩種都能揮棒打回去讓他哭（成就「全壘打王」）。中間的掩體拿掉了
 - ⑥ 頂樓曬衣場（478–530）：大風（先跳箭頭警告再推人）、飛襪子🧦／內褲🩲（大圖示卡）、床單、盆栽
@@ -148,3 +148,12 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 警告字改粉圓體（Huninn）＋貼紙底（`.flash` 奶油膠囊、`#impact` 彩色貼紙）
 - 髒髒度：Bernie 說只當成就、不影響玩法 → **還沒做**
 - 下一步：第二關（LEVEL2 天空機關城）要重新規劃主題
+
+## 2026-10-29 — 恐怖考前複習夜 媽媽版（分支上、還沒上架）
+- 嬤嬤 → 媽媽（共用 `buildMom`，island.html AVATAR 區；原型 https://claude.ai/artifact/6uHQME8BxUenFG77wqMm3i ）
+- 三種武器每次開門隨機：膠條／愛的小手（輕）／衣架（重）；抽打特效、台詞、震動分武器；整個畫面震
+- 艾迪三張真實塗鴉（照片→`scratchpad/doodles.py` 去背成鉛筆線，內嵌 PNG）：畫畫沿著線慢慢長出來，畫完一張 +25、三張 +40；畫到一半收起來會畫歪，下次先擦 0.6 秒
+- 媽媽問「那頁看多久了」之後不翻頁就不走，怒氣慢慢漲；翻頁才走
+- 十點勝利：鐘聲＋彩帶＋10:00 大章；9 個成就（localStorage `gluenight.ach`）
+- 難度用機器人模擬調過（反應 0.6 秒：YouTube 約 170、打電動高風險）
+- 試玩：https://claude.ai/artifact/22KEpAkE6hMkbmHdEin8Bs

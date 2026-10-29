@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>媽媽原型</title>
+<!--
+  SOURCE — edit this file, then run:  python tools/build_proto.py mom
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+  :root{
+    --sb-paper:#fff8ec; --sb-ink:#5b3a29; --sb-text:#4a3426; --sb-muted:#9a7d5f;
+    --sb-gold-soft:#ffcf5a; --sb-sky:#6fb3e0;
+    --sb-font:"Fredoka","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    color-scheme:light;
+  }
+  html,body{height:100%}
+  body{margin:0;position:fixed;inset:0;overflow:hidden;color:var(--sb-text);font-family:var(--sb-font);
+       background:radial-gradient(circle at 50% 60%,#fff6e4,#ffe1ea 75%);user-select:none;-webkit-user-select:none;touch-action:none}
+  #stage{position:fixed;inset:0}
+  #head{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);text-align:center;pointer-events:none;z-index:2}
+  #head h1{margin:0;font:900 30px var(--sb-font);color:#ffcf5a;-webkit-text-stroke:3px var(--sb-ink);paint-order:stroke fill;letter-spacing:2px;white-space:nowrap}
+  #head p{margin:2px 0 0;font:700 14px var(--sb-font);color:var(--sb-muted)}
+  #bar{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:0 16px;z-index:2}
+  .btn{font:700 15px var(--sb-font);background:var(--sb-gold-soft);color:var(--sb-ink);border:2.5px solid var(--sb-ink);border-radius:999px;
+       padding:7px 16px;cursor:pointer;box-shadow:0 4px 0 rgba(91,58,41,.35)}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(91,58,41,.35)}
+  .btn:focus-visible{outline:3px solid var(--sb-sky);outline-offset:2px}
+  #tip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));font:600 12px var(--sb-font);color:var(--sb-muted);pointer-events:none;white-space:nowrap;z-index:2}
+  @media (max-height:520px){ #head h1{font-size:20px;-webkit-text-stroke:2px var(--sb-ink)} #head p{font-size:11px} .btn{font-size:13px;padding:5px 12px} #tip{display:none} }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="head"><h1>媽媽</h1><p>原型：恐怖考前複習夜的媽媽（照片版，可叫出艾迪比身高）</p></div>
+<div id="tip">手指拖曳可以轉</div>
+<div id="bar">
+  <button class="btn" id="bWalk">🚶‍♀️ 走路</button>
+  <button class="btn" id="bPeek">🚪 開門偷看</button>
+  <button class="btn" id="bWhip">🩹 揮武器</button>
+  <button class="btn" id="bHips">😤 叉腰</button>
+  <button class="btn" id="bPhone">📱 滑手機</button>
+  <button class="btn" id="bWeapon">🔀 換武器</button>
+  <button class="btn" id="bFace">🙂 換表情</button>
+  <button class="btn" id="bEddie">👦 艾迪</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*@@INCLUDE:LOOK@@*/
+
+/*@@INCLUDE:AVATAR@@*/
+
+(() => {
+const $ = id => document.getElementById(id);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+$('stage').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+scene.add(new THREE.HemisphereLight(0xfff2dc, 0xb9d99c, 0.8));
+const sun = new THREE.DirectionalLight(0xffeccc, 0.55); sun.position.set(-3, 6, -6); scene.add(sun);
+function fit(){ const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.fov = w < h ? 44 : 30; camera.updateProjectionMatrix(); }
+addEventListener('resize', fit); fit();
+
+// the mom comes from the shared AVATAR block (island.html)
+const mom = buildMom(); scene.add(mom.g);
+let eddie = null;
+
+// ---------- moves ----------
+let yaw = 0, t = 0, act = null, actT = 0, walking = false, blinkAt = 2, blinkT = -1, fi = 0;
+const FACES = ['smile', 'suspicious', 'angry', 'yell', 'shocked'];
+const ease = k => k * k * (3 - 2 * k);
+const btn = (id, f) => $(id).addEventListener('click', f);
+const go = (a, f) => { act = a; actT = 0; walking = false; mom.face.set(f); };
+btn('bWalk', () => { walking = !walking; act = null; mom.face.set('smile'); });
+btn('bPeek', () => go('peek', 'suspicious'));
+btn('bWhip', () => go('whip', 'yell'));
+btn('bHips', () => go('hips', 'angry'));
+btn('bPhone', () => go('phone', 'smile'));
+btn('bWeapon', () => { const L = ['glue', 'hand', 'hanger']; mom.setWeapon(L[(L.indexOf(mom.weapon) + 1) % 3]); });
+btn('bFace', () => { act = null; fi = (fi + 1) % FACES.length; mom.face.set(FACES[fi]); });
+btn('bEddie', () => {
+  if (eddie){ scene.remove(eddie.group); eddie = null; mom.g.position.x = 0; return; }
+  eddie = buildEddieAvatar(DEFAULT_CUSTOM, { bat: false }); eddie.group.position.x = -1.1; scene.add(eddie.group); mom.g.position.x = 0.7;
+});
+let drag = null;
+renderer.domElement.addEventListener('pointerdown', e => { drag = e.clientX; });
+addEventListener('pointermove', e => { if (drag === null) return; yaw += (e.clientX - drag) * 0.01; drag = e.clientX; });
+addEventListener('pointerup', () => { drag = null; });
+
+const [aL, aR] = mom.arms, [lL, lR] = mom.legs, eL = aL.userData.elbow, eR = aR.userData.elbow, kL = lL.userData.knee, kR = lR.userData.knee;
+let last = 0;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = last ? Math.min(0.05, Math.max(0, (now - last) / 1000)) : 0.016; last = now; t += dt;
+  mom.g.rotation.y = yaw;
+  for (const j of [aL, aR, lL, lR, eL, eR, kL, kR, mom.head, mom.body]) j.rotation.set(0, 0, 0);
+  mom.weapons[mom.weapon].visible = act !== 'phone';
+  mom.body.position.set(0, 0, 0);
+  mom.handPhone.visible = act === 'phone'; mom.phone.visible = act !== 'phone';
+  const br = Math.sin(t * 2.2);
+  mom.torso.scale.set(1 + br * 0.015, 1 + br * 0.01, 1);
+  aL.rotation.z = -0.12; aR.rotation.z = 0.12; eL.rotation.x = eR.rotation.x = 0.25;
+  mom.head.rotation.z = Math.sin(t * 1.1) * 0.03;
+  if (walking){
+    const p = t * 6, w = Math.sin(p);
+    lL.rotation.x = w * 0.45; lR.rotation.x = -w * 0.45;
+    kL.rotation.x = -Math.max(0, Math.sin(p + 1.2)) * 0.5; kR.rotation.x = -Math.max(0, -Math.sin(p + 1.2)) * 0.5;
+    aL.rotation.x = -w * 0.4; aR.rotation.x = w * 0.4; eL.rotation.x = eR.rotation.x = 0.35;
+    mom.body.position.y = Math.abs(Math.cos(p)) * 0.04; mom.body.rotation.y = w * 0.06;
+  }
+  if (act === 'peek'){
+    actT += dt;
+    // lean round a door frame, eyes narrowed, slow look left-right
+    const k = ease(Math.min(1, actT / 0.4)) * (actT > 2.6 ? Math.max(0, 1 - (actT - 2.6) / 0.4) : 1);
+    mom.body.rotation.z = -0.22 * k; mom.body.position.x = -0.2 * k;
+    mom.head.rotation.z = 0.15 * k; mom.head.rotation.y = Math.sin(actT * 1.6) * 0.4 * k;
+    aR.rotation.z = 1.2 * k; aR.rotation.x = -0.5 * k; eR.rotation.x = 1.3 * k;   // hand on the door frame
+    if (actT > 3){ act = null; mom.face.set('smile'); }
+  } else if (act === 'whip'){
+    actT += dt;
+    // top-down chop, other fist on the hip, leaning into it
+    const c = actT % 0.9, chop = mom.whipPose(c);
+    mom.body.rotation.x = chop ? 0.12 : 0.02; mom.body.rotation.y = c < 0.45 ? 0.15 : -0.1;
+    aL.rotation.z = -0.75; eL.rotation.z = 1.9;
+    mom.head.rotation.x = 0.1;
+    if (actT > 2.7){ act = null; mom.face.set('smile'); }
+  } else if (act === 'hips'){
+    actT += dt;
+    const k = ease(Math.min(1, actT / 0.3));
+    aL.rotation.z = -0.75 * k; aR.rotation.z = 0.75 * k;
+    eL.rotation.z = 1.9 * k; eR.rotation.z = -1.9 * k;
+    mom.head.rotation.x = 0.1 * k; mom.head.rotation.z = Math.sin(actT * 3) * 0.05;
+    lL.rotation.z = -0.08 * k; lR.rotation.z = 0.08 * k;
+    mom.body.position.y = actT > 0.6 ? Math.abs(Math.sin(actT * 9)) * 0.02 : 0;   // foot tapping
+    if (actT > 2.6){ act = null; mom.face.set('smile'); }
+  } else if (act === 'phone'){
+    actT += dt;
+    // phone up in front of the face, head down, thumb scrolling; every so
+    // often something funny: a giggle that shakes the shoulders
+    const k = ease(Math.min(1, actT / 0.4)), scroll = Math.max(0, Math.sin(actT * 7)) * 0.08, lol = actT > 1.3 && (actT % 2.2) < 0.8;
+    aL.rotation.x = 1.6 * k; aL.rotation.z = 0.3 * k; eL.rotation.x = 1.1 * k + scroll;
+    aR.rotation.x = 1.45 * k; aR.rotation.z = -0.3 * k; eR.rotation.x = 1.15 * k;   // other hand supports it
+    mom.head.rotation.x = 0.38 * k; mom.head.rotation.y = 0.12 * k;
+    mom.handPhone.userData.screen.material.color.setHSL(0.55 + Math.sin(actT * 3) * 0.05, 0.8, 0.75);
+    if (lol){ mom.face.set('smile'); mom.body.position.y = Math.abs(Math.sin(actT * 22)) * 0.03; mom.head.rotation.x = 0.2 + Math.sin(actT * 22) * 0.04; }
+    else if (actT > 0.4) mom.face.set('suspicious');
+    if (actT > 5){ act = null; mom.face.set('smile'); }
+  }
+  blinkAt -= dt;
+  if (blinkAt <= 0 && blinkT < 0){ blinkT = 0; blinkAt = 2 + Math.random() * 3; }
+  if (blinkT >= 0){ blinkT += dt; mom.face.blink(Math.sin(Math.min(1, blinkT / 0.16) * Math.PI)); if (blinkT > 0.16){ blinkT = -1; mom.face.blink(0); } }
+  if (eddie) animateEddie(eddie, { t, dt, moving: false, onGround: true });
+  const mobile = innerWidth < innerHeight;
+  camera.position.set(0, 2.5, mobile ? -13 : -10.5);
+  camera.lookAt(0, 2.15, 0);
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
