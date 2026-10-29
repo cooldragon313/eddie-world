@@ -1295,6 +1295,7 @@ foot('sill', 1.5, 2.2, 1.8, { pigeon: true });
   const top = plat('sill', tz.s1 - 1.9, 2.0, cy + 2.5); ROUTE.push(top); cs = top.s1; cy = top.y;
 }
 foot('sill', 1.4, 2.2, 2.4);                                 // the foot of the node: rest up here
+const NODE_W = 3.5;   // how far the node's glass and top reach either side of the climbing walls
 const NODE = { y0: cy - 0.2, y1: cy + 8.8, out0: 0.3, out1: 3.2 };
 plat('net', 0, PER, cy - 0.6, { ring: true, net: true });    // a slip anywhere on the node lands you back here
 {
@@ -1302,7 +1303,7 @@ plat('net', 0, PER, cy - 0.6, { ring: true, net: true });    // a slip anywhere 
   const seamOut = NODE.out0 + (NODE.out1 - NODE.out0) * (lo.y1 + 0.1 - NODE.y0) / (NODE.y1 - NODE.y0);   // how far the node leans out at the seam
   const seam = plat('seam', lo.s0 - 0.6, 3.0, lo.y1 + 0.1, { depth: seamOut + 0.9, standOut: seamOut + 0.4, mountOnly: true });   // the seam: a ledge sticking out past the glass (a slip from above falls past it)
   const hi = wall(lo.s0 - 0.2, 2.2, lo.y1 - 0.1, NODE.y1, { node: NODE });           // upper half, straight above (a bit wider, so a jump off the seam always grabs it)
-  const cap = plat('node', hi.s0 - 0.2, 4.0, hi.y1 + 0.1, { standOut: 2.6, nodeTop: true });   // mantle over the top
+  const cap = plat('node', lo.s0 - NODE_W, hi.s1 - lo.s0 + 2 * NODE_W, hi.y1 + 0.1, { depth: NODE.out1 + 0.5, standOut: 2.6, nodeTop: true });   // mantle over the top: the whole green top is walkable
   ROUTE.push(lo, seam, hi, cap); cs = cap.s1; cy = cap.y; Object.assign(NODE, { s0: lo.s0, s1: hi.s1, seamY: seam.y });
 }
 foot('drip', 1.4, 2.1, 1.6, { slide: 1 });
@@ -1474,8 +1475,8 @@ for (const z of walls){
     m.position.copy(surf(c.s, out + 0.35, c.y)); m.rotation.y = faceAngle(c.s); c.mesh = m; scene.add(m); chalks.push(c); }
   sbOutline(g, 0.03); scene.add(g); z.mesh = g;
 }
-{ // the bamboo node itself: a big glass skirt leaning out round the two climbing walls, a dark seam band, a heavy cap
-  const g = new THREE.Group(), w = 3.5, glass = new THREE.CanvasTexture(glassCanvas);
+{ // the bamboo node itself: a big glass skirt leaning out round the two climbing walls, a dark seam band (the top is the 'node' platform)
+  const g = new THREE.Group(), w = NODE_W, glass = new THREE.CanvasTexture(glassCanvas);
   glass.wrapS = glass.wrapT = THREE.RepeatWrapping; glass.repeat.set(2, 2);
   g.add(slab(NODE.s0 - w, NODE.s1 + w, NODE.y0, NODE.y1, NODE.out0 - 0.15, NODE.out1 - 0.15, 0.2, new THREE.MeshLambertMaterial({ map: glass, color: 0xbfe0d8 })));
   const k = nodeK(NODE, NODE.seamY), seamOut = NODE.out0 + (NODE.out1 - NODE.out0) * k;
@@ -1483,7 +1484,6 @@ for (const z of walls){
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.9), new THREE.MeshBasicMaterial({ map: canvasTex(256, 96, (x, w, h) => { x.fillStyle = '#ffcf5a'; x.fillRect(0, 0, w, h); x.strokeStyle = '#5b3a29'; x.lineWidth = 8; x.strokeRect(4, 4, w - 8, h - 8);
     x.fillStyle = '#5b3a29'; x.font = '900 46px Fredoka, "Noto Sans TC", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('😮‍💨 休息點', w / 2, h / 2 + 2); }) }));
   sign.position.copy(surf(NODE.s0 - 2.1, seamOut + 0.6, NODE.seamY + 1.0)); sign.rotation.y = faceAngle(NODE.s0); g.add(sign);   // a sign by the seam: stop here
-  g.add(meshAlong(NODE.s0 - w, NODE.s1 + w, NODE.y1 + 0.1, NODE.out1 + 0.5, 0.6, LM(0x2f6e68), 0));
   sbOutline(g, 0.04); scene.add(g);
 }
 // people in the windows: office workers, tourists taking photos (the flash pops)
