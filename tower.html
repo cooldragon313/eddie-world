@@ -1317,7 +1317,13 @@ plat('net', 0, PER, 15 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 25 * FLOOR_H - 0.4, { ring: true, net: true });
 // mom at an 18F window (a cameo from 恐怖考前複習夜)
 // (she rides the lift up to chase him — she shows up at a window every 20 floors: 18, 38, 58 … only 18F is built so far)
-const MOM_SPOTS = walls.filter(z => z.momWall).map(z => [z.s0 - 2.6, z.y1 + 0.5]);   // next to the top of those walls (clear of the corner)
+const MOM_SPOTS = walls.filter(z => z.momWall).map(z => {   // next to the top of those walls
+  let s = z.s0 - 2.6, y = z.y1 + 0.5;
+  if (Math.floor((s - 1.6) / SIDE) !== Math.floor((s + 1.6) / SIDE)) s = z.s1 + 2.6;   // the window would bend round a corner: use the other side of the wall
+  const deck = Math.ceil(y / (10 * FLOOR_H)) * 10 * FLOOR_H;
+  if (deck - y < 3.8) y = deck + 0.3;   // a checkpoint deck would cut across her window (and her sign): put her just above it
+  return [s, y];
+});
 
 // ---------- build the meshes ----------
 const woodTex = canvasTex(64, 32, (x, w, h) => { x.fillStyle = '#c98a4a'; x.fillRect(0, 0, w, h); x.strokeStyle = '#a8743f'; x.lineWidth = 2; for (let i = 1; i < 3; i++){ x.beginPath(); x.moveTo(0, i * h / 3); x.lineTo(w, i * h / 3); x.stroke(); } });
@@ -1465,10 +1471,10 @@ function slab(s0, s1, y0, y1, out0, out1, thick, mat){
 for (const z of walls){
   const g = new THREE.Group(), out = wallOut(z, z.y0);
   if (z.node) g.add(slab(z.s0, z.s1, z.y0, z.y1, wallOut(z, z.y0), wallOut(z, z.y1), 0.16, LM(0x2f6e68)));
-  else g.add(meshAlong(z.s0, z.s1, z.y1, 0.12, z.y1 - z.y0, LM(z.over ? 0x2f6e68 : 0x8fa8a6), out - 0.12));
+  else g.add(meshAlong(z.s0, z.s1, z.y1, 0.12, z.y1 - z.y0, LM(z.over ? 0x2f6e68 : 0xd9c3a0), out - 0.12));   // a sandy climbing board, easy to tell from the glass
   for (let s = z.s0 + 0.35; s < z.s1; s += 0.7) for (let y = z.y0 + 0.4; y < z.y1; y += 0.75){
-    const h = new THREE.Mesh(z.node ? new THREE.DodecahedronGeometry(0.2) : new THREE.SphereGeometry(0.13, 8, 6), LM(holdCols[(Math.floor(s * 3) + Math.floor(y * 2)) % 5]));   // the node gets chunky rocks
-    h.position.copy(surf(s + Math.sin(y * 7) * 0.15, wallOut(z, y) + 0.05, y)); if (z.node){ h.scale.set(1, 0.8, 0.7); h.rotation.set(y * 3, s * 2, 0); } g.add(h);
+    const h = new THREE.Mesh(new THREE.DodecahedronGeometry(z.node ? 0.2 : 0.17), LM(holdCols[(Math.floor(s * 3) + Math.floor(y * 2)) % 5]));   // chunky climbing rocks
+    h.position.copy(surf(s + Math.sin(y * 7) * 0.15, wallOut(z, y) + 0.05, y)); h.scale.set(1, 0.8, 0.7); h.rotation.set(y * 3, s * 2, 0); g.add(h);
   }
   if (z.chalk){ const c = { s: (z.s0 + z.s1) / 2, y: (z.y0 + z.y1) / 2 + 0.5, taken: false };
     const m = new THREE.Group(); const bag = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), LM(0xffffff)); bag.scale.set(1, 1.2, 0.8); m.add(bag);
