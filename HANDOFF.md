@@ -165,7 +165,7 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 每關都有「🏠 回土星之家」：github.io 上連 `https://cooldragon313.github.io/escapetsunamiformoney/`，本機連 index.html，claude.ai 預覽隱藏
 - 海嘯島的「逃離土星」按鈕：本機 race.html、github.io 上照舊連 saturnfamily
 
-## 2026-10-29 — 搬家到 eddie-world
+## 2026-10-29 — 搬家到 eddie-world（✅ 已上架 eddie-world main 7caac5a；舊站跳轉 escapetsunamiformoney fcd7c5c、saturnfamily ac1b5d5；伺服器已 deploy）
 - 新倉庫 `cooldragon313/eddie-world`（含全部歷史；Bernie 推的）。本機 `origin` 改指新倉庫，舊的留成 `old-tsunami`
 - 程式裡寫死的網址都改 eddie-world；海嘯島的逃離土星按鈕改用相對路徑 race.html（不再連 saturnfamily）
 - **saturnfamily 不再需要每次複製**；之後舊網址只放跳轉頁

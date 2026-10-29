@@ -37,8 +37,28 @@
   .btn.pink{background:#ffd6e8}
   .btn:disabled{background:#efe4d2;color:#b9a58a;border-color:#cdb999;box-shadow:none;cursor:not-allowed}
   .btn:focus-visible{outline:3px solid var(--sb-sky);outline-offset:2px}
-  #title{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:4;pointer-events:none;
+  #title{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:4;cursor:pointer;background:none;border:0;padding:0;
          font:900 26px var(--sb-font);color:#ffcf5a;-webkit-text-stroke:2.5px var(--sb-ink);paint-order:stroke fill;letter-spacing:2px;white-space:nowrap}
+  #title .pen{font-size:.55em;-webkit-text-stroke:0;vertical-align:middle;margin-left:4px;opacity:.85}
+  #nameBox{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(70,48,32,.45);padding:16px}
+  #nameBox[hidden]{display:none}
+  #nameBox>div{background:var(--sb-paper);border:3px solid var(--sb-ink);border-radius:18px;padding:16px 18px;width:min(92vw,340px);text-align:center;box-shadow:0 6px 0 rgba(91,58,41,.3)}
+  #nameBox b{display:block;font:900 18px var(--sb-font);color:var(--sb-ink);margin-bottom:8px}
+  #nameIn{width:100%;box-sizing:border-box;font:700 18px var(--sb-font);padding:8px 12px;border:2.5px solid var(--sb-ink);border-radius:12px;text-align:center}
+  #nameBox .row{display:flex;gap:8px;justify-content:center;margin-top:10px}
+  #works{position:fixed;inset:0;z-index:25;pointer-events:none;background:rgba(40,28,20,.35)}
+  #works[hidden]{display:none}
+  #works .fence{position:absolute;left:0;right:0;bottom:18%;height:90px;background:repeating-linear-gradient(-45deg,#ffcf5a 0 26px,#2a2a30 26px 52px);border-top:5px solid #5b3a29;border-bottom:5px solid #5b3a29;box-shadow:0 6px 0 rgba(0,0,0,.25)}
+  #works .hammer{position:absolute;left:50%;top:34%;font-size:min(22vw,120px);transform-origin:80% 80%;animation:bonk .35s ease-in infinite alternate}
+  @keyframes bonk{from{transform:translate(-50%,-50%) rotate(-35deg)}to{transform:translate(-50%,-50%) rotate(20deg)}}
+  #works .txt{position:absolute;left:50%;top:54%;transform:translateX(-50%);font:900 26px var(--sb-font);color:#fff;-webkit-text-stroke:2px var(--sb-ink);paint-order:stroke fill;white-space:nowrap}
+  #confetti{position:fixed;inset:0;z-index:26;pointer-events:none;overflow:hidden}
+  #confetti i{position:absolute;top:-20px;width:10px;height:12px;border-radius:2px;animation:fall linear forwards}
+  @keyframes fall{to{transform:translate(var(--dx),110vh) rotate(var(--r))}}
+  #buildNext .lv{display:flex;gap:10px;align-items:center;text-align:left;background:#fff;border:2.5px solid var(--sb-ink);border-radius:14px;padding:8px 12px;margin:6px 0}
+  #buildNext .lv b{display:block;font-size:17px}
+  #buildNext .lv span{font-size:13px;color:var(--sb-muted)}
+  #buildNext .lv.off{opacity:.55}
   #toast{position:fixed;left:50%;top:24%;transform:translateX(-50%);z-index:20;background:var(--sb-paper);border:2.5px solid var(--sb-ink);border-radius:14px;
          padding:7px 16px;font:700 15px var(--sb-font);color:var(--sb-ink);box-shadow:0 4px 0 rgba(91,58,41,.3);pointer-events:none;opacity:0;transition:opacity .25s}
   #toast.on{opacity:1}
@@ -90,12 +110,18 @@
 </head>
 <body>
 <div id="stage"></div>
-<div id="title">🪐 土星之家</div>
+<button id="title" type="button" aria-label="幫家取名字">🪐 <span id="homeName">土星之家</span><span class="pen">✏️</span></button>
+<div id="nameBox" hidden><div>
+  <b>幫你的家取個名字</b>
+  <input id="nameIn" maxlength="12" autocomplete="off" placeholder="例如：艾迪的秘密基地">
+  <div class="row"><button class="btn" id="nameOk" type="button">好了</button><button class="btn" id="nameCancel" type="button" style="background:#fff">算了</button></div>
+</div></div>
 <div id="tl">
   <div class="chip"><span class="coin"></span><b id="money">0</b></div>
   <div class="chip" id="who" style="font-size:12px;font-weight:600">試玩版</div>
 </div>
 <div id="tr">
+  <button class="btn pink" id="buildBtn">🔨 擴建</button>
   <button class="btn mint" id="decoBtn">🛋 裝潢</button>
   <button class="btn" id="goBtn">🚪 出門玩</button>
 </div>
@@ -119,6 +145,17 @@
   </div>
   <div id="items"></div>
 </div>
+
+<div class="card" id="buildCard" hidden>
+  <div>
+    <h2>🔨 擴建我的家</h2>
+    <p id="buildNow"></p>
+    <div id="buildNext"></div>
+    <button class="btn ghost" id="buildClose" style="margin-top:12px">先不要</button>
+  </div>
+</div>
+<div id="works" hidden><div class="fence"></div><div class="hammer">🔨</div><div class="txt">施工中…叮叮咚咚</div></div>
+<div id="confetti"></div>
 
 <div class="card" id="goCard" hidden>
   <div>
@@ -1106,9 +1143,60 @@ if (!save){
   // starting furniture is already placed, so it isn't also waiting in the box
   for (const p of save.placed) save.inv[p.id] = Math.max(0, (save.inv[p.id] || 0) - 1);
 }
-save.money = Math.max(save.money || 0, 777);   // test build: always enough to shop
-function persist(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch(e){} }
+save.level = save.level || 1;
+// Online (eddie-world / localhost with an account): the home and the money are the account's, prices
+// are checked by the server. Offline (claude.ai preview): a local test house that always has 777 to spend.
+const ON_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), ON_LIVE = /github\.io$/.test(location.hostname);
+const API = ON_LOCAL ? 'http://localhost:1999/parties/main/global' : ON_LIVE ? 'https://etfm.cooldragon313.workers.dev/parties/main/global' : '';
+const token = () => { try { return localStorage.getItem('etfm-token') || ''; } catch (e) { return ''; } };
+const online = () => !!(API && token());
+if (!API) save.money = Math.max(save.money || 0, 777);   // preview only: always enough to shop
+async function api(path, body){
+  const r = await fetch(API + '/' + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() }, body: JSON.stringify(body) }
+                                           : { headers: { Authorization: 'Bearer ' + token() } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.message || '連不上伺服器'), { status: r.status });
+  return j;
+}
+let pushT = 0;
+function persist(){
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch(e){}
+  if (!online()) return;
+  clearTimeout(pushT);   // batch quick changes into one save
+  pushT = setTimeout(() => api('home_save', { placed: save.placed, floor: save.floor, wall: save.wall, name: save.homeName || '' }).catch(() => toast('家沒存到，等一下再試')), 700);
+}
+// the server's copy → this page (furniture in the box = owned − placed)
+function applyServerHome(j){
+  const h = j.home, inv = {};
+  for (const id in h.own) inv[id] = h.own[id];
+  for (const p of h.placed) inv[p.id] = (inv[p.id] || 0) - 1;
+  Object.assign(save, { money: j.money, level: h.level, inv, placed: h.placed, floor: h.floor, wall: h.wall, floors: h.floors, walls: h.walls, homeName: h.name || '' });
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch(e){}
+}
+// the home's name: anyone can rename it (tap the title). Up to 12 characters, shown as plain text.
+const DEFAULT_HOME_NAME = '土星之家';
+function showHomeName(){ const n = save.homeName || DEFAULT_HOME_NAME; $('homeName').textContent = n; document.title = n; }
+showHomeName();
+$('title').addEventListener('click', () => { $('nameIn').value = save.homeName || DEFAULT_HOME_NAME; $('nameBox').hidden = false; $('nameIn').focus(); $('nameIn').select(); });
+function closeName(){ $('nameBox').hidden = true; }
+$('nameCancel').addEventListener('click', closeName);
+$('nameOk').addEventListener('click', () => {
+  const n = $('nameIn').value.replace(/\s+/g, ' ').trim().slice(0, 12);
+  save.homeName = n && n !== DEFAULT_HOME_NAME ? n : ''; persist(); showHomeName(); closeName();
+  toast(n ? '🏠 歡迎來到「' + (n || DEFAULT_HOME_NAME) + '」！' : '名字改回土星之家');
+});
+$('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('nameOk').click(); else if (e.key === 'Escape') closeName(); e.stopPropagation(); });
 function setMoney(){ $('money').textContent = save.money; }
+// one purchase: online the server takes the money (and says no if it isn't there); offline it's local
+let buying = false;
+async function buy(kind, id, price, done){
+  if (API && !token()){ toast('先登入才能買（到「逃離土星」登入）'); return false; }
+  if (!online()){ save.money -= price; setMoney(); done(); persist(); return true; }
+  if (buying) return false; buying = true;
+  try { const j = await api('home_buy', { kind, id }); save.money = j.money; setMoney(); done(); persist(); return true; }
+  catch (e){ toast(e.message); return false; }
+  finally { buying = false; }
+}
 setMoney();
 
 // ---------- three.js ----------
@@ -1128,7 +1216,7 @@ function fit(){
   const portrait = w < h;
   camera.fov = portrait ? 62 : 42;
   camera.updateProjectionMatrix();
-  camDist = portrait ? 25 : (h < 520 ? 21 : 19);
+  camDist = (portrait ? 25 : (h < 520 ? 21 : 19)) * (typeof camScale === 'number' ? camScale : 1);
 }
 addEventListener('resize', fit); fit();
 
@@ -1137,7 +1225,16 @@ const RB = (w, h, d, r) => sbRoundBox(w, h, d, r || Math.min(w, h, d) * 0.18);
 function part(parent, geo, mat, x, y, z){ const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); parent.add(m); return m; }
 
 // ---------- room ----------
-const N = 8, CELL = 1.5, HALF = N * CELL / 2, WALL_H = 4.2;
+// home levels (prices are checked again by the server: party/server.js HOME_LEVELS)
+const LEVELS = {
+  1: { name: '小套房', size: 8 },
+  2: { name: '大客廳', size: 10, price: 600, desc: '牆往外推，客廳變成 10×10' },
+  3: { name: '艾迪的房間', price: 1000, desc: '多一間自己的房間（施工規劃中）', soon: true },
+  4: { name: '廚房', price: 1400, desc: '冰箱、餐桌、冰淇淋機（施工規劃中）', soon: true },
+  5: { name: '頂樓陽台', price: 2000, desc: '彈跳床、帳篷、看土星的望遠鏡（施工規劃中）', soon: true },
+};
+const CELL = 1.5, WALL_H = 4.2;
+let N = LEVELS[save.level].size, HALF = N * CELL / 2;
 const cellCenter = (cx, cz) => new THREE.Vector3(-HALF + (cx + 0.5) * CELL, 0, -HALF + (cz + 0.5) * CELL);
 const room = new THREE.Group(); scene.add(room);
 
@@ -1159,6 +1256,14 @@ const WALLS = {
   stars:  { name: '土星星空', price: 150, tex: () => canvasTex((x, w, h) => { x.fillStyle = '#34305e'; x.fillRect(0, 0, w, h); x.fillStyle = '#ffe9a8'; for (let i = 0; i < 30; i++){ const s = 1 + Math.random() * 3; x.fillRect(Math.random() * w, Math.random() * h, s, s); } x.fillStyle = '#ffb35c'; x.beginPath(); x.arc(w * 0.7, h * 0.3, 22, 0, 6.3); x.fill(); x.strokeStyle = '#ffe0a8'; x.lineWidth = 5; x.beginPath(); x.ellipse(w * 0.7, h * 0.3, 40, 10, -0.3, 0, 6.3); x.stroke(); }) },
 };
 let floorMesh, wallBack, wallLeft;
+// a bigger home: throw the old shell away, rebuild it at the new size, put the furniture back
+function resizeRoom(){
+  N = LEVELS[save.level].size; HALF = N * CELL / 2; DOOR_CELL.x = N - 2;
+  room.clear(); floorMesh = wallBack = wallLeft = null; buildRoom();
+  for (const [, o] of placedObjs) placeTransform(o.group, o.data);
+  camScale = N / 8; fit();
+}
+var camScale = N / 8;   // var: fit() runs before this line
 function buildRoom(){
   const fmat = LM(0xffffff, { map: FLOORS[save.floor].tex() });
   fmat.map.repeat.set(FLOORS[save.floor].rep, FLOORS[save.floor].rep);
@@ -1210,7 +1315,7 @@ function buildRoom(){
 }
 let doorObj = null;
 buildRoom();
-const DOOR_CELL = { x: N - 2, z: 0 };   // the floor cell right in front of the door
+const DOOR_CELL = { x: N - 2, z: 0 };   // the floor cell right in front of the door (x follows the room size)
 
 // ---------- furniture catalogue ----------
 // w × d in cells (at rot 0, d runs toward the camera). solid = blocks walking.
@@ -1342,6 +1447,28 @@ function nudgeOutOfFurniture(){
   if (best){ const c = cellCenter(best[0], best[1]); pos.x = c.x; pos.z = c.z; target = null; }
 }
 function syncSave(){ save.placed = [...placedObjs.values()].map(o => o.data); persist(); }
+
+function reloadHome(){
+  for (const [, o] of placedObjs) scene.remove(o.group);
+  placedObjs.clear();
+  resizeRoom();
+  for (const p of save.placed) addPlaced(p);
+  nextUid = save.placed.reduce((m, p) => Math.max(m, p.uid), 0) + 1;
+  setMoney(); showHomeName();
+}
+async function connect(){
+  const who = $('who');
+  if (!API){ who.textContent = '試玩版'; return; }
+  if (!token()){ who.innerHTML = '<a href="race.html" style="color:inherit">未登入・點這裡登入</a>'; return; }
+  who.textContent = '連線中…';
+  try {
+    const j = await api('home');
+    applyServerHome(j); reloadHome(); nudgeOutOfFurniture();
+    let n = ''; try { n = localStorage.getItem('etfm-display') || ''; } catch(e){}
+    who.textContent = (n ? n + ' 的家' : '已登入');
+    if (j.gift) toast('🎁 歡迎入住！送你 ' + j.gift + ' 金幣');
+  } catch (e){ who.textContent = e.status === 401 ? '登入過期了' : '離線中'; }
+}
 
 // ---------- me ----------
 let me = buildEddieAvatar(DEFAULT_CUSTOM, { bat: false });   // at home Eddie doesn't carry the bat
@@ -1509,8 +1636,7 @@ function renderTray(){
       const f = FURN[id], can = save.money >= f.price;
       add(`<img alt="" src="${thumb(id)}">${f.name}<span class="price">$${f.price}</span>`, () => {
         if (!can){ toast('金幣不夠，去關卡賺一點吧'); return; }
-        save.money -= f.price; save.inv[id] = (save.inv[id] || 0) + 1; setMoney(); persist();
-        toast(`買了${f.name}！在「我的家具」裡`); renderTray();
+        buy('furn', id, f.price, () => { save.inv[id] = (save.inv[id] || 0) + 1; toast(`買了${f.name}！在「我的家具」裡`); renderTray(); });
       }, can ? '' : 'off');
     }
   } else {
@@ -1518,12 +1644,12 @@ function renderTray(){
     for (const id of Object.keys(defs)){
       const d = defs[id], has = owned.includes(id) || d.price === 0;
       add(`<img alt="" src="${swatch(d)}" style="border-radius:8px;border:1.5px solid var(--sb-line)">${d.name}<span class="${has ? 'count' : 'price'}">${cur === id ? '使用中' : has ? '已擁有' : '$' + d.price}</span>`, () => {
+        const use = () => { if (!owned.includes(id)) owned.push(id); if (isFloor) save.floor = id; else save.wall = id; buildRoom(); persist(); renderTray(); };
         if (!has){
           if (save.money < d.price){ toast('金幣不夠，去關卡賺一點吧'); return; }
-          save.money -= d.price; owned.push(id); setMoney();
+          buy(isFloor ? 'floor' : 'wall', id, d.price, use); return;
         }
-        if (isFloor) save.floor = id; else save.wall = id;
-        buildRoom(); persist(); renderTray();
+        use();
       }, cur === id ? 'sel' : (has || save.money >= d.price ? '' : 'off'));
     }
   }
@@ -1537,7 +1663,7 @@ function setMode(m){
   mode = m;
   $('tray').hidden = m !== 'deco';
   $('decoBtn').hidden = m === 'deco';
-  $('goBtn').hidden = m === 'deco';
+  $('goBtn').hidden = m === 'deco'; $('buildBtn').hidden = m === 'deco';
   if (m === 'deco'){ target = null; renderTray(); toast('點房間裡的家具可以搬動，或從下面拿新的'); }
 }
 $('decoBtn').onclick = () => setMode('deco');
@@ -1597,6 +1723,58 @@ function frame(now){
   renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);
+connect();
+
+// ---------- expanding the home ----------
+function renderBuild(){
+  const L = save.level;
+  $('buildNow').textContent = '現在：' + LEVELS[L].name + (LEVELS[L].size ? '（' + LEVELS[L].size + '×' + LEVELS[L].size + '）' : '');
+  const box = $('buildNext'); box.innerHTML = '';
+  for (let k = L + 1; LEVELS[k]; k++){
+    const v = LEVELS[k], first = k === L + 1, can = first && !v.soon && save.money >= v.price;
+    const d = document.createElement('div'); d.className = 'lv' + (can ? '' : ' off');
+    d.innerHTML = '<div style="font-size:28px">' + (v.soon ? '🚧' : '🏗️') + '</div><div style="flex:1"><b>Lv' + k + ' ' + v.name + '　$' + v.price + '</b><span>' + v.desc + '</span></div>' +
+      (first && !v.soon ? '<button class="btn" type="button">' + (save.money >= v.price ? '擴建！' : '錢不夠') + '</button>' : '');
+    const b = d.querySelector('button');
+    if (b) b.onclick = () => { if (save.money < v.price){ toast('還差 $' + (v.price - save.money)); return; } expand(k); };
+    box.appendChild(d);
+  }
+}
+async function expand(k){
+  const ok = await buy('expand', 'Lv' + k, LEVELS[k].price, () => {});
+  if (!ok) return;
+  $('buildCard').hidden = true;
+  const w = $('works'); w.hidden = false; knock();
+  setTimeout(() => {
+    w.hidden = true; save.level = k; resizeRoom(); persist(); celebrate();
+    toast('🎉 ' + LEVELS[k].name + '蓋好了！');
+  }, 2600);
+}
+function celebrate(){
+  const box = $('confetti'), colors = ['#ffcf5a', '#ff8fb0', '#6fb3e0', '#7cc79a', '#e0584a'];
+  box.innerHTML = '';
+  for (let i = 0; i < 80; i++){
+    const c = document.createElement('i'); c.style.left = Math.random() * 100 + '%'; c.style.background = colors[i % colors.length];
+    c.style.animationDuration = (1.6 + Math.random() * 1.4) + 's'; c.style.animationDelay = Math.random() * 0.5 + 's';
+    c.style.setProperty('--dx', (Math.random() - 0.5) * 200 + 'px'); c.style.setProperty('--r', (Math.random() * 900 - 450) + 'deg'); box.appendChild(c);
+  }
+  setTimeout(() => { box.innerHTML = ''; }, 3600);
+}
+// hammer knocks while the builders work (WebAudio, nothing to download)
+function knock(){
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    for (let i = 0; i < 7; i++){
+      const t = ac.currentTime + i * 0.35, o = ac.createOscillator(), g = ac.createGain();
+      o.frequency.setValueAtTime(220 + (i % 2) * 60, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.12);
+      g.gain.setValueAtTime(0.4, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15); o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 0.16);
+    }
+    setTimeout(() => ac.close(), 3200);
+  } catch (e) {}
+}
+$('buildBtn').onclick = () => { renderBuild(); $('buildCard').hidden = false; };
+$('buildClose').onclick = () => { $('buildCard').hidden = true; };
+$('buildCard').addEventListener('click', e => { if (e.target === $('buildCard')) $('buildCard').hidden = true; });
 })();
 </script>
 </body>
