@@ -1874,7 +1874,10 @@ function render(dt, clock){
   if (S.flipT){ S.flipT += dt / 0.38; g.rotation.x = -Math.PI * 2 * (1 - Math.pow(1 - Math.min(1, S.flipT), 2)); if (S.flipT >= 1){ S.flipT = 0; g.rotation.x = 0; } }
   if (running && S.moving && S.onGround) S.runPhase += dt * 16;
   const sw = Math.sin(S.runPhase || 0) * (running && S.moving ? 0.7 : 0);
-  me.legL.rotation.x = sw; me.legR.rotation.x = -sw; me.armL.rotation.x = -sw * 0.6; me.armR.rotation.x = sw * 0.6;
+  if (me.eddie){
+    animateEddie(me, { t: clock, dt, moving: running && S.moving, phase: S.runPhase || 0, onGround: !running || S.onGround !== false,
+      down, victory: S.phase === 'done', swinging: running && S.time < S.swingUntil });
+  } else { me.legL.rotation.x = sw; me.legR.rotation.x = -sw; me.armL.rotation.x = -sw * 0.6; me.armR.rotation.x = sw * 0.6; }
   me.armL.rotation.y *= 0.7; me.armR.rotation.y *= 0.7;
   // crouch: squash the avatar down (a Q-style blob, so this reads well)
   const baseS = me.group.userData.baseScale || (me.group.userData.baseScale = me.group.scale.x);

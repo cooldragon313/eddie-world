@@ -626,9 +626,8 @@ function frame(now){
     me.group.rotation.y = Math.atan2(-mx, -mz);
     walkPhase += dt * 11;
   }
-  const sw = moving ? Math.sin(walkPhase) * 0.6 : 0;
-  me.legL.rotation.x = sw; me.legR.rotation.x = -sw; me.armL.rotation.x = -sw * 0.7; me.armR.rotation.x = sw * 0.7;
-  me.group.position.set(pos.x, moving ? Math.abs(Math.sin(walkPhase)) * 0.06 : 0, pos.z);
+  animateEddie(me, { t: now / 1000, dt, moving, phase: walkPhase * 0.75, onGround: true, mood: mode === 'deco' ? 'smug' : 'smile' });
+  me.group.position.set(pos.x, 0, pos.z);
   // standing in front of the door offers the level list once
   const atDoor = Math.floor((pos.x + HALF) / CELL) === DOOR_CELL.x && Math.floor((pos.z + HALF) / CELL) === DOOR_CELL.z;
   if (atDoor && mode === 'walk'){ nearDoorT += dt; if (nearDoorT > 0.35 && nearDoorT < 1 && $('goCard').hidden){ openGo(); nearDoorT = 1; } }

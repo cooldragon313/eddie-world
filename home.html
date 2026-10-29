@@ -659,6 +659,54 @@ function buildEddieAvatar(custom, opts){
   return { group: e.g, legL: e.legs[0], legR: e.legs[1], armL: e.arms[0], armR: e.arms[1], hairParts: [], eddie: e };
 }
 
+// Eddie's body language, shared by every level. Call once per frame after
+// placing him; it owns legs/knees/elbows/lean/head/face, the caller keeps
+// overall position, facing and any special arm pose (bat swing) applied after.
+//   o = { t, dt, moving, phase, onGround, down, victory, swinging }
+function animateEddie(A, o){
+  const e = A && A.eddie; if (!e) return;
+  const st = A._anim || (A._anim = { blinkAt: 2, blinkT: -1, mood: '' });
+  const [armL, armR] = e.arms, [legL, legR] = e.legs;
+  const eL = armL.userData.elbow, eR = armR.userData.elbow, kL = legL.userData.knee, kR = legR.userData.knee;
+  for (const j of [legL, legR, kL, kR, eL, eR, e.head]) j.rotation.set(0, 0, 0);
+  e.body.rotation.set(0, 0, 0); e.body.position.set(0, 0, 0);
+  armL.rotation.z = -0.14; armR.rotation.z = 0.14;
+  const t = o.t || 0, p = o.phase || 0, breath = Math.sin(t * 2.1);
+  e.torso.scale.set(1 + breath * 0.012, 1.08 + breath * 0.02, 0.88 + breath * 0.01);
+  if (o.victory){
+    const b = Math.sin(t * 9), up = Math.abs(Math.sin(t * 4.5));
+    armL.rotation.x = armR.rotation.x = 0; armL.rotation.z = -2.4 - b * 0.3; armR.rotation.z = 2.4 - b * 0.3;
+    eL.rotation.x = eR.rotation.x = 0.6; e.body.rotation.z = b * 0.15; e.head.rotation.z = -b * 0.18;
+    legL.rotation.z = -0.15; legR.rotation.z = 0.15; kL.rotation.x = -up * 0.6; kR.rotation.x = -(1 - up) * 0.6;
+    e.body.position.y = up * 0.25;
+  } else if (o.onGround === false){
+    // airborne: tuck the legs, arms out for balance
+    legL.rotation.x = 0.45; legR.rotation.x = -0.1; kL.rotation.x = -0.9; kR.rotation.x = -0.5;
+    armL.rotation.z = -1.6; armR.rotation.z = 1.6; eL.rotation.x = eR.rotation.x = 0.4;
+  } else if (o.moving){
+    const sw = Math.sin(p) * 0.85;
+    legL.rotation.x = sw; legR.rotation.x = -sw;
+    kL.rotation.x = -(Math.max(0, Math.cos(p)) * 1.2 + 0.1);   // the leg swinging forward folds back at the knee
+    kR.rotation.x = -(Math.max(0, -Math.cos(p)) * 1.2 + 0.1);
+    armL.rotation.x = -sw; armR.rotation.x = sw;
+    eL.rotation.x = eR.rotation.x = 1.1;                         // pumping, bent arms
+    e.body.rotation.x = -0.16; e.body.rotation.y = sw * 0.1; e.head.rotation.x = 0.1;
+    e.body.position.y = Math.abs(Math.cos(p)) * 0.1;
+  } else {
+    armL.rotation.x = armR.rotation.x = 0;
+    eL.rotation.x = eR.rotation.x = 0.25;
+    e.body.rotation.z = Math.sin(t * 0.9) * 0.02;
+  }
+  if (o.swinging){ eR.rotation.x = 0.15; eL.rotation.x = 0.3; }
+  if (o.down){ e.body.rotation.x = 0.3; e.head.rotation.x = -0.25; }
+  // face: knocked down = startled, winning = big laugh, otherwise a smile; blink now and then
+  const mood = o.down ? 'surprised' : o.victory ? 'laugh' : (o.mood || 'smile');
+  if (mood !== st.mood){ st.mood = mood; e.face.set(mood); }
+  st.blinkAt -= o.dt || 0.016;
+  if (st.blinkAt <= 0 && st.blinkT < 0){ st.blinkT = 0; st.blinkAt = 2.5 + Math.random() * 3; }
+  if (st.blinkT >= 0){ st.blinkT += o.dt || 0.016; e.face.blink(Math.sin(Math.min(1, st.blinkT / 0.16) * Math.PI)); if (st.blinkT > 0.16){ st.blinkT = -1; e.face.blink(0); } }
+}
+
 function buildAvatar(custom){
   custom = custom || DEFAULT_CUSTOM;
   if (custom.hero !== 'custom') return buildEddieAvatar(custom);   // everyone plays as Eddie
@@ -1256,9 +1304,8 @@ function frame(now){
     me.group.rotation.y = Math.atan2(-mx, -mz);
     walkPhase += dt * 11;
   }
-  const sw = moving ? Math.sin(walkPhase) * 0.6 : 0;
-  me.legL.rotation.x = sw; me.legR.rotation.x = -sw; me.armL.rotation.x = -sw * 0.7; me.armR.rotation.x = sw * 0.7;
-  me.group.position.set(pos.x, moving ? Math.abs(Math.sin(walkPhase)) * 0.06 : 0, pos.z);
+  animateEddie(me, { t: now / 1000, dt, moving, phase: walkPhase * 0.75, onGround: true, mood: mode === 'deco' ? 'smug' : 'smile' });
+  me.group.position.set(pos.x, 0, pos.z);
   // standing in front of the door offers the level list once
   const atDoor = Math.floor((pos.x + HALF) / CELL) === DOOR_CELL.x && Math.floor((pos.z + HALF) / CELL) === DOOR_CELL.z;
   if (atDoor && mode === 'walk'){ nearDoorT += dt; if (nearDoorT > 0.35 && nearDoorT < 1 && $('goCard').hidden){ openGo(); nearDoorT = 1; } }
