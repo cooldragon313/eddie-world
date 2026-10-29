@@ -197,6 +197,12 @@
     pointer-events: none;
   }
   #toast.show { opacity: 1; }
+  .act-title { font-size: 15px; margin: 28px 0 8px; }
+  .activity { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .activity li { padding: 6px 4px; border-bottom: 1px solid rgba(128,128,128,.2); }
+  .activity .t { display: inline-block; min-width: 92px; opacity: .7; font-variant-numeric: tabular-nums; }
+  .activity .u { opacity: .6; font-size: 12px; }
+  .activity .empty { opacity: .6; }
 </style>
 </head>
 <body>
@@ -211,7 +217,7 @@
     <div class="host-cfg">
       <label>Server Host</label>
       <input id="login-host" type="text" autocomplete="off"
-             placeholder="etfm.xxx.partykit.dev">
+             placeholder="etfm.xxx.workers.dev">
     </div>
   </div>
 </div>
@@ -233,7 +239,10 @@
   <table id="user-table">
     <thead>
       <tr>
-        <th data-sort="createdAt" class="sorted">註冊時間</th>
+        <th data-sort="lastSeenAt" class="sorted">最後來過</th>
+        <th data-sort="visits">來過幾次</th>
+        <th data-sort="raceFinishes">賽跑 完成/開跑</th>
+        <th data-sort="createdAt">註冊時間</th>
         <th data-sort="username">帳號</th>
         <th data-sort="displayName">顯示名稱</th>
         <th data-sort="money">$存款</th>
@@ -243,6 +252,8 @@
     </thead>
     <tbody id="user-rows"></tbody>
   </table>
+  <h2 class="act-title">最近動態</h2>
+  <ul id="activity-rows" class="activity"><li class="empty">讀取中…</li></ul>
 </main>
 
 <div id="toast"></div>
@@ -253,9 +264,10 @@ const STORAGE_HOST = 'etfm-admin-host';
 const STORAGE_ROOM = 'global';   // matches the client's MP_ROOM
 
 let pw = sessionStorage.getItem(STORAGE_PW) || '';
-let host = localStorage.getItem(STORAGE_HOST) || 'etfm.cooldragon313.partykit.dev';
+let host = localStorage.getItem(STORAGE_HOST) || 'etfm.cooldragon313.workers.dev';
+if (/partykit\.dev$/.test(host)) host = 'etfm.cooldragon313.workers.dev';   // server moved to Cloudflare
 let usersCache = [];
-let sortKey = 'createdAt';
+let sortKey = 'lastSeenAt';
 let sortAsc = false;
 
 function apiBase(){
@@ -342,6 +354,7 @@ function renderStats(s){
 }
 
 async function loadUsers(){
+  loadActivity();
   const r = await api('/admin/users');
   if (r.status !== 200 || !r.body.ok){
     if (r.status === 401){
@@ -372,12 +385,15 @@ function applyFilter(){
   document.getElementById('user-count').textContent = `${rows.length} / ${usersCache.length}`;
   const tbody = document.getElementById('user-rows');
   if (rows.length === 0){
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">沒有符合的帳號</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">沒有符合的帳號</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(u => `
     <tr data-username="${escapeHtml(u.username)}">
-      <td>${u.createdAt ? new Date(u.createdAt).toLocaleString('zh-TW', { hour12: false }) : '—'}</td>
+      <td>${u.lastSeenAt ? fmtTime(u.lastSeenAt) : '—'}${u.device === 'phone' ? ' 📱' : u.device === 'pc' ? ' 💻' : ''}</td>
+      <td>${u.visits || 0}</td>
+      <td>${u.raceFinishes || 0} / ${u.raceStarts || 0}</td>
+      <td>${u.createdAt ? fmtTime(u.createdAt) : '—'}</td>
       <td class="username">${escapeHtml(u.username)}</td>
       <td>${escapeHtml(u.displayName || '')}</td>
       <td>$${u.money || 0}</td>
@@ -388,6 +404,25 @@ function applyFilter(){
       </td>
     </tr>
   `).join('');
+}
+
+function fmtTime(t){ return new Date(t).toLocaleString('zh-TW', { hour12: false, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+
+// recent activity feed
+const ACT_LABEL = { register: '🆕 註冊', visit: '👋 來了', race_start: '🏃 開跑', race_finish: '🏁 跑完' };
+async function loadActivity(){
+  const r = await api('/admin/activity');
+  const el = document.getElementById('activity-rows');
+  if (r.status !== 200 || !r.body.ok){ el.innerHTML = '<li class="empty">讀不到動態</li>'; return; }
+  const ev = r.body.events || [];
+  if (!ev.length){ el.innerHTML = '<li class="empty">還沒有動態</li>'; return; }
+  el.innerHTML = ev.slice(0, 100).map(e => {
+    let what = ACT_LABEL[e.type] || e.type;
+    if (e.type === 'visit') what += e.where === 'island' ? '（海嘯島）' : '（賽跑）';
+    if (e.level) what += ` 第${e.level}關`;
+    if (e.type === 'race_finish' && e.time != null) what += ` ${e.time} 秒・失誤 ${e.misses}`;
+    return `<li><span class="t">${fmtTime(e.at)}</span><b>${escapeHtml(e.name || e.user)}</b> <span class="u">@${escapeHtml(e.user)}</span> ${escapeHtml(what)}${e.device === 'phone' ? ' 📱' : e.device === 'pc' ? ' 💻' : ''}</li>`;
+  }).join('');
 }
 
 function escapeHtml(s){

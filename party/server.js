@@ -34,6 +34,11 @@ const RACE_BOARD_SIZE = 50;
 const RACE_LEVEL_MIN_TIME = { 1: 33, 2: 27 };
 const raceBetter = (a, b) => a.time < b.time || (a.time === b.time && a.misses < b.misses);
 const raceSort = (a, b) => a.time - b.time || a.misses - b.misses;
+// Visit log for the admin page: per-user counters on the user record plus a
+// short shared feed of recent events (register / visit / race start / finish).
+const ACTIVITY_MAX = 300;
+const VISIT_GAP_MS = 30 * 60 * 1000;      // coming back within 30 min = same visit
+const START_LOG_GAP_MS = 2 * 60 * 1000;   // restarts in a row show once in the feed
 
 // Heights kept in sync with the client; server only uses speedMul / width
 // for spawn calculations.
@@ -317,6 +322,7 @@ export default class WorldServer {
         profile: null,
       };
       await this.room.storage.put('user:' + username, userData);
+      await this.logActivity(userData, 'register');
       const token = await signToken(username, secret);
       return jsonResponse({ ok:true, token, username, displayName });
     }
@@ -346,6 +352,8 @@ export default class WorldServer {
       if (!userId) return jsonResponse({ error:'bad_token' }, 401);
       const user = await this.room.storage.get('user:' + userId);
       if (!user) return jsonResponse({ error:'no_user' }, 404);
+      const dev = url.searchParams.get('device');
+      if (await this.markSeen(user, 'race', dev === 'phone' || dev === 'pc' ? dev : null)) await this.room.storage.put('user:' + userId, user);
       return jsonResponse({
         ok: true, username: user.username, displayName: user.displayName,
         profile: user.profile || null,
@@ -374,7 +382,11 @@ export default class WorldServer {
       if (Number.isFinite(time) && time >= RACE_MIN_TIME_S && (!progress.raceBest || time < progress.raceBest)) progress.raceBest = +time.toFixed(1);
       user.profile.progress = progress;
       user.lastRaceAt = now;
+      const st = user.stats || (user.stats = {});
+      st.raceFinishes = (st.raceFinishes || 0) + 1; st.lastSeenAt = now;
       await this.room.storage.put('user:' + userId, user);
+      await this.logActivity(user, 'race_finish', { level: Math.floor(Number(body.level) || 0) || null,
+        time: Number.isFinite(time) ? +time.toFixed(1) : null, misses: Math.max(0, Math.floor(Number(body.misses) || 0)) });
       // leaderboard (only plausible runs on a known level)
       const level = Math.floor(Number(body.level) || 0);
       const misses = Math.max(0, Math.min(999, Math.floor(Number(body.misses) || 0)));
@@ -400,6 +412,23 @@ export default class WorldServer {
         for (const c of conns) if (c.id === cid){ try { c.send(JSON.stringify({ type: 'race_reward', coins, money: progress.money })); } catch(e){} }
       }
       return jsonResponse({ ok: true, coins, money: progress.money, raceBest: progress.raceBest || null, rank, improved, board });
+    }
+
+    // POST /race_start — a run began (counted for the admin page)
+    if (last === 'race_start' && req.method === 'POST'){
+      const auth = req.headers.get('authorization') || '';
+      const userId = await verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : '', secret);
+      if (!userId) return jsonResponse({ error:'bad_token' }, 401);
+      let body = {}; try { body = await req.json(); } catch(e){}
+      const user = await this.room.storage.get('user:' + userId);
+      if (!user) return jsonResponse({ error:'no_user' }, 404);
+      const st = user.stats || (user.stats = {}), now = Date.now();
+      st.raceStarts = (st.raceStarts || 0) + 1;
+      const level = Math.floor(Number(body.level) || 0) || null;
+      if (!st.lastStartLogAt || now - st.lastStartLogAt > START_LOG_GAP_MS){ st.lastStartLogAt = now; await this.logActivity(user, 'race_start', { level }); }
+      st.lastSeenAt = now;
+      await this.room.storage.put('user:' + userId, user);
+      return jsonResponse({ ok: true });
     }
 
     // GET /race_board?level=N — top 10 (no user ids exposed)
@@ -460,10 +489,21 @@ export default class WorldServer {
             maxDist: p.maxDist || 0,
             upgrades: p.upgrades || {},
             hasProfile: !!u.profile,
+            lastSeenAt: (u.stats && u.stats.lastSeenAt) || null,
+            visits: (u.stats && u.stats.visits) || 0,
+            raceStarts: (u.stats && u.stats.raceStarts) || 0,
+            raceFinishes: (u.stats && u.stats.raceFinishes) || 0,
+            device: (u.stats && u.stats.device) || null,
           });
         }
         list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         return jsonResponse({ ok: true, users: list });
+      }
+
+      // GET /admin/activity — recent events, newest first
+      if (url.pathname.endsWith('/admin/activity') && req.method === 'GET'){
+        const feed = (await this.room.storage.get('activity')) || [];
+        return jsonResponse({ ok: true, events: feed.slice().reverse() });
       }
 
       // /admin/users/<username>... — operations on one user
@@ -777,6 +817,23 @@ export default class WorldServer {
     }, PRE_AUTH_TIMEOUT_MS);
   }
 
+  async logActivity(user, type, extra){
+    const feed = (await this.room.storage.get('activity')) || [];
+    feed.push({ at: Date.now(), user: user.username, name: user.displayName, type, ...(extra || {}) });
+    if (feed.length > ACTIVITY_MAX) feed.splice(0, feed.length - ACTIVITY_MAX);
+    await this.room.storage.put('activity', feed);
+  }
+  // Mark the user as seen (call before saving the user record). Returns true
+  // when this counts as a new visit, which is also logged to the feed.
+  async markSeen(user, where, device){
+    const now = Date.now(), st = user.stats || (user.stats = {});
+    const isNew = !st.lastSeenAt || now - st.lastSeenAt > VISIT_GAP_MS;
+    st.lastSeenAt = now;
+    if (device) st.device = device;
+    if (isNew){ st.visits = (st.visits || 0) + 1; await this.logActivity(user, 'visit', { where, device: device || null }); }
+    return isNew;
+  }
+
   async handleAuth(conn, msg){
     const secret = getSecret(this.room);
     const userId = await verifyToken(msg.token, secret);
@@ -793,6 +850,7 @@ export default class WorldServer {
     }
     const player = this.players.get(conn.id);
     if (!player) return false;
+    if (await this.markSeen(user, 'island', null)) await this.room.storage.put('user:' + userId, user);
     player.userId = userId;
     player.displayName = user.displayName;
     player.name = user.displayName;
