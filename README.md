@@ -1,9 +1,25 @@
-# Escape Tsunami For Money
+# 艾迪的幻想世界（Eddie's World）
+
+Bernie 和兒子艾迪一起做的手機網頁 3D 小遊戲，繪本 Q 版風。
+
+**直接玩**：https://cooldragon313.github.io/eddie-world/
+
+| 網址 | 內容 | 原始碼 |
+|---|---|---|
+| `/`（index.html） | 🏠 土星之家：自己的家、買家具、門＝選關 | `home/home.src.html` → `tools/build_home.py` |
+| `/race.html` | 🏃 逃離土星（家庭聚會跑酷） | `race/race.src.html` → `tools/build_race.py` |
+| `/gluenight.html` | 📚 恐怖考前複習夜 | `family/gluenight.src.html` → `tools/build_family.py` |
+| `/island.html` | 🌊 舊的海嘯島（最早的遊戲，下面的說明都是它的） | 直接改 `island.html` |
+
+伺服器：Cloudflare Worker `etfm.cooldragon313.workers.dev`（`cloudflare/`，Bernie 跑 `npx wrangler deploy`）。
+⚠️ Worker 名稱 `etfm` 和瀏覽器存的 `etfm-*` 登入資料**不要改名**，改了大家的帳號／金幣會連不到。
+
+---
+
+# 以下是舊的海嘯島（Escape Tsunami For Money）說明
 
 第三人稱 voxel 跑酷網頁遊戲，靈感來自 Roblox《Escape Tsunami For Brainrots!》。
 撿金幣、躲海嘯、回基地存款 / 升級 / 蓋房子 / 換造型，再衝更深。
-
-**直接玩**：https://cooldragon313.github.io/eddie-world/
 
 純前端，瀏覽器打開就玩、手機 / 平板自動切觸控介面。多人世界，最多 100 人共用一個跑道。
 
