@@ -191,7 +191,7 @@
   <p class="rank" id="rRank"></p>
   <button class="btn" id="againBtn" type="button">再跑一次</button>
   <button class="btn ghost" id="menuBtn" type="button">選別關</button>
-  <br><a class="btn ghost" href="island.html">🏝 回海嘯島花錢</a>
+  <br><a class="btn ghost" id="islandLink2" href="island.html">🏝 回海嘯島花錢</a>
 </div></div>
 
 <div id="touch">
@@ -806,6 +806,8 @@ const SERVER = ON_LOCAL ? 'http://localhost:1999' : ON_LIVE ? 'https://etfm.cool
 const API = SERVER ? SERVER + '/parties/main/global' : '';
 let authToken = ''; try { authToken = localStorage.getItem('etfm-token') || ''; } catch(e){}
 if (!(ON_LOCAL || ON_LIVE)) document.getElementById('islandLink').hidden = true;
+// The race lives on its own site (saturnfamily); the island stays on the old one
+if (ON_LIVE) for (const id of ['islandLink', 'islandLink2']) document.getElementById(id).href = 'https://cooldragon313.github.io/escapetsunamiformoney/island.html';
 
 // ---------- three.js ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
