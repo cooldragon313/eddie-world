@@ -101,3 +101,12 @@
 island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡的關鍵字搜尋。
 讀完跟我說「跟上進度了」。
 ```
+
+## 2026-10-29 — 逃離土星 有自己的網址
+
+- 正式網址：https://cooldragon313.github.io/saturnfamily/ （倉庫 cooldragon313/saturnfamily，只放產出的 `index.html` + README）
+- 原始碼仍在本倉庫 `race/race.src.html`（跟海嘯島共用角色/畫風程式），`python tools/build_race.py` 產出 `index.html`，
+  上架時：本倉庫照舊推 main（舊網址的賽跑也同步），再把 `index.html` 複製到 `D:\downloads\AI GAME\saturnfamily` commit + push。
+- 海嘯島的「逃離土星」按鈕在 github.io 上連到新網址；新網址的「回海嘯島」連回舊網址。帳號/金幣/排行榜同一台伺服器、同網域，登入共用。
+- 第一關改名「家庭聚會」：酒鬼大叔（取代刺牆）、鬼媽媽 ×4、地上小屁孩 ×6、小屁孩大魔王、12 個成就（存在玩家瀏覽器 localStorage）。
+- 家庭小遊戲藍圖：`docs/PLAN-家庭小遊戲.md`（未動工）。
