@@ -110,3 +110,12 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 海嘯島的「逃離土星」按鈕在 github.io 上連到新網址；新網址的「回海嘯島」連回舊網址。帳號/金幣/排行榜同一台伺服器、同網域，登入共用。
 - 第一關改名「家庭聚會」：酒鬼大叔（取代刺牆）、鬼媽媽 ×4、地上小屁孩 ×6、小屁孩大魔王、12 個成就（存在玩家瀏覽器 localStorage）。
 - 家庭小遊戲藍圖：`docs/PLAN-家庭小遊戲.md`（未動工）。
+
+## 2026-10-29 — 家庭小遊戲第二款「熱熔膠條之夜」MVP（還沒 commit、還沒上架）
+
+- 原始碼 `family/gluenight.src.html` → `python tools/build_family.py` 產出 `gluenight.html`（繪本畫風一樣從 island.html 抄 LOOK 區塊）
+- 試玩連結（單機、不連伺服器）：https://claude.ai/artifact/2V9EGsXkb4Ch6D6tMZ5oFk ；更新：`python tools/build_family.py --preview <檔>` 再發布到同一個 artifact
+- 玩法：第一人稱書桌，桌上鏡子看得到背後的門；4 種偷玩（畫畫/漫畫/YouTube/打電動，越爽越難藏）、裝乖、翻頁；嬤嬤 away→腳步預兆→（假動作走掉）或開門看；被抓＝熱熔膠條「咻—啪」＋怒氣；連抓兩次嬤嬤守門；撐到 10 點過關
+- 難度用機器人模擬調過：只看漫畫穩過、YouTube 要反應快、一直打電動必爆
+- 還沒做：金幣入帳海嘯島帳號／排行榜、首頁「家庭小遊戲」入口、真人手感測試
+- ⚠️ 本機測試另開 `.claude/launch.json` 的 `etfm-family`（port 8767），跟 etfm-web 8765 分開
