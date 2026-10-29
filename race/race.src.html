@@ -54,6 +54,9 @@
   .results{display:grid;grid-template-columns:1fr auto;gap:4px 14px;text-align:left;margin:12px 0;font-variant-numeric:tabular-nums}
   .results b{font-size:19px}
   .reward{font-weight:700;color:#c27a00}
+  .lvls{display:flex;flex-direction:column;gap:8px;align-items:stretch;margin:10px auto 0;max-width:320px}
+  .btn.lvl{display:flex;flex-direction:column;align-items:center;margin:0;padding:8px 18px;line-height:1.2}
+  .btn.lvl small{font-size:12px;font-weight:600;color:var(--sb-muted)}
   #touch{display:none} body.touch #touch{display:block}
   /* Joystick: the whole bottom-left zone grabs your thumb; the ring shows where it is */
   #stickZone{position:fixed;left:0;bottom:0;width:min(42vw,300px);height:min(62vh,260px);z-index:6;touch-action:none}
@@ -82,7 +85,7 @@
 <div class="hud tl">
   <span class="chip sec" id="hSec">起跑區</span>
   <span class="chip">⏱ <b id="hTime">0.0</b> 秒</span>
-  <span class="chip">📍 <b id="hDist">0</b> / 530 m</span>
+  <span class="chip">📍 <b id="hDist">0</b> / <span id="hFinish">530</span> m</span>
   <span class="chip">🪙 <b id="hCoins">0</b></span>
 </div>
 <div class="hud tr">
@@ -91,6 +94,7 @@
   <span class="lbl">衝刺體力</span>
   <div class="meter stam" id="stam"><i id="stamBar"></i></div>
   <span class="chip">被追到 <b id="hCaught">0</b> 次</span>
+  <span class="chip" id="gateChip" hidden>🚪 大門 <b id="gateLeft">關著</b></span>
 </div>
 <div id="danger"></div>
 <div class="flash" id="flash"></div>
@@ -98,14 +102,14 @@
 
 <div class="card" id="startCard"><div>
   <h1>刺牆賽跑</h1>
-  <p>刺牆從背後追上來！一路衝過地坑、荊棘、落石、機關牆和砲台，撿金幣衝到終點。</p>
+  <p>刺牆從背後追上來！選一關，撿金幣衝到終點。</p>
   <p class="who" id="who">讀取角色中…</p>
   <p class="keys">
     <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向鍵 移動 · <kbd>空白鍵</kbd> 跳（空中再按＝二段跳）<br>
     <kbd>Shift</kbd> 衝刺（有體力限制）· <kbd>F</kbd> 揮棒（可以把子彈打回去）<br>
-    手機：自動往前跑，用按鈕閃、跳、揮棒
+    手機：左邊搖桿移動，右邊按鈕跳、衝刺、揮棒；＋－ 拉近拉遠
   </p>
-  <button class="btn" id="startBtn" type="button">開跑！</button>
+  <div id="levelBtns" class="lvls"></div>
   <br><a class="btn ghost" id="islandLink" href="island.html">🏝 回海嘯島：商店、換造型</a>
 </div></div>
 
@@ -121,6 +125,7 @@
   <p id="rTitle" style="font-weight:900;font-size:18px"></p>
   <p class="reward" id="rReward"></p>
   <button class="btn" id="againBtn" type="button">再跑一次</button>
+  <button class="btn ghost" id="menuBtn" type="button">選別關</button>
   <br><a class="btn ghost" href="island.html">🏝 回海嘯島花錢</a>
 </div></div>
 
@@ -140,33 +145,105 @@
 /*@@INCLUDE:SWING@@*/
 
 // ============================================================
-// RACE — 荊棘峽谷 1-1. Course runs along -Z; "m" = metres from the start.
-// Tuned in prototypes/spike-run.html (bot-tested: a clean run ~50 s,
-// a sloppy one 55–125 s with a few catches).
+// RACE ENGINE — levels are data (LEVELS below); one shared run/jump/collide
+// loop drives them all. Course runs along -Z; "m" = metres from the start,
+// x = left/right. Ground is "floors" (rects, minus "holes") plus moving
+// platforms; anything else is a drop.
 // ============================================================
-const LANE = 8, FINISH = 530, END = 560;
-const CHECKPOINTS = [0, 30, 130, 230, 330, 430];
-const SECTIONS = [
-  { from: 0,   name: '起跑區',     wall: 9    },
-  { from: 30,  name: '① 地坑道',   wall: 9    },
-  { from: 130, name: '② 荊棘地',   wall: 9.5  },
-  { from: 230, name: '③ 落石谷',   wall: 10   },
-  { from: 330, name: '④ 機關牆',   wall: 10.5 },
-  { from: 430, name: '⑤ 砲台大道', wall: 11   },
-];
-const WALL_START_GAP = 12, WALL_LEASH = 18, WALL_CATCHUP = 15;
 const RUN = 10.8, SPRINT = 16.2, JUMP_V = 10.5, DJ_V = 8.5, GRAV = 30;
 const STAMINA_DRAIN = 1 / 2.5, STAMINA_FILL = 1 / 4;
-const PITS = [[44,48,-LANE,LANE],[60,64,-LANE,0],[70,74,0,LANE],[88,93,-LANE,LANE],[104,108,-LANE,LANE],[118,122,-LANE,2]];
-const THORNS = [[140,143,-LANE,3],[155,158,-3,LANE],[168,171,-LANE,3],[182,185,-3,LANE],[196,199,-LANE,1],[212,215,-1,LANE]];
-const WALLS = [{ m: 345, ph: 0 }, { m: 370, ph: 1.7 }, { m: 395, ph: 3.1 }, { m: 420, ph: 4.6 }];
-const GAP = 4.5, WALL_SWING = 5.2, WALL_SPEED = 1.1;
-const COVERS = [[452,-3],[466,3.5],[480,-4],[494,2],[508,-2.5],[520,3]];
-const TURRETS = [{ m: 545, x: -3.5 }, { m: 545, x: 3.5 }];
-// Coin lines: [fromM, toM, x] every 3 m — some sit on the risky line on purpose
-const COIN_LINES = [[10,28,0],[50,58,4],[76,86,-4],[95,103,0],[124,128,5],[146,152,-5],[160,166,5],[174,180,-5],
-  [188,194,5],[202,210,-4],[240,260,0],[275,295,-5],[305,325,5],[350,365,0],[378,390,0],[400,415,0],[440,450,0],[470,478,-1],[500,506,5]];
-const FINISH_BONUS = 15, CLEAN_BONUS = 10;
+const WALL_START_GAP = 12, WALL_LEASH = 18, WALL_CATCHUP = 15;
+const L1_LANE = 8;
+
+// ---------- LEVEL 1: 荊棘峽谷 (unchanged numbers from the released version) ----------
+const LEVEL1 = {
+  id: 1, name: '第一關 荊棘峽谷', short: '荊棘峽谷',
+  blurb: '刺牆從背後追上來！衝過地坑、荊棘、落石、機關牆和砲台。',
+  finish: 530, end: 560, finishBonus: 15, scenery: 'canyon', lateral: 0.8, camFollow: 0.6,
+  clampX: L1_LANE - 0.5,
+  checkpoints: [[0, 0], [30, 0], [130, 0], [230, 0], [330, 0], [430, 0]],
+  sections: [
+    { from: 0, name: '起跑區', wall: 9 }, { from: 30, name: '① 地坑道', wall: 9 },
+    { from: 130, name: '② 荊棘地', wall: 9.5 }, { from: 230, name: '③ 落石谷', wall: 10 },
+    { from: 330, name: '④ 機關牆', wall: 10.5 }, { from: 430, name: '⑤ 砲台大道', wall: 11 },
+  ],
+  floors: [[-40, 560, -L1_LANE, L1_LANE]],
+  holes: [[44,48,-8,8],[60,64,-8,0],[70,74,0,8],[88,93,-8,8],[104,108,-8,8],[118,122,-8,2]],
+  thorns: [[140,143,-8,3],[155,158,-3,8],[168,171,-8,3],[182,185,-3,8],[196,199,-8,1],[212,215,-1,8]],
+  rocks: [225, 330],
+  slideWalls: [{ m: 345, ph: 0 }, { m: 370, ph: 1.7 }, { m: 395, ph: 3.1 }, { m: 420, ph: 4.6 }],
+  covers: [[452,-3],[466,3.5],[480,-4],[494,2],[508,-2.5],[520,3]],
+  turrets: [{ m: 545, x: -3.5 }, { m: 545, x: 3.5 }], turretFrom: 432,
+  coinLines: [[10,28,0],[50,58,4],[76,86,-4],[95,103,0],[124,128,5],[146,152,-5],[160,166,5],[174,180,-5],
+    [188,194,5],[202,210,-4],[240,260,0],[275,295,-5],[305,325,5],[350,365,0],[378,390,0],[400,415,0],[440,450,0],[470,478,-1],[500,506,5]],
+};
+
+// ---------- LEVEL 2: 天空機關城 — floating platforms over a drop ----------
+// Built from pieces so the layout reads top to bottom like the course.
+const L2 = { floors: [], movers: [], bars: [], hammers: [], coins: [] };
+(() => {
+  const F = (m0, m1, x0, x1) => L2.floors.push([m0, m1, x0, x1]);
+  // start pad
+  F(-40, 22, -6, 6);
+  // ① 石柱跳跳 — square pillars, gaps grow; the 9 m ones need the double jump
+  const pillars = [[28,0],[35,2.5],[42,-1],[50,1.5],[58,-2],[67,0],[78,3],[89,-1],[97,2],[106,0]];
+  for (const [m, x] of pillars) F(m - 1.6, m + 1.6, x - 1.6, x + 1.6);
+  L2.coins.push([35,2.5],[58,-2],[78,3],[89,-1]);
+  F(110, 124, -5, 5);                                   // landing pad (checkpoint)
+  // ② 之字窄橋 — 3 m wide, switching sides
+  F(124, 138, -6.5, -3.5); F(138, 141, -6.5, 6.5); F(141, 155, 3.5, 6.5); F(155, 158, -6.5, 6.5);
+  F(158, 172, -6.5, -3.5); F(172, 175, -6.5, 6.5); F(175, 189, 3.5, 6.5); F(189, 192, -6.5, 6.5);
+  for (const [m, x] of [[131,-5],[148,5],[165,-5],[182,5]]) L2.coins.push([m, x]);
+  F(192, 202, -5, 5);                                   // pad (checkpoint)
+  // ③ 烤肉旋轉棒 — wide deck with spinning bars
+  F(202, 290, -9, 9);
+  L2.bars.push(
+    { m: 214, x: 0, len: 8.5, h: 0.55, speed: 1.6, ph: 0 },                      // low: jump it
+    { m: 232, x: 0, len: 8.5, h: 0.55, speed: 2.1, ph: 1 },                      // faster low
+    { m: 250, x: 0, len: 8.5, h: 0.55, speed: -1.8, ph: 0 },                     // double: low…
+    { m: 250, x: 0, len: 8.5, h: 2.1, speed: 1.1, ph: 1.6 },                     // …and high, other way
+    { m: 268, x: 0, len: 8.5, h: 0.55, speed: 2.0, ph: 0.4, spiky: true },       // spiky
+    { m: 282, x: -4.5, len: 4.2, h: 0.55, speed: 2.4, ph: 0, spiky: true },      // twin, counter-rotating
+    { m: 282, x: 4.5, len: 4.2, h: 0.55, speed: -2.4, ph: 0, spiky: true },
+  );
+  for (const m of [223, 241, 259, 275]) L2.coins.push([m, 0]);
+  F(290, 300, -5, 5);                                   // pad (checkpoint)
+  // ④ 擺錘窄道 then 移動平台 over the drop
+  F(300, 336, -2.2, 2.2);                               // 4.4 m walkway…
+  L2.hammers.push({ m: 308, amp: 1.05, speed: 1.9, ph: 0 }, { m: 318, amp: 1.05, speed: 2.2, ph: 1.4 }, { m: 328, amp: 1.05, speed: 2.5, ph: 2.6 });
+  F(336, 340, -3, 3);
+  L2.movers.push({ m0: 344, m1: 350, w: 4, x: 0, amp: 5, speed: 1.2, ph: 0 },
+                 { m0: 354, m1: 360, w: 4, x: 0, amp: 5.5, speed: 1.5, ph: 2 },
+                 { m0: 364, m1: 370, w: 3.6, x: 0, amp: 6, speed: 1.8, ph: 4 });
+  L2.coins.push([347, 0], [357, 0], [367, 0]);
+  F(374, 392, -6, 6);                                   // pad (checkpoint) — the gate deck starts here
+  // ⑤ 計時大門 — the gate closes the deck at 404; the switch sits at the end
+  // of a spur going right. Press it, then sprint back: the gate stays open
+  // 4 s, enough only with a sprint (running takes ~4.7 s).
+  F(392, 408, -6, 6);
+  F(384, 388, 6, 36);                                   // spur to the right…
+  F(381, 391, 36, 41);                                  // …ending at the switch pad
+  L2.coins.push([386, 20], [386, 30]);
+  F(408, 440, -6, 6);                                   // run-out to the finish
+})();
+const LEVEL2 = {
+  id: 2, name: '第二關 天空機關城', short: '天空機關城',
+  blurb: '懸空石柱、之字窄橋、烤肉旋轉棒、擺錘、移動平台，最後衝刺搶過計時大門！',
+  finish: 430, end: 440, finishBonus: 25, scenery: 'sky', lateral: 1.0, camFollow: 1.0, clampX: 45,
+  checkpoints: [[0, 0], [116, 0], [196, 0], [295, 0], [380, 0], [412, 0]],
+  sections: [
+    // slower than level 1: hopping and weaving is slower than a flat sprint
+    { from: 0, name: '起跑台', wall: 7 }, { from: 22, name: '① 石柱跳跳', wall: 6.5 },
+    { from: 124, name: '② 之字窄橋', wall: 7.5 }, { from: 202, name: '③ 烤肉旋轉棒', wall: 8.5 },
+    { from: 300, name: '④ 擺錘＋移動平台', wall: 7.5 }, { from: 374, name: '⑤ 計時大門', wall: 0 },
+    { from: 408, name: '衝刺終點', wall: 10.5 },
+  ],
+  floors: L2.floors, holes: [], movers: L2.movers, bars: L2.bars, hammers: L2.hammers,
+  gate: { m: 404, x0: -6, x1: 6, switchM: 386, switchX: 38.5, open: 4.0, wallBarrier: 360 },   // ~51 m back: run 4.7 s ✗, sprint 3.5 s ✓
+  coinPoints: L2.coins,
+};
+const LEVELS = [LEVEL1, LEVEL2];
+let L = LEVEL1;
 
 // Server: same rule as the island — localhost talks to the local dev server,
 // github.io to the live one, anywhere else (claude.ai preview) plays solo.
@@ -182,9 +259,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
 document.getElementById('stage').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xcfe6f0);
-scene.fog = new THREE.Fog(0xcfe6f0, 70, 180);
-const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 400);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 500);
 camera.position.set(0, 9, 8);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x8a6f52, 0.85));
 const sun = new THREE.DirectionalLight(0xffffff, 0.6); sun.position.set(6, 14, 8); scene.add(sun);
@@ -199,84 +274,171 @@ fitRenderer(); setInterval(fitRenderer, 1000);
 const LM = c => new THREE.MeshLambertMaterial({ color: c });
 const mats = {
   ground: LM(0xd9ad72), groundAlt: LM(0xcfa165), edge: LM(0x9b7b55), pit: LM(0x3d2a1e),
+  stone: LM(0xc9c2b4), stoneAlt: LM(0xb9b1a2), plank: LM(0xb98a55),
   thorn: LM(0x6aa04a), spike: LM(0xe0584a), rock: LM(0x9a8c80),
   shadow: new THREE.MeshBasicMaterial({ color: 0x3d2a1e, transparent: true, opacity: 0.35 }),
   wall: LM(0xa08a74), cover: LM(0xb0bcc8), turret: LM(0xe0584a),
   bullet: new THREE.MeshBasicMaterial({ color: 0xff5a3c }), bulletBack: new THREE.MeshBasicMaterial({ color: 0x2e9b62 }),
   flag: LM(0x7cc79a), finishA: LM(0xffffff), finishB: LM(0x5b3a29), gold: LM(0xffcf5a), coin: LM(0xffc81e),
+  bar: LM(0xc0703a), barHot: LM(0xe0584a), pole: LM(0x8d7a6a), hammer: LM(0x7a6a5a), mover: LM(0x7cc0d8),
+  gate: LM(0x8a5a3a), switchOff: LM(0xe0584a), switchOn: LM(0x7cc79a),
 };
+
+// Everything a level builds goes into one group so switching levels is a clean swap
+let world = new THREE.Group(); scene.add(world);
+const add = o => { world.add(o); return o; };
 const box = (w, h, d, mat, x, y, z, outline) => {
   const o = new THREE.Mesh(outline ? sbRoundBox(w, h, d, Math.min(0.18, w / 4, h / 4, d / 4)) : new THREE.BoxGeometry(w, h, d), mat);
-  o.position.set(x, y, z); scene.add(o); if (outline) sbOutline(o, 0.05); return o;
+  o.position.set(x, y, z); add(o); if (outline) sbOutline(o, 0.05); return o;
 };
-function inPit(m, x){ for (const p of PITS) if (m >= p[0] && m <= p[1] && x >= p[2] && x <= p[3]) return p; return null; }
+function clearWorld(){
+  scene.remove(world);
+  world.traverse(o => { if (o.geometry && !o.userData.sharedGeo) o.geometry.dispose(); });
+  world = new THREE.Group(); scene.add(world);
+}
 
-// Ground in 2 m slices so pits are real holes
-for (let m = -40; m < END; m += 2){
-  const cuts = [-LANE]; for (const p of PITS) if (m + 1 >= p[0] && m + 1 <= p[1]) cuts.push(p[2], p[3]);
-  cuts.push(LANE); cuts.sort((a, b) => a - b);
-  for (let i = 0; i < cuts.length - 1; i++){
-    const x0 = Math.max(-LANE, cuts[i]), x1 = Math.min(LANE, cuts[i + 1]);
-    if (x1 - x0 < 0.01 || inPit(m + 1, (x0 + x1) / 2)) continue;
-    box(x1 - x0, 1, 2.02, (Math.floor(m / 10) % 2) ? mats.ground : mats.groundAlt, (x0 + x1) / 2, -0.5, -(m + 1));
+// ---------- ground queries ----------
+function inRect(r, m, x){ return m >= r[0] && m <= r[1] && x >= r[2] && x <= r[3]; }
+function moverX(mv, t){ return mv.x + Math.sin(t * mv.speed + mv.ph) * mv.amp; }
+// What's under you: null (a drop) or { mover } / { }
+function groundAt(m, x){
+  for (const h of L.holes) if (inRect(h, m, x)) return null;
+  for (const f of L.floors) if (inRect(f, m, x)) return {};
+  for (const mv of (L.movers || [])){
+    const cx = moverX(mv, S.time);
+    if (m >= mv.m0 && m <= mv.m1 && Math.abs(x - cx) <= mv.w / 2) return { mover: mv };
   }
+  return null;
 }
-box(1, 1.4, END + 40, mats.edge, -LANE - 0.5, 0.2, -(END - 40) / 2);
-box(1, 1.4, END + 40, mats.edge,  LANE + 0.5, 0.2, -(END - 40) / 2);
-for (const p of PITS) box(p[3] - p[2], 0.2, p[1] - p[0], mats.pit, (p[2] + p[3]) / 2, -6, -(p[0] + p[1]) / 2);
-// Canyon walls either side for the 峽谷 feel
-for (let m = -20; m < END; m += 14) for (const s of [-1, 1]){
-  const h = 6 + Math.abs(Math.sin(m * 0.37 + s)) * 7;
-  box(4 + Math.abs(Math.sin(m)) * 3, h, 13, LM(s < 0 ? 0xc79a6a : 0xbd8f5f), s * (LANE + 3.5 + Math.abs(Math.cos(m)) * 1.5), h / 2 - 0.5, -m);
-}
-// Thorns
-for (const t of THORNS){
-  box(t[3] - t[2], 0.3, t[1] - t[0], mats.thorn, (t[2] + t[3]) / 2, 0.15, -(t[0] + t[1]) / 2);
-  for (let x = t[2] + 0.6; x < t[3]; x += 1.2) for (let m = t[0] + 0.6; m < t[1]; m += 1.2){
-    const c = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.9, 6), mats.spike); c.position.set(x, 0.75, -m); scene.add(c);
-  }
-}
-// Checkpoints, finish, podium
-for (const cp of CHECKPOINTS.slice(1)){ box(0.2, 3, 0.2, mats.edge, -LANE + 0.4, 1.5, -cp); box(1.4, 0.8, 0.1, mats.flag, -LANE + 1.2, 2.6, -cp, true); }
-for (let i = 0; i < 16; i++) box(1, 0.05, 1, i % 2 ? mats.finishA : mats.finishB, -LANE + 0.5 + i, 0.03, -FINISH);
-box(0.4, 4.4, 0.4, mats.edge, -LANE + 0.3, 2.2, -FINISH, true); box(0.4, 4.4, 0.4, mats.edge, LANE - 0.3, 2.2, -FINISH, true);
-box(16, 0.7, 0.4, mats.gold, 0, 4.4, -FINISH, true);
-box(3, 2, 3, mats.gold, 0, 1, -(FINISH + 18), true); box(3, 1.3, 3, mats.gold, -3, 0.65, -(FINISH + 18), true); box(3, 0.8, 3, mats.gold, 3, 0.4, -(FINISH + 18), true);
-// Moving walls
-const walls = WALLS.map(w => ({ ...w, a: box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m), b: box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m), gapX: 0 }));
-function layoutWalls(time){
-  for (const w of walls){
-    w.gapX = Math.sin(time * WALL_SPEED + w.ph) * WALL_SWING;
-    const l1 = w.gapX - GAP / 2, r0 = w.gapX + GAP / 2;
-    w.a.scale.x = Math.max(0.01, l1 + LANE); w.a.position.x = (l1 - LANE) / 2;
-    w.b.scale.x = Math.max(0.01, LANE - r0); w.b.position.x = (r0 + LANE) / 2;
-  }
-}
-layoutWalls(0);
-const covers = COVERS.map(([m, x]) => ({ m, x, mesh: box(2.6, 2, 1.6, mats.cover, x, 1, -m, true) }));
-const turrets = TURRETS.map((t, i) => {
-  box(1.8, 1.8, 1.8, mats.turret, t.x, 0.9, -t.m, true);
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1.6, 12), mats.edge);
-  barrel.rotation.x = Math.PI / 2; barrel.position.set(t.x, 1.2, -t.m + 1.3); scene.add(barrel); sbOutline(barrel, 0.04);
-  return { ...t, next: 1 + i * 0.6 };
-});
-// Coins
-const coinGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 18);
-const coins = [];
-for (const [a, b, x] of COIN_LINES) for (let m = a; m <= b; m += 3){
-  if (inPit(m, x)) continue;
-  const mesh = new THREE.Mesh(coinGeo, mats.coin); mesh.rotation.x = Math.PI / 2; mesh.position.set(x, 1, -m); scene.add(mesh);
-  coins.push({ m, x, mesh, taken: false });
-}
-// Spike wall (chaser) — 4 m tall, see-through when it's between you and the camera
+
+// ---------- build a level ----------
+let walls = [], covers = [], turrets = [], coins = [], bars = [], hammers = [], movers = [], gateObj = null;
 const chaserMat = new THREE.MeshLambertMaterial({ color: 0x8a3fa0, transparent: true, opacity: 1 });
 const chaserSpike = new THREE.MeshLambertMaterial({ color: 0xe0584a, transparent: true, opacity: 1 });
-const chaser = new THREE.Group();
-const slab = new THREE.Mesh(new THREE.BoxGeometry(LANE * 2 + 2, 4, 1.2), chaserMat); slab.position.y = 2; chaser.add(slab);
-for (let x = -LANE; x <= LANE; x += 1.3) for (let y = 0.6; y < 4; y += 1.3){
-  const c = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.4, 6), chaserSpike); c.rotation.x = -Math.PI / 2; c.position.set(x, y, -1.2); chaser.add(c);
+const coinGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 18);
+let chaser;
+
+function buildLevel(level){
+  L = level; clearWorld();
+  walls = []; covers = []; turrets = []; coins = []; bars = []; hammers = []; movers = []; gateObj = null;
+  const sky = level.scenery === 'sky';
+  scene.background = new THREE.Color(sky ? 0xa9d8f2 : 0xcfe6f0);
+  scene.fog = new THREE.Fog(sky ? 0xa9d8f2 : 0xcfe6f0, 70, 190);
+
+  // floors: 2 m slices along the course so holes cut cleanly; stone blocks in the sky level
+  for (const f of level.floors){
+    for (let m = f[0]; m < f[1]; m += 2){
+      const m1 = Math.min(f[1], m + 2), cuts = [f[2]];
+      for (const h of level.holes) if ((m + m1) / 2 >= h[0] && (m + m1) / 2 <= h[1]) cuts.push(h[2], h[3]);
+      cuts.push(f[3]); cuts.sort((a, b) => a - b);
+      for (let i = 0; i < cuts.length - 1; i++){
+        const x0 = Math.max(f[2], cuts[i]), x1 = Math.min(f[3], cuts[i + 1]);
+        if (x1 - x0 < 0.01) continue;
+        const cx = (x0 + x1) / 2, cm = (m + m1) / 2;
+        if (level.holes.some(h => inRect(h, cm, cx))) continue;
+        const alt = Math.floor(m / 10) % 2;
+        box(x1 - x0, sky ? 1.6 : 1, m1 - m + 0.02, sky ? (alt ? mats.stone : mats.stoneAlt) : (alt ? mats.ground : mats.groundAlt), cx, sky ? -0.8 : -0.5, -cm);
+      }
+    }
+  }
+  if (sky){
+    // under-hang + far clouds so the drop reads as a drop
+    for (let i = 0; i < 40; i++){
+      const c = new THREE.Mesh(new THREE.SphereGeometry(4 + Math.random() * 6, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+      c.position.set((Math.random() - 0.5) * 140, -14 - Math.random() * 10, -Math.random() * level.end); c.scale.y = 0.5; add(c);
+    }
+  } else {
+    box(1, 1.4, level.end + 40, mats.edge, -L1_LANE - 0.5, 0.2, -(level.end - 40) / 2);
+    box(1, 1.4, level.end + 40, mats.edge,  L1_LANE + 0.5, 0.2, -(level.end - 40) / 2);
+    for (const p of level.holes) box(p[3] - p[2], 0.2, p[1] - p[0], mats.pit, (p[2] + p[3]) / 2, -6, -(p[0] + p[1]) / 2);
+    for (let m = -20; m < level.end; m += 14) for (const s of [-1, 1]){
+      const h = 6 + Math.abs(Math.sin(m * 0.37 + s)) * 7;
+      box(4 + Math.abs(Math.sin(m)) * 3, h, 13, LM(s < 0 ? 0xc79a6a : 0xbd8f5f), s * (L1_LANE + 3.5 + Math.abs(Math.cos(m)) * 1.5), h / 2 - 0.5, -m);
+    }
+  }
+  // thorns
+  for (const t of (level.thorns || [])){
+    box(t[3] - t[2], 0.3, t[1] - t[0], mats.thorn, (t[2] + t[3]) / 2, 0.15, -(t[0] + t[1]) / 2);
+    for (let x = t[2] + 0.6; x < t[3]; x += 1.2) for (let m = t[0] + 0.6; m < t[1]; m += 1.2){
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.9, 6), mats.spike); c.position.set(x, 0.75, -m); add(c);
+    }
+  }
+  // checkpoint flags, finish line, podium
+  for (const [cm, cx] of level.checkpoints.slice(1)){
+    const fx = sky ? cx - 3.6 : -L1_LANE + 0.4;
+    box(0.2, 3, 0.2, mats.edge, fx, 1.5, -cm); box(1.4, 0.8, 0.1, mats.flag, fx + 0.8, 2.6, -cm, true);
+  }
+  const fw = sky ? 12 : 16;
+  for (let i = 0; i < fw; i++) box(1, 0.05, 1, i % 2 ? mats.finishA : mats.finishB, -fw / 2 + 0.5 + i, 0.03, -level.finish);
+  box(0.4, 4.4, 0.4, mats.edge, -fw / 2 + 0.3, 2.2, -level.finish, true); box(0.4, 4.4, 0.4, mats.edge, fw / 2 - 0.3, 2.2, -level.finish, true);
+  box(fw, 0.7, 0.4, mats.gold, 0, 4.4, -level.finish, true);
+  const pm = level.finish + Math.min(18, (level.end - level.finish) - 3);
+  box(3, 2, 3, mats.gold, 0, 1, -pm, true); box(3, 1.3, 3, mats.gold, -3, 0.65, -pm, true); box(3, 0.8, 3, mats.gold, 3, 0.4, -pm, true);
+  // level-1 hazards
+  walls = (level.slideWalls || []).map(w => ({ ...w, a: box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m), b: box(1, 4.5, 1, mats.wall, 0, 2.25, -w.m), gapX: 0 }));
+  covers = (level.covers || []).map(([m, x]) => ({ m, x, mesh: box(2.6, 2, 1.6, mats.cover, x, 1, -m, true) }));
+  turrets = (level.turrets || []).map((t, i) => {
+    box(1.8, 1.8, 1.8, mats.turret, t.x, 0.9, -t.m, true);
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1.6, 12), mats.edge);
+    barrel.rotation.x = Math.PI / 2; barrel.position.set(t.x, 1.2, -t.m + 1.3); add(barrel); sbOutline(barrel, 0.04);
+    return { ...t, next: 1 + i * 0.6 };
+  });
+  // level-2 hazards
+  bars = (level.bars || []).map(b => {
+    const g = new THREE.Group(); g.position.set(b.x, b.h, -b.m); add(g);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, b.h + 1.2, 12), mats.pole); pole.position.y = -b.h / 2 + 0.6 - 0.05; add(pole); pole.position.set(b.x, (b.h + 1.2) / 2 - 0.05, -b.m);
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, b.len * 2, 12), b.spiky ? mats.barHot : mats.bar);
+    rod.rotation.z = Math.PI / 2; g.add(rod);
+    if (b.spiky) for (let i = -b.len + 0.6; i < b.len; i += 1.1){
+      for (const s of [-1, 1]){ const c = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 6), mats.spike); c.position.set(i, 0, s * 0.35); c.rotation.x = s * Math.PI / 2; g.add(c); }
+    }
+    sbOutline(g, 0.03);
+    return { ...b, g, hitCd: 0 };
+  });
+  hammers = (level.hammers || []).map(h => {
+    const pivot = new THREE.Group(); pivot.position.set(0, 9, -h.m); add(pivot);
+    box(0.5, 0.5, 6, mats.pole, 0, 9.2, -h.m);                    // overhead beam
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 7, 8), mats.pole); arm.position.y = -3.5; pivot.add(arm);
+    const head = new THREE.Mesh(sbRoundBox(2.2, 1.6, 1.6, 0.3), mats.hammer); head.position.y = -7.2; pivot.add(head);
+    sbOutline(pivot, 0.04);
+    return { ...h, pivot, hitCd: 0 };
+  });
+  movers = (level.movers || []).map(mv => ({ mv, mesh: box(mv.w, 0.7, mv.m1 - mv.m0, mats.mover, mv.x, -0.35, -(mv.m0 + mv.m1) / 2, true) }));
+  if (level.gate){
+    const g = level.gate;
+    gateObj = { door: box(g.x1 - g.x0, 5, 1, mats.gate, (g.x0 + g.x1) / 2, 2.5, -g.m, true),
+                pad: box(2.4, 0.3, 2.4, mats.switchOff, g.switchX, 0.15, -g.switchM, true),
+                post: box(0.5, 1.4, 0.5, mats.switchOff, g.switchX, 0.7, -g.switchM + 1.6) };
+    // arrow hint toward the switch, painted on the deck
+    for (let i = 0; i < 4; i++){ const a = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.2, 3), mats.gold); a.rotation.z = -Math.PI / 2; a.position.set(9 + i * 6, 0.1, -g.switchM); add(a); }
+  }
+  // coins
+  const coinSpots = [];
+  for (const [a, b, x] of (level.coinLines || [])) for (let m = a; m <= b; m += 3) coinSpots.push([m, x]);
+  for (const p of (level.coinPoints || [])) coinSpots.push(p);
+  for (const [m, x] of coinSpots){
+    if (!groundAt(m, x) && !(level.movers || []).some(mv => m >= mv.m0 && m <= mv.m1)) continue;
+    const mesh = new THREE.Mesh(coinGeo, mats.coin); mesh.userData.sharedGeo = true; mesh.rotation.x = Math.PI / 2; mesh.position.set(x, 1, -m); add(mesh);
+    coins.push({ m, x, mesh, taken: false });
+  }
+  // the chaser
+  chaser = new THREE.Group();
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(L1_LANE * 2 + 2, 4, 1.2), chaserMat); slab.position.y = 2; chaser.add(slab);
+  for (let x = -L1_LANE; x <= L1_LANE; x += 1.3) for (let y = 0.6; y < 4; y += 1.3){
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.4, 6), chaserSpike); c.rotation.x = -Math.PI / 2; c.position.set(x, y, -1.2); chaser.add(c);
+  }
+  add(chaser);
+  document.getElementById('hFinish').textContent = level.finish;
+  layoutWalls(0);
 }
-scene.add(chaser);
+function layoutWalls(time){
+  for (const w of walls){
+    w.gapX = Math.sin(time * 1.1 + w.ph) * 5.2;
+    const l1 = w.gapX - 2.25, r0 = w.gapX + 2.25;
+    w.a.scale.x = Math.max(0.01, l1 + L1_LANE); w.a.position.x = (l1 - L1_LANE) / 2;
+    w.b.scale.x = Math.max(0.01, L1_LANE - r0); w.b.position.x = (r0 + L1_LANE) / 2;
+  }
+}
 
 // Player: the island avatar (rebuilt once the profile loads)
 let me = null;
@@ -294,20 +456,22 @@ setAvatar(DEFAULT_CUSTOM);
 const rocks = [], bullets = [];
 
 // ---------- state ----------
-const S = { phase: 'menu' };
+const S = { phase: 'menu', time: 0 };
 function reset(){
-  Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, slowUntil: 0, downUntil: 0,
-    swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, time: 0, caught: 0, pits: 0, shot: 0, rockNext: 0,
-    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0 });
-  for (const r of rocks){ scene.remove(r.mesh); scene.remove(r.shadow); } rocks.length = 0;
-  for (const b of bullets) scene.remove(b.mesh); bullets.length = 0;
+  Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, knockX: 0, slowUntil: 0, downUntil: 0,
+    swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, cpX: 0, time: 0, caught: 0, pits: 0, shot: 0, hits: 0, rockNext: 0,
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null });
+  for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
+  for (const b of bullets) world.remove(b.mesh); bullets.length = 0;
   for (const c of coins){ c.taken = false; c.mesh.visible = true; }
+  if (gateObj){ gateObj.door.position.y = 2.5; gateObj.pad.material = gateObj.post.material = mats.switchOff; }
 }
-reset();
+
+// ---------- input ----------
 const keys = {};
 addEventListener('keydown', e => {
   if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
-  if ((e.code === 'Enter' || e.code === 'Space') && S.phase !== 'run' && S.phase !== 'count'){ e.preventDefault(); startRun(); return; }
+  if ((e.code === 'Enter' || e.code === 'Space') && S.phase !== 'run' && S.phase !== 'count'){ e.preventDefault(); startRun(L); return; }
   keys[e.code] = true;
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
@@ -315,20 +479,17 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) for (const k in keys) keys[k] = false; });
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 if (isTouch) document.body.classList.add('touch');
-// No long-press menus or iOS page pinch on the game screen
 addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault());
 
 // Buttons: each finger is captured by the button it pressed, so sliding off
-// it or pressing two at once can't leave a key stuck (the old "random bug").
-const tbIds = [['tJump','Space'],['tBat','KeyF'],['tDash','ShiftLeft']];
-for (const [id, code] of tbIds){
+// it or pressing two at once can't leave a key stuck.
+for (const [id, code] of [['tJump','Space'],['tBat','KeyF'],['tDash','ShiftLeft']]){
   const el = document.getElementById(id);
   el.addEventListener('pointerdown', e => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch(_){} keys[code] = true; el.classList.add('on'); });
-  const off = e => { keys[code] = false; el.classList.remove('on'); };
+  const off = () => { keys[code] = false; el.classList.remove('on'); };
   el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('lostpointercapture', off);
 }
-
 // Joystick: forward / back / left / right, analog; let go and you stop.
 const joy = { x: 0, y: 0, id: null, cx: 0, cy: 0 };
 const STICK_R = 50;
@@ -349,15 +510,13 @@ stickZone.addEventListener('pointerdown', e => {
 stickZone.addEventListener('pointermove', e => { if (e.pointerId === joy.id) joyMove(e); });
 for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) stickZone.addEventListener(ev, e => { if (e.pointerId === joy.id) joyEnd(); });
 addEventListener('blur', joyEnd);
-
-// Camera zoom: buttons, two-finger pinch on the screen, mouse wheel
+// Camera zoom: buttons, two-finger pinch, mouse wheel (remembered)
 let camZoom = 1;
 const ZOOM_MIN = 0.6, ZOOM_MAX = 1.7;
 function setZoom(z){ camZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z)); try { localStorage.setItem('etfm-race-zoom', String(camZoom)); } catch(_){} }
 try { setZoom(parseFloat(localStorage.getItem('etfm-race-zoom') || '1') || 1); } catch(_){}
-for (const [id, d] of [['tZoomIn', -0.15], ['tZoomOut', 0.15]]){
+for (const [id, d] of [['tZoomIn', -0.15], ['tZoomOut', 0.15]])
   document.getElementById(id).addEventListener('pointerdown', e => { e.preventDefault(); setZoom(camZoom + d); });
-}
 addEventListener('wheel', e => { setZoom(camZoom + e.deltaY * 0.0012); }, { passive: true });
 const pinch = new Map(); let pinchD = 0;
 const stageEl = document.getElementById('stage');
@@ -371,11 +530,9 @@ stageEl.addEventListener('pointermove', e => {
   }
 });
 for (const ev of ['pointerup', 'pointercancel']) stageEl.addEventListener(ev, e => { pinch.delete(e.pointerId); pinchD = 0; });
-
-// Fullscreen (+ landscape lock where the phone allows it); hidden where unsupported (iPhone Safari)
+// Fullscreen (+ landscape lock where allowed); hidden where unsupported (iPhone Safari)
 const fsBtn = document.getElementById('tFull');
-const canFS = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
-if (!canFS) fsBtn.hidden = true;
+if (!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) fsBtn.hidden = true;
 fsBtn.addEventListener('pointerdown', e => {
   e.preventDefault();
   const el = document.documentElement;
@@ -388,28 +545,45 @@ fsBtn.addEventListener('pointerdown', e => {
 const $ = id => document.getElementById(id);
 let flashTimer = 0;
 function flash(text){ const f = $('flash'); f.textContent = text; f.classList.add('on'); clearTimeout(flashTimer); flashTimer = setTimeout(() => f.classList.remove('on'), 1100); }
-function sectionAt(m){ for (let i = SECTIONS.length - 1; i >= 0; i--) if (m >= SECTIONS[i].from) return SECTIONS[i]; return SECTIONS[0]; }
-function startRun(){
+function sectionAt(m){ for (let i = L.sections.length - 1; i >= 0; i--) if (m >= L.sections[i].from) return L.sections[i]; return L.sections[0]; }
+const bestKey = lv => lv.id === 1 ? 'etfm-race-best' : 'etfm-race-best-' + lv.id;   // level 1 keeps its old key
+function bestTime(lv){ try { return parseFloat(localStorage.getItem(bestKey(lv)) || '') || null; } catch(e){ return null; } }
+function renderLevelButtons(){
+  const wrap = $('levelBtns'); wrap.innerHTML = '';
+  for (const lv of LEVELS){
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn lvl';
+    const best = bestTime(lv);
+    b.innerHTML = `${lv.name}<small>${best ? '最佳 ' + best + ' 秒' : '還沒跑過'}</small>`;
+    b.onclick = () => startRun(lv);
+    wrap.appendChild(b);
+  }
+}
+renderLevelButtons();
+function startRun(level){
+  if (level !== L || !chaser) buildLevel(level);
   reset(); $('startCard').hidden = true; $('endCard').hidden = true;
+  $('gateChip').hidden = true;
   S.phase = 'count'; S.countAt = performance.now();
 }
-$('startBtn').onclick = startRun; $('againBtn').onclick = startRun;
+$('againBtn').onclick = () => startRun(L);
+$('menuBtn').onclick = () => { S.phase = 'menu'; $('endCard').hidden = true; renderLevelButtons(); $('startCard').hidden = false; };
 
 function respawn(reason){
-  S.m = S.cp + 2; S.x = 0; S.y = 0; S.vy = 0; S.knockV = 0; S.slowUntil = 0; S.downUntil = S.time + 0.6;
+  S.m = S.cp + 2; S.x = S.cpX; S.y = 0; S.vy = 0; S.knockV = 0; S.knockX = 0; S.slowUntil = 0; S.downUntil = S.time + 0.6;
   S.wallM = Math.min(S.wallM, S.cp - 25);
   flash(reason);
 }
-function bestTime(){ try { return parseFloat(localStorage.getItem('etfm-race-best') || '') || null; } catch(e){ return null; } }
 function finish(){
-  S.phase = 'done'; $('danger').style.opacity = 0;
-  const t = +S.time.toFixed(1), prevBest = bestTime(), newBest = !prevBest || t < prevBest;
-  if (newBest){ try { localStorage.setItem('etfm-race-best', String(t)); } catch(e){} }
+  S.phase = 'done'; $('danger').style.opacity = 0; $('gateChip').hidden = true;
+  const t = +S.time.toFixed(1), prevBest = bestTime(L), newBest = !prevBest || t < prevBest;
+  if (newBest){ try { localStorage.setItem(bestKey(L), String(t)); } catch(e){} }
   const clean = S.caught === 0 && S.pits === 0;
-  const reward = S.coins + FINISH_BONUS + (clean ? CLEAN_BONUS : 0);
+  const reward = S.coins + L.finishBonus + (clean ? 10 : 0);
+  $('endTitle').textContent = L.short + ' 通關！';
   $('rTime').textContent = t + ' 秒'; $('rBest').textContent = (newBest ? t : prevBest) + ' 秒' + (newBest ? ' 🆕' : '');
-  $('rCoins').textContent = S.coins; $('rCaught').textContent = S.caught + ' 次'; $('rFails').textContent = `${S.pits} / ${S.shot}`;
-  const title = clean ? '🏆 刺牆碰不到我' : S.pits >= 3 ? '🕳 坑底常客' : S.caught >= 3 ? '🦔 刺牆的好朋友' : S.shot >= 3 ? '🎯 人肉標靶' : S.coins >= 50 ? '💰 撿錢達人' : '🏃 穩穩跑完';
+  $('rCoins').textContent = S.coins; $('rCaught').textContent = S.caught + ' 次'; $('rFails').textContent = `${S.pits} / ${S.shot + S.hits}`;
+  const title = clean ? '🏆 刺牆碰不到我' : S.pits >= 3 ? (L.id === 2 ? '☁️ 高空墜落專家' : '🕳 坑底常客') : S.caught >= 3 ? '🦔 刺牆的好朋友'
+    : S.hits >= 4 ? '🍢 被烤肉棒串起來' : S.shot >= 3 ? '🎯 人肉標靶' : S.coins >= 30 ? '💰 撿錢達人' : '🏃 穩穩跑完';
   $('rTitle').textContent = '稱號：' + title;
   $('endCard').hidden = false; $('againBtn').focus();
   claimReward(reward, t);
@@ -421,7 +595,7 @@ async function claimReward(coins, time){
   if (!authToken){ el.textContent = `獎金 $${coins} — 先到海嘯島登入，下次跑完就會存進帳號`; return; }
   el.textContent = `獎金 $${coins} 存入中…`;
   try {
-    const r = await fetch(API + '/race_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ coins, time }) });
+    const r = await fetch(API + '/race_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ coins, time, level: L.id }) });
     const j = await r.json().catch(() => ({}));
     if (r.ok) el.textContent = `獎金 +$${j.coins} 已存入帳號（現在 $${j.money}）`;
     else el.textContent = j.message || '獎金沒存到，等一下再跑一次';
@@ -455,23 +629,23 @@ function frame(now){
   }
   if (S.phase === 'run') step(dt);
   layoutWalls(S.phase === 'run' ? S.time : now / 1000);
-  render(dt);
+  render(dt, now / 1000);
 }
 
 function step(dt){
   S.time += dt;
   const down = S.time < S.downUntil;
-  // joystick (analog, small dead zone) or keyboard
+  // joystick (analog, small dead zone, full speed at ~3/4 reach) or keyboard
   const jx = Math.abs(joy.x) > 0.15 ? joy.x : 0, jy = Math.abs(joy.y) > 0.15 ? joy.y : 0;
-  // full speed at ~3/4 of the stick's reach, so thumbs don't have to hug the rim
   let fwd = Math.max(-1, Math.min(1, -jy * 1.35)), side = Math.max(-1, Math.min(1, jx * 1.35));
-  if (fwd < 0) fwd *= 0.6;                       // backing up is slower, like the keyboard
+  if (fwd < 0) fwd *= 0.6;
   if (keys.KeyW || keys.ArrowUp) fwd = 1;
   if (keys.KeyS || keys.ArrowDown) fwd = -0.6;
   if (keys.KeyA || keys.ArrowLeft) side = -1;
   if (keys.KeyD || keys.ArrowRight) side = 1;
   if (down){ fwd = 0; side = 0; }
-  const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && fwd > 0;
+  // sprint works in any direction you're actually moving (the gate run is sideways)
+  const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && (fwd > 0 || (L.lateral >= 1 && side !== 0));
   if (wantSprint && !S.tired && S.stamina > 0.02){ S.stamina = Math.max(0, S.stamina - STAMINA_DRAIN * dt); if (S.stamina === 0) S.tired = true; }
   else { S.stamina = Math.min(1, S.stamina + STAMINA_FILL * dt); if (S.stamina > 0.35) S.tired = false; }
   let speed = (wantSprint && !S.tired && S.stamina > 0.02) ? SPRINT : RUN;
@@ -479,9 +653,12 @@ function step(dt){
   S.moving = (fwd !== 0 || side !== 0) && !down;
   const prevM = S.m, prevX = S.x;
   S.m += (fwd * speed - S.knockV) * dt;
-  S.x += side * speed * 0.8 * dt;
+  S.x += (side * speed * L.lateral + S.knockX) * dt;
   S.knockV = Math.max(0, S.knockV - 25 * dt);
-  S.x = Math.max(-LANE + 0.5, Math.min(LANE - 0.5, S.x));
+  S.knockX *= Math.max(0, 1 - 6 * dt);
+  // carried by a moving platform
+  if (S.onMover && S.onGround){ const nx = moverX(S.onMover, S.time), px = moverX(S.onMover, S.time - dt); S.x += nx - px; }
+  S.x = Math.max(-L.clampX, Math.min(L.clampX, S.x));
   S.m = Math.max(-30, S.m);
   S.side = side;
   // jump: hold = hop on landing; double jump needs a fresh press
@@ -491,32 +668,33 @@ function step(dt){
     else if (fresh && !S.onGround && !S.djUsed){ S.vy = DJ_V; S.djUsed = true; S.flipT = 0.0001; }
   }
   S.vy -= GRAV * dt; S.y += S.vy * dt;
-  if (!inPit(S.m, S.x) && S.y <= 0 && S.y > -0.8){ S.y = 0; S.vy = 0; S.onGround = true; S.djUsed = false; }
-  else if (S.y < 0) S.onGround = false;
-  if (S.y < -5){ S.pits++; respawn('掉坑了！回檢查點'); return; }
-  // solids
-  for (const w of walls) for (const s of [{ x0: -LANE, x1: w.gapX - GAP / 2 }, { x0: w.gapX + GAP / 2, x1: LANE }]){
-    if (S.y > 4.5) continue;
-    if (Math.abs(S.m - w.m) < 0.95 && S.x > s.x0 - 0.45 && S.x < s.x1 + 0.45){ if (Math.abs(prevM - w.m) >= 0.95) S.m = prevM; else S.x = prevX; }
-  }
-  for (const c of covers){
-    if (S.y > 2) continue;
-    if (Math.abs(S.m - c.m) < 1.25 && Math.abs(S.x - c.x) < 1.75){ if (Math.abs(prevM - c.m) >= 1.25) S.m = prevM; else S.x = prevX; }
-  }
-  // thorns
-  if (S.y < 0.6) for (const t of THORNS){
+  const g = groundAt(S.m, S.x);
+  if (g && S.y <= 0 && S.y > -0.8){ S.y = 0; S.vy = 0; S.onGround = true; S.djUsed = false; S.onMover = g.mover || null; }
+  else if (!g || S.y < 0){ S.onGround = false; if (!g) S.onMover = null; }
+  if (S.y < -5){ S.pits++; respawn(L.scenery === 'sky' ? '掉下去了！回檢查點' : '掉坑了！回檢查點'); return; }
+
+  // ---- solid blocks ----
+  const block = (m, half, x0, x1, top) => {
+    if (S.y > top) return;
+    if (Math.abs(S.m - m) < half + 0.45 && S.x > x0 - 0.45 && S.x < x1 + 0.45){ if (Math.abs(prevM - m) >= half + 0.45) S.m = prevM; else S.x = prevX; }
+  };
+  for (const w of walls){ block(w.m, 0.5, -L1_LANE, w.gapX - 2.25, 4.5); block(w.m, 0.5, w.gapX + 2.25, L1_LANE, 4.5); }
+  for (const c of covers) block(c.m, 0.8, c.x - 1.3, c.x + 1.3, 2);
+  if (L.gate && S.time >= S.gateOpenUntil) block(L.gate.m, 0.5, L.gate.x0, L.gate.x1, 5);
+
+  // ---- level 1 hazards ----
+  if (L.thorns && S.y < 0.6) for (const t of L.thorns){
     if (S.m >= t[0] && S.m <= t[1] && S.x >= t[2] - 0.3 && S.x <= t[3] + 0.3 && S.time > S.slowUntil){
       S.knockV = 7; S.slowUntil = S.time + 1; S.vy = 5; S.y = 0.05; flash('🌵 被荊棘刺到！'); break;
     }
   }
-  // falling rocks: shadow first, then drop; half aim where you're heading
-  if (S.m > 225 && S.m < 330 && S.time > S.rockNext){
+  if (L.rocks && S.m > L.rocks[0] && S.m < L.rocks[1] && S.time > S.rockNext){
     S.rockNext = S.time + 0.55;
     const aimed = Math.random() < 0.5;
-    const m = Math.min(329, aimed ? S.m + RUN * 1.05 + (Math.random() - 0.5) * 3 : S.m + 6 + Math.random() * 16);
-    const x = aimed ? Math.max(-LANE + 1.2, Math.min(LANE - 1.2, S.x + (Math.random() - 0.5) * 2)) : (Math.random() * 2 - 1) * (LANE - 1.2);
-    const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), mats.shadow); shadow.rotation.x = -Math.PI / 2; shadow.position.set(x, 0.02, -m); scene.add(shadow);
-    const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1), mats.rock); mesh.position.set(x, 18, -m); scene.add(mesh);
+    const m = Math.min(L.rocks[1] - 1, aimed ? S.m + RUN * 1.05 + (Math.random() - 0.5) * 3 : S.m + 6 + Math.random() * 16);
+    const x = aimed ? Math.max(-L1_LANE + 1.2, Math.min(L1_LANE - 1.2, S.x + (Math.random() - 0.5) * 2)) : (Math.random() * 2 - 1) * (L1_LANE - 1.2);
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), mats.shadow); shadow.rotation.x = -Math.PI / 2; shadow.position.set(x, 0.02, -m); add(shadow);
+    const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1), mats.rock); mesh.position.set(x, 18, -m); add(mesh);
     rocks.push({ x, m, t: 0, shadow, mesh, landed: false });
   }
   for (let i = rocks.length - 1; i >= 0; i--){
@@ -528,17 +706,16 @@ function step(dt){
       r.landed = true;
       if (Math.hypot(S.x - r.x, S.m - r.m) < 1.7 && S.y < 2){ S.downUntil = S.time + 1; S.knockV = 3; flash('🪨 被石頭砸到！'); }
     }
-    if (r.t > 2.2){ scene.remove(r.mesh); scene.remove(r.shadow); r.mesh.geometry.dispose(); r.shadow.geometry.dispose(); rocks.splice(i, 1); }
+    if (r.t > 2.2){ world.remove(r.mesh); world.remove(r.shadow); r.mesh.geometry.dispose(); r.shadow.geometry.dispose(); rocks.splice(i, 1); }
   }
-  // turrets
   for (const tu of turrets){
-    if (S.m < 432 || S.m > tu.m - 2) continue;
+    if (S.m < L.turretFrom || S.m > tu.m - 2) continue;
     tu.next -= dt;
     if (tu.next <= 0){
       tu.next = 1.0 + Math.random() * 0.4;
-      const aimX = Math.max(-LANE + 0.5, Math.min(LANE - 0.5, S.x + (Math.random() - 0.5) * 1.2));
+      const aimX = Math.max(-L1_LANE + 0.5, Math.min(L1_LANE - 0.5, S.x + (Math.random() - 0.5) * 1.2));
       const flight = Math.max(0.3, (tu.m - 1.5 - S.m) / 22);
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), mats.bullet); scene.add(mesh);
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), mats.bullet); add(mesh);
       bullets.push({ x: tu.x, vx: (aimX - tu.x) / flight, m: tu.m - 1.5, vm: -22, mesh, back: false });
     }
   }
@@ -548,61 +725,118 @@ function step(dt){
     const b = bullets[i];
     b.m += b.vm * dt; b.x += (b.back ? -b.vx : b.vx) * dt;
     if (swinging && !b.back && b.m > S.m && b.m - S.m < 2.8 && Math.abs(b.x - S.x) < 1.9){ b.back = true; b.vm = 28; b.mesh.material = mats.bulletBack; flash('⚾ 打回去！'); }
-    let gone = b.m < -30 || b.m > END + 20;
+    let gone = b.m < -30 || b.m > L.end + 20;
     if (!b.back && Math.abs(b.m - S.m) < 0.6 && Math.abs(b.x - S.x) < 0.75 && S.y < 2.4){ S.knockV = 9; S.shot++; flash('💥 中彈！'); gone = true; }
     for (const c of covers) if (Math.abs(b.m - c.m) < 0.8 && Math.abs(b.x - c.x) < 1.3) gone = true;
     for (const tu of turrets) if (b.back && Math.abs(b.m - tu.m) < 1 && Math.abs(b.x - tu.x) < 1.1){ gone = true; tu.next = 2.5; flash('💥 砲台被打中，暫停！'); }
-    if (gone){ scene.remove(b.mesh); b.mesh.geometry.dispose(); bullets.splice(i, 1); }
+    if (gone){ world.remove(b.mesh); b.mesh.geometry.dispose(); bullets.splice(i, 1); }
   }
+
+  // ---- level 2 hazards ----
+  // spinning bars: segment through the pole, hit when your body overlaps its height band
+  for (const b of bars){
+    const a = b.ph + b.speed * S.time, dx = Math.cos(a), dm = Math.sin(a);
+    const rx = S.x - b.x, rm = S.m - b.m;
+    const along = Math.max(-b.len, Math.min(b.len, rx * dx + rm * dm));
+    const dist = Math.hypot(rx - along * dx, rm - along * dm);
+    const overlap = S.y < b.h + 0.3 && S.y + 2.2 > b.h - 0.3;
+    if (dist < 0.75 && overlap && S.time > b.hitCd){
+      b.hitCd = S.time + 0.6;
+      // shove along the bar's swing direction at that point
+      const sx = -dm * Math.sign(b.speed) * Math.sign(along || 1), sm = dx * Math.sign(b.speed) * Math.sign(along || 1);
+      const force = b.spiky ? 15 : 10;
+      S.knockX = sx * force; S.knockV = -sm * force * 0.6; S.vy = Math.max(S.vy, 5); S.onGround = false;
+      S.hits++; flash(b.spiky ? '🍢 被刺刺棒掃飛！' : '🍢 被烤肉棒掃到！');
+    }
+  }
+  // pendulum hammers: head swings across the walkway at body height
+  for (const h of hammers){
+    const th = h.amp * Math.sin(S.time * h.speed + h.ph);
+    const hx = Math.sin(th) * 7.2, hy = 9 - Math.cos(th) * 7.2;
+    if (Math.abs(S.m - h.m) < 1.3 && Math.abs(S.x - hx) < 1.6 && S.y < hy + 0.6 && S.y + 2.2 > hy - 0.8 && S.time > h.hitCd){
+      h.hitCd = S.time + 0.7;
+      const vx = Math.cos(S.time * h.speed + h.ph);           // swing direction
+      S.knockX = (vx >= 0 ? 1 : -1) * 14; S.vy = 6; S.onGround = false;
+      S.hits++; flash('🔨 被擺錘打飛！');
+    }
+  }
+  // timed gate: stand on the switch → open for gate.open seconds
+  if (L.gate){
+    const gt = L.gate;
+    if (Math.abs(S.m - gt.switchM) < 1.4 && Math.abs(S.x - gt.switchX) < 1.4 && S.y < 0.5 && S.time >= S.gateOpenUntil){
+      S.gateOpenUntil = S.time + gt.open; flash(`🔓 大門開了！${gt.open} 秒內衝過去！`);
+    }
+    if (!S.gatePassed && S.m > gt.m + 1){ S.gatePassed = true; flash('🚪 過門了！刺牆又來了'); }
+    const open = S.time < S.gateOpenUntil;
+    $('gateChip').hidden = !(S.m >= sectionStart('⑤') && !S.gatePassed);
+    $('gateLeft').textContent = open ? (S.gateOpenUntil - S.time).toFixed(1) + ' 秒' : '關著';
+  }
+
   // coins
   for (const c of coins){
     if (c.taken) continue;
     if (Math.abs(c.m - S.m) < 1.1 && Math.abs(c.x - S.x) < 1.1 && S.y < 2.2){ c.taken = true; c.mesh.visible = false; S.coins++; }
   }
   // checkpoints
-  for (const cp of CHECKPOINTS) if (S.m >= cp && cp > S.cp){ S.cp = cp; flash('🚩 檢查點'); }
-  // the wall: your section's speed, leashed to stay within WALL_LEASH behind
+  for (const [cm, cx] of L.checkpoints) if (S.m >= cm && cm > S.cp){ S.cp = cm; S.cpX = cx; flash('🚩 檢查點'); }
+  // the wall: your section's speed, leashed within WALL_LEASH behind; in the
+  // gate section it waits behind a barrier until you're through
   const gapNow = S.m - S.wallM;
-  S.wallM += (gapNow > WALL_LEASH ? WALL_CATCHUP : sectionAt(S.m).wall) * dt;
+  const holdWall = L.gate && S.m >= sectionStart('⑤') && !S.gatePassed;
+  if (holdWall) S.wallM = Math.min(S.wallM, L.gate.wallBarrier);
+  else S.wallM += (gapNow > WALL_LEASH ? WALL_CATCHUP : sectionAt(S.m).wall) * dt;
   if (S.wallM >= S.m - 0.6){ S.caught++; respawn('🦔 被刺牆追到！回檢查點'); }
-  if (S.m >= FINISH) finish();
+  if (S.m >= L.finish) finish();
   // HUD
   $('hSec').textContent = sectionAt(S.m).name; $('hTime').textContent = S.time.toFixed(1);
   $('hDist').textContent = Math.max(0, Math.floor(S.m)); $('hCoins').textContent = S.coins; $('hCaught').textContent = S.caught;
-  const gap = S.m - S.wallM, meter = $('meter');
+  const gap = holdWall ? 30 : S.m - S.wallM, meter = $('meter');
   $('meterBar').style.width = Math.max(4, Math.min(100, gap / 30 * 100)) + '%';
   meter.classList.toggle('warn', gap < 14); meter.classList.toggle('danger', gap < 8);
   $('stamBar').style.width = Math.round(S.stamina * 100) + '%'; $('stam').classList.toggle('tired', S.tired);
   $('danger').style.opacity = Math.max(0, Math.min(1, (12 - gap) / 10)).toFixed(2);
 }
+function sectionStart(prefix){ const s = L.sections.find(s => s.name.startsWith(prefix)); return s ? s.from : Infinity; }
 
 const _camTarget = new THREE.Vector3();
-function render(dt){
-  const g = me.group, running = S.phase === 'run';
-  g.position.set(S.x, Math.max(-6, S.y || 0), -(S.m || 0));
+function render(dt, clock){
+  const g = me.group, running = S.phase === 'run', t = running ? S.time : clock;
+  g.position.set(S.x || 0, Math.max(-6, S.y || 0), -(S.m || 0));
   const down = running && S.time < S.downUntil;
   g.rotation.z = down ? 1.2 : 0;
   g.rotation.y += ((running ? -(S.side || 0) * 0.35 : 0) - g.rotation.y) * Math.min(1, dt * 10);
   if (S.flipT){ S.flipT += dt / 0.38; g.rotation.x = -Math.PI * 2 * (1 - Math.pow(1 - Math.min(1, S.flipT), 2)); if (S.flipT >= 1){ S.flipT = 0; g.rotation.x = 0; } }
-  // limbs: run cycle, bat swing on top
-  if (running && S.moving && S.onGround){ S.runPhase += dt * 16; }
+  if (running && S.moving && S.onGround) S.runPhase += dt * 16;
   const sw = Math.sin(S.runPhase || 0) * (running && S.moving ? 0.7 : 0);
   me.legL.rotation.x = sw; me.legR.rotation.x = -sw; me.armL.rotation.x = -sw * 0.6; me.armR.rotation.x = sw * 0.6;
   me.armL.rotation.y *= 0.7; me.armR.rotation.y *= 0.7;
   if (running && S.time < S.swingUntil) poseBatSwing(me.armR, me.armL, 1 - (S.swingUntil - S.time) / SWING_DUR);
+  // moving parts follow the same clock the physics uses
+  // world z = -m, so rotating the rod by +a around Y points it along (x, m) = (cos a, sin a) — same as the hit test
+  for (const b of bars) b.g.rotation.y = b.ph + b.speed * t;
+  // +th swings the head to x = 7.2·sin(th), y = 9 − 7.2·cos(th) — same as the hit test
+  for (const h of hammers) h.pivot.rotation.z = h.amp * Math.sin(t * h.speed + h.ph);
+  for (const mv of movers) mv.mesh.position.x = moverX(mv.mv, t);
+  if (gateObj){
+    const open = running && S.time < S.gateOpenUntil;
+    gateObj.door.position.y += ((open ? -4.6 : 2.5) - gateObj.door.position.y) * Math.min(1, dt * 12);
+    gateObj.pad.material = gateObj.post.material = open ? mats.switchOn : mats.switchOff;
+  }
   for (const c of coins) if (!c.taken) c.mesh.rotation.z += dt * 3;
   for (const b of bullets) b.mesh.position.set(b.x, 1.3, -b.m);
   chaser.position.set(0, 0, -(S.wallM || -WALL_START_GAP));
-  // camera: high and behind; see-through wall when it's between camera and you
-  _camTarget.set((S.x || 0) * 0.6, 9 * camZoom, -(S.m || 0) + 8 * camZoom);
+  // camera: high and behind; level 2 follows you fully sideways (the gate spur)
+  _camTarget.set((S.x || 0) * L.camFollow, 9 * camZoom, -(S.m || 0) + 8 * camZoom);
   if (!Number.isFinite(camera.position.x + camera.position.y + camera.position.z)) camera.position.copy(_camTarget);
   camera.position.lerp(_camTarget, Math.min(1, dt * 6));
-  camera.lookAt((S.x || 0) * 0.4, 0.5, -(S.m || 0) - 12);
+  camera.lookAt((S.x || 0) * (L.camFollow >= 1 ? 1 : 0.4), 0.5, -(S.m || 0) - 12);
   const near = running && (S.m - S.wallM) < 9;
   chaserMat.opacity = chaserSpike.opacity = near ? 0.35 : 1;
   chaserMat.depthWrite = chaserSpike.depthWrite = !near;
   renderer.render(scene, camera);
 }
+buildLevel(LEVEL1);
+reset();
 requestAnimationFrame(frame);
 </script>
 </body>
