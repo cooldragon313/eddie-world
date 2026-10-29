@@ -102,11 +102,12 @@ function buildEddie(){
     for (let i = 0; i < n; i++){
       const x = (i - (n - 1) / 2) * 0.2 * (row === 1 ? 1.05 : 1);
       const front = row === 0, mid = Math.abs(x) < 0.15;
-      tufts.push([x, y + 0.1 - Math.abs(x) * 0.3, z, front ? 0.15 : 0.16, front ? (mid ? 0.55 : 0.44) : 0.38, front ? -0.4 : row === 1 ? -0.12 : 0.32]);
+      const centre = 1 - Math.min(1, Math.abs(x) / 0.55);      // 1 in the middle, 0 at the sides
+      tufts.push([x, y + 0.1 - Math.abs(x) * 0.3, z, front ? 0.15 : 0.16, (front ? 0.36 : 0.3) + centre * 0.26, front ? -0.4 : row === 1 ? -0.12 : 0.32]);
     }
   }
   for (const [x, y, z, r, h, tilt] of tufts){
-    const pivot = new THREE.Group(); pivot.position.set(x, HY + y - 0.12, z); pivot.rotation.x = tilt; pivot.rotation.z = -x * 0.7;
+    const pivot = new THREE.Group(); pivot.position.set(x, HY + y - 0.12, z); pivot.rotation.x = tilt; pivot.rotation.z = x * 0.75;
     part(pivot, new THREE.ConeGeometry(r, h, 8), hair, 0, h / 2 - 0.06, 0, true);
     body.add(pivot); hairSpikes.push(pivot);
   }
