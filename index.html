@@ -71,6 +71,7 @@
   #tJump{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));width:84px;height:84px;font-size:18px;background:var(--sb-gold-soft)}
   #tBat{right:calc(110px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));background:#ffc4bb}
   #tDash{right:calc(24px + env(safe-area-inset-right,0px));bottom:calc(112px + env(safe-area-inset-bottom,0px));background:#ffe0c2}
+  #tCrouch{right:calc(110px + env(safe-area-inset-right,0px));bottom:calc(96px + env(safe-area-inset-bottom,0px));background:#d8e6f6}
   /* zoom + fullscreen: a row under the HUD on the right */
   #tZoomOut{right:calc(110px + env(safe-area-inset-right,0px));top:calc(138px + env(safe-area-inset-top,0px))}
   #tZoomIn{right:calc(62px + env(safe-area-inset-right,0px));top:calc(138px + env(safe-area-inset-top,0px))}
@@ -107,8 +108,8 @@
   <p class="who" id="who">讀取角色中…</p>
   <p class="keys">
     <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向鍵 移動 · <kbd>空白鍵</kbd> 跳（空中再按＝二段跳）<br>
-    <kbd>Shift</kbd> 衝刺（有體力限制）· <kbd>F</kbd> 揮棒（可以把子彈打回去）<br>
-    手機：左邊搖桿移動，右邊按鈕跳、衝刺、揮棒；＋－ 拉近拉遠
+    <kbd>Shift</kbd> 衝刺（有體力限制）· <kbd>C</kbd> 按住蹲下（躲高的竹箭）· <kbd>F</kbd> 揮棒（可以把子彈打回去）<br>
+    手機：左邊搖桿移動，右邊按鈕跳、蹲、衝刺、揮棒；＋－ 拉近拉遠
   </p>
   <div id="levelBtns" class="lvls"></div>
   <br><a class="btn ghost" id="islandLink" href="island.html">🏝 回海嘯島：商店、換造型</a>
@@ -132,7 +133,7 @@
 
 <div id="touch">
   <div id="stickZone"><div id="stick"><div id="knob"></div></div></div>
-  <div class="tb" id="tJump">跳</div><div class="tb" id="tBat">揮棒</div><div class="tb" id="tDash">衝刺</div>
+  <div class="tb" id="tJump">跳</div><div class="tb" id="tBat">揮棒</div><div class="tb" id="tDash">衝刺</div><div class="tb" id="tCrouch">蹲</div>
   <div class="tb mini" id="tZoomOut" aria-label="拉遠">－</div><div class="tb mini" id="tZoomIn" aria-label="拉近">＋</div>
   <div class="tb mini" id="tFull" aria-label="全螢幕">⛶</div>
 </div>
@@ -616,6 +617,9 @@ const RUN = 10.8, SPRINT = 16.2, JUMP_V = 10.5, DJ_V = 8.5, GRAV = 30;
 const STAMINA_DRAIN = 1 / 2.5, STAMINA_FILL = 1 / 4;
 const WALL_START_GAP = 12, WALL_LEASH = 18, WALL_CATCHUP = 15;
 const L1_LANE = 8;
+const SPEAR_SPEED = 22, SPEAR_WARN = 0.7, SPEAR_RANGE = 28;
+const SPEAR_Y = { low: 0.5, high: 1.6 };        // spear heights
+const BODY_H = 2.2, CROUCH_H = 1.1, CROUCH_SPEED = 0.55;
 
 // ---------- LEVEL 1: 荊棘峽谷 (unchanged numbers from the released version) ----------
 const LEVEL1 = {
@@ -636,6 +640,15 @@ const LEVEL1 = {
   slideWalls: [{ m: 345, ph: 0 }, { m: 370, ph: 1.7 }, { m: 395, ph: 3.1 }, { m: 420, ph: 4.6 }],
   covers: [[452,-3],[466,3.5],[480,-4],[494,2],[508,-2.5],[520,3]],
   turrets: [{ m: 545, x: -3.5 }, { m: 545, x: 3.5 }], turretFrom: 432,
+  // Bamboo spears from the canyon walls: 'low' = jump over, 'high' = crouch under.
+  // The hole glows red 0.7 s before each shot; its height tells you which.
+  spears: [
+    { m: 149, side: -1, kind: 'low',  period: 2.6, ph: 0 },   { m: 162, side: 1, kind: 'high', period: 2.6, ph: 0.9 },
+    { m: 176, side: 1,  kind: 'low',  period: 2.4, ph: 0.4 }, { m: 190, side: -1, kind: 'high', period: 2.4, ph: 1.3 },
+    { m: 205, side: 1,  kind: 'high', period: 2.2, ph: 0.2 }, { m: 220, side: -1, kind: 'low', period: 2.2, ph: 1.1 },
+    { m: 357, side: -1, kind: 'high', period: 2.4, ph: 0.5 }, { m: 382, side: 1, kind: 'low', period: 2.4, ph: 1.4 },
+    { m: 407, side: 1,  kind: 'high', period: 2.2, ph: 0.8 },
+  ],
   coinLines: [[10,28,0],[50,58,4],[76,86,-4],[95,103,0],[124,128,5],[146,152,-5],[160,166,5],[174,180,-5],
     [188,194,5],[202,210,-4],[240,260,0],[275,295,-5],[305,325,5],[350,365,0],[378,390,0],[400,415,0],[440,450,0],[470,478,-1],[500,506,5]],
 };
@@ -745,6 +758,8 @@ const mats = {
   flag: LM(0x7cc79a), finishA: LM(0xffffff), finishB: LM(0x5b3a29), gold: LM(0xffcf5a), coin: LM(0xffc81e),
   bar: LM(0xc0703a), barHot: LM(0xe0584a), pole: LM(0x8d7a6a), hammer: LM(0x7a6a5a), mover: LM(0x7cc0d8),
   gate: LM(0x8a5a3a), switchOff: LM(0xe0584a), switchOn: LM(0x7cc79a),
+  spear: LM(0xd8c27a), spearTip: LM(0x5b3a29), hole: LM(0x3d2a1e),
+  holeHot: new THREE.MeshBasicMaterial({ color: 0xff3a2a }),
 };
 
 // Everything a level builds goes into one group so switching levels is a clean swap
@@ -775,7 +790,8 @@ function groundAt(m, x){
 }
 
 // ---------- build a level ----------
-let walls = [], covers = [], turrets = [], coins = [], bars = [], hammers = [], movers = [], gateObj = null;
+let walls = [], covers = [], turrets = [], coins = [], bars = [], hammers = [], movers = [], gateObj = null, spears = [];
+const flying = [];   // bamboo spears in the air
 const chaserMat = new THREE.MeshLambertMaterial({ color: 0x8a3fa0, transparent: true, opacity: 1 });
 const chaserSpike = new THREE.MeshLambertMaterial({ color: 0xe0584a, transparent: true, opacity: 1 });
 const coinGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 18);
@@ -783,7 +799,8 @@ let chaser;
 
 function buildLevel(level){
   L = level; clearWorld();
-  walls = []; covers = []; turrets = []; coins = []; bars = []; hammers = []; movers = []; gateObj = null;
+  walls = []; covers = []; turrets = []; coins = []; bars = []; hammers = []; movers = []; gateObj = null; spears = [];
+  flying.length = 0;
   const sky = level.scenery === 'sky';
   scene.background = new THREE.Color(sky ? 0xa9d8f2 : 0xcfe6f0);
   scene.fog = new THREE.Fog(sky ? 0xa9d8f2 : 0xcfe6f0, 70, 190);
@@ -845,6 +862,14 @@ function buildLevel(level){
     const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1.6, 12), mats.edge);
     barrel.rotation.x = Math.PI / 2; barrel.position.set(t.x, 1.2, -t.m + 1.3); add(barrel); sbOutline(barrel, 0.04);
     return { ...t, next: 1 + i * 0.6 };
+  });
+  // bamboo spear launchers: a hole in the canyon wall at the spear's height
+  spears = (level.spears || []).map(sp => {
+    const y = SPEAR_Y[sp.kind], x = sp.side * (L1_LANE + 0.35);
+    box(0.5, 1.2, 1.6, mats.edge, x, y, -sp.m, true);
+    const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.2, 14), mats.hole);
+    hole.rotation.z = Math.PI / 2; hole.position.set(x - sp.side * 0.3, y, -sp.m); add(hole);
+    return { ...sp, y, x, hole, next: 0, armed: true };
   });
   // level-2 hazards
   bars = (level.bars || []).map(b => {
@@ -923,7 +948,9 @@ const S = { phase: 'menu', time: 0 };
 function reset(){
   Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, knockX: 0, slowUntil: 0, downUntil: 0,
     swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, cpX: 0, time: 0, caught: 0, pits: 0, shot: 0, hits: 0, rockNext: 0,
-    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false });
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0 });
+  for (const f of flying) world.remove(f.mesh); flying.length = 0;
+  for (const sp of spears){ sp.next = 0; sp.armed = true; }
   for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
   for (const b of bullets) world.remove(b.mesh); bullets.length = 0;
   for (const c of coins){ c.taken = false; c.mesh.visible = true; }
@@ -947,7 +974,7 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 
 // Buttons: each finger is captured by the button it pressed, so sliding off
 // it or pressing two at once can't leave a key stuck.
-for (const [id, code] of [['tJump','Space'],['tBat','KeyF'],['tDash','ShiftLeft']]){
+for (const [id, code] of [['tJump','Space'],['tBat','KeyF'],['tDash','ShiftLeft'],['tCrouch','KeyC']]){
   const el = document.getElementById(id);
   el.addEventListener('pointerdown', e => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch(_){} keys[code] = true; el.classList.add('on'); });
   const off = () => { keys[code] = false; el.classList.remove('on'); };
@@ -1034,6 +1061,7 @@ $('menuBtn').onclick = () => { S.phase = 'menu'; $('endCard').hidden = true; ren
 function respawn(reason){
   S.m = S.cp + 2; S.x = S.cpX; S.y = 0; S.vy = 0; S.knockV = 0; S.knockX = 0; S.slowUntil = 0; S.downUntil = S.time + 0.6;
   S.wallM = Math.min(S.wallM, S.cp - 25);
+  for (const sp of spears) if (sp.m > S.m){ sp.next = 0; sp.armed = true; }
   flash(reason);
 }
 function finish(){
@@ -1044,9 +1072,9 @@ function finish(){
   const reward = S.coins + L.finishBonus + (clean ? 10 : 0);
   $('endTitle').textContent = L.short + ' 通關！';
   $('rTime').textContent = t + ' 秒'; $('rBest').textContent = (newBest ? t : prevBest) + ' 秒' + (newBest ? ' 🆕' : '');
-  $('rCoins').textContent = S.coins; $('rCaught').textContent = S.caught + ' 次'; $('rFails').textContent = `${S.pits} / ${S.shot + S.hits}`;
+  $('rCoins').textContent = S.coins; $('rCaught').textContent = S.caught + ' 次'; $('rFails').textContent = `${S.pits} / ${S.shot + S.hits + S.speared}`;
   const title = clean ? '🏆 刺牆碰不到我' : S.pits >= 3 ? (L.id === 2 ? '☁️ 高空墜落專家' : '🕳 坑底常客') : S.caught >= 3 ? '🦔 刺牆的好朋友'
-    : S.hits >= 4 ? '🍢 被烤肉棒串起來' : S.shot >= 3 ? '🎯 人肉標靶' : S.coins >= 30 ? '💰 撿錢達人' : '🏃 穩穩跑完';
+    : S.hits >= 4 ? '🍢 被烤肉棒串起來' : S.speared >= 4 ? '🎋 竹箭靶子' : S.shot >= 3 ? '🎯 人肉標靶' : S.coins >= 30 ? '💰 撿錢達人' : '🏃 穩穩跑完';
   $('rTitle').textContent = '稱號：' + title;
   $('endCard').hidden = false; $('againBtn').focus();
   claimReward(reward, t);
@@ -1113,6 +1141,9 @@ function step(dt){
   else { S.stamina = Math.min(1, S.stamina + STAMINA_FILL * dt); if (S.stamina > 0.35) S.tired = false; }
   let speed = (wantSprint && !S.tired && S.stamina > 0.02) ? SPRINT : RUN;
   if (S.time < S.slowUntil) speed *= 0.45;
+  // crouch (hold C / Ctrl / 蹲): shorter body for high spears, slow, no sprint
+  S.crouch = !!(keys.KeyC || keys.ControlLeft || keys.ControlRight) && S.onGround && !down;
+  if (S.crouch) speed = RUN * CROUCH_SPEED;
   S.moving = (fwd !== 0 || side !== 0) && !down;
   const prevM = S.m, prevX = S.x;
   S.m += (fwd * speed - S.knockV) * dt;
@@ -1198,6 +1229,45 @@ function step(dt){
     if (gone){ world.remove(b.mesh); b.mesh.geometry.dispose(); bullets.splice(i, 1); }
   }
 
+  // ---- bamboo spears ----
+  const bodyH = S.crouch ? CROUCH_H : BODY_H;
+  // A launcher arms as you approach: it glows, then fires a staggered volley of
+  // three timed to cross your row as you arrive (at your current pace), so a
+  // runner has to react instead of just outrunning it. Linger and it keeps
+  // firing on its period.
+  for (const sp of spears){
+    if (S.m < sp.m - SPEAR_RANGE || S.m > sp.m + 3){ if (S.m < sp.m - SPEAR_RANGE) sp.armed = true; sp.next = 0; continue; }
+    if (sp.armed && !sp.next){
+      const pace = Math.max(4, RUN);                                       // assume you keep running
+      const flight = Math.abs(sp.x - S.x) / SPEAR_SPEED;
+      if (sp.m - S.m <= pace * (SPEAR_WARN + flight)){ sp.next = S.time + SPEAR_WARN; sp.armed = false; }
+    } else if (!sp.armed && !sp.next){
+      sp.next = S.time + sp.period;                                        // already passed its trigger: periodic
+    }
+    if (sp.next && S.time >= sp.next){
+      sp.next = S.time + sp.period;
+      for (const off of [-1.3, 0, 1.3]){
+        const mesh = new THREE.Group();
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.6, 8), mats.spear); shaft.rotation.z = Math.PI / 2; mesh.add(shaft);
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 8), mats.spearTip); tip.rotation.z = sp.side > 0 ? Math.PI / 2 : -Math.PI / 2; tip.position.x = -sp.side * 1.5; mesh.add(tip);
+        const sx = sp.x - sp.side * Math.abs(off) * 0.8;                    // middle spear leads a little
+        mesh.position.set(sx, sp.y, -(sp.m + off)); add(mesh);
+        flying.push({ x: sx, m: sp.m + off, y: sp.y, vx: -sp.side * SPEAR_SPEED, side: sp.side, mesh, hit: false });
+      }
+    }
+  }
+  for (let i = flying.length - 1; i >= 0; i--){
+    const f = flying[i];
+    f.x += f.vx * dt;
+    // hit if the spear crosses you and its height band overlaps your body
+    if (!f.hit && Math.abs(f.m - S.m) < 0.6 && Math.abs(f.x - S.x) < 0.9 && S.y < f.y + 0.2 && S.y + bodyH > f.y - 0.2){
+      for (const g of flying) if (Math.abs(g.m - f.m) < 3 && g.side === f.side) g.hit = true;   // one hit per volley
+      S.knockV = 5; S.slowUntil = S.time + 0.7; S.speared++;
+      flash(f.y < 1 ? '🎋 被竹箭射到！要跳過去' : '🎋 被竹箭射到！要蹲下來');
+    }
+    if (Math.abs(f.x) > L1_LANE + 1.5){ world.remove(f.mesh); f.mesh.traverse(o => o.geometry && o.geometry.dispose()); flying.splice(i, 1); }
+  }
+
   // ---- level 2 hazards ----
   // spinning bars: segment through the pole, hit when your body overlaps its height band
   for (const b of bars){
@@ -1276,6 +1346,10 @@ function render(dt, clock){
   const sw = Math.sin(S.runPhase || 0) * (running && S.moving ? 0.7 : 0);
   me.legL.rotation.x = sw; me.legR.rotation.x = -sw; me.armL.rotation.x = -sw * 0.6; me.armR.rotation.x = sw * 0.6;
   me.armL.rotation.y *= 0.7; me.armR.rotation.y *= 0.7;
+  // crouch: squash the avatar down (a Q-style blob, so this reads well)
+  const baseS = me.group.userData.baseScale || (me.group.userData.baseScale = me.group.scale.x);
+  const wantY = (running && S.crouch ? 0.55 : 1) * baseS;
+  me.group.scale.y += (wantY - me.group.scale.y) * Math.min(1, dt * 18);
   if (running && S.time < S.swingUntil) poseBatSwing(me.armR, me.armL, 1 - (S.swingUntil - S.time) / SWING_DUR);
   // moving parts follow the same clock the physics uses
   // world z = -m, so rotating the rod by +a around Y points it along (x, m) = (cos a, sin a) — same as the hit test
@@ -1290,6 +1364,8 @@ function render(dt, clock){
   }
   for (const c of coins) if (!c.taken) c.mesh.rotation.z += dt * 3;
   for (const b of bullets) b.mesh.position.set(b.x, 1.3, -b.m);
+  for (const f of flying) f.mesh.position.x = f.x;
+  for (const sp of spears) sp.hole.material = (running && sp.next && sp.next - S.time < SPEAR_WARN) ? mats.holeHot : mats.hole;
   chaser.position.set(0, 0, -(S.wallM || -WALL_START_GAP));
   // camera: high and behind; level 2 follows you fully sideways (the gate spur)
   _camTarget.set((S.x || 0) * L.camFollow, 9 * camZoom, -(S.m || 0) + 8 * camZoom);
