@@ -202,6 +202,7 @@
     <li>桌上的鏡子看得到背後的門。門縫有影子＝有人。</li>
     <li>很久沒翻頁，媽媽會起疑；被她問了還不翻，她就站在門口不走。</li>
     <li>✏️ 畫畫最慢，但課本裡有三張圖，畫完一張心情大加分。畫到一半收起來會畫歪，下次要先擦掉。</li>
+    <li>📖 漫畫一話一話看，📱 YouTube 一支一支看，看完都有小加分。四樣都玩夠久，還有隱藏成就。</li>
     <li>媽媽每次手上的武器不一樣：🩹 熱熔膠條、🖐 愛的小手、🧥 衣架（衣架最痛）。</li>
     <li>撐到十點過關。被抽太多下，媽媽爆炸就結束。</li>
   </ul>
@@ -1456,35 +1457,97 @@ const HIDE = new THREE.Vector3(0.5, -3, 3.4);   // well below the desk, out of v
   const lead = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.09, 6), BM(0x333333)); lead.position.y = -0.96; lead.rotation.x = Math.PI; g.add(lead);
   const er = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.16, 6), LM(0xff9fb0)); er.position.y = 0.78; g.add(er);
   ITEMS[0].mesh = g; ITEMS[0].at = new THREE.Vector3(1.3, 4.05, -0.2); ITEMS[0].rot = new THREE.Euler(0.5, 0, -0.45); }
-// comic
-{ const cov = canvasTex(200, 280, (x) => {
-    x.fillStyle = '#fff'; x.fillRect(0, 0, 200, 280);
-    x.save(); x.translate(100, 150); for (let i = 0; i < 24; i++){ x.rotate(Math.PI / 12); x.fillStyle = i % 2 ? '#ffcf5a' : '#e0584a'; x.beginPath(); x.moveTo(0, 0); x.lineTo(-18, 160); x.lineTo(18, 160); x.fill(); } x.restore();
-    x.fillStyle = '#f2cfae'; x.beginPath(); x.arc(100, 150, 44, 0, Math.PI * 2); x.fill(); x.lineWidth = 5; x.strokeStyle = '#2a1a12'; x.stroke();
-    x.fillStyle = '#2a1a12'; x.beginPath(); x.moveTo(52, 132); x.lineTo(80, 92); x.lineTo(100, 124); x.lineTo(120, 88); x.lineTo(148, 132); x.fill();
-    x.fillStyle = '#2a1a12'; x.fillRect(80, 150, 12, 6); x.fillRect(108, 150, 12, 6);
-    x.fillStyle = '#e0584a'; x.font = '900 34px "Noto Sans TC", sans-serif'; x.textAlign = 'center'; x.lineWidth = 6; x.strokeStyle = '#fff';
-    x.strokeText('熱血格鬥王', 100, 44); x.fillText('熱血格鬥王', 100, 44);
-    x.fillStyle = '#2a1a12'; x.font = '900 18px sans-serif'; x.fillText('第 38 集', 100, 262); });
-  const g = new THREE.Group();
+// comic: 熱血格鬥王 第 38 集 — chapters you read one at a time. Each finished
+// chapter is a small mood bonus and Eddie reacts to the story.
+const COMIC = [
+  { title: '第 1 話　瀑布修行', panels: [['master', '你的拳頭……還不夠熱！'], ['hero', '那我就在瀑布下打一萬拳！']], kid: '瀑布修行一定超冷……' },
+  { title: '第 2 話　宿敵登場', panels: [['rival', '你就是傳說中的那個人？'], ['hero', '我只是個路過的小學生。']], kid: '哇，好帥的登場！' },
+  { title: '第 3 話　必殺技', panels: [['hero', '看我的——土星流星拳！！'], ['rival', '什、什麼！這股力量！']], kid: '我也想學這招！' },
+  { title: '第 4 話　同伴', panels: [['friend', '別一個人扛，我們是同伴啊！'], ['hero', '……謝了，兄弟。']], kid: '嗚……好感動……' },
+  { title: '第 5 話　絕境', panels: [['rival', '結束了，你已經站不起來了。'], ['hero', '……我還沒放棄！']], kid: '站起來啊啊啊！' },
+  { title: '第 6 話　覺醒', panels: [['hero', '這是……大家給我的力量！'], ['rival', '頭髮……變成金色了？！']], kid: '覺醒了！！超燃！' },
+  { title: '第 7 話　（待續）', panels: [['master', '真正的敵人……現在才要出現。'], ['hero', '什麼？！']], kid: '蛤？！下一集要等一個月！' },
+];
+const CH_TIME = 8;                    // seconds of reading per chapter
+const comicTex = canvasTex(400, 560, () => {});
+function mangaFace(x, cx, cy, r, who){
+  // tiny manga heads: hero spiky, rival long fringe + scar, master bald + beard, friend round + cap
+  x.fillStyle = '#f6dcc4'; x.strokeStyle = '#1a1210'; x.lineWidth = 4;
+  x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill(); x.stroke();
+  x.fillStyle = '#1a1210';
+  if (who === 'hero'){ x.beginPath(); x.moveTo(cx - r, cy - r * 0.2); for (let i = 0; i <= 6; i++) x.lineTo(cx - r + i * r / 3, cy - r * (i % 2 ? 1.6 : 0.7)); x.lineTo(cx + r, cy - r * 0.2); x.fill(); }
+  if (who === 'rival'){ x.beginPath(); x.moveTo(cx - r * 1.05, cy + r * 0.3); x.quadraticCurveTo(cx - r, cy - r * 1.5, cx + r * 1.05, cy - r * 0.1); x.lineTo(cx + r * 0.2, cy - r * 0.2); x.fill();
+    x.strokeStyle = '#c0392b'; x.lineWidth = 3; x.beginPath(); x.moveTo(cx + r * 0.2, cy - r * 0.1); x.lineTo(cx + r * 0.6, cy + r * 0.4); x.stroke(); }
+  if (who === 'master'){ x.beginPath(); x.moveTo(cx - r * 0.7, cy + r * 0.5); x.quadraticCurveTo(cx, cy + r * 1.9, cx + r * 0.7, cy + r * 0.5); x.fillStyle = '#ddd'; x.fill(); x.strokeStyle = '#1a1210'; x.lineWidth = 3; x.stroke(); }
+  if (who === 'friend'){ x.fillStyle = '#3a7bc8'; x.beginPath(); x.arc(cx, cy - r * 0.3, r * 1.02, Math.PI, 0); x.fill(); x.fillRect(cx, cy - r * 0.4, r * 1.3, r * 0.2); }
+  x.fillStyle = '#1a1210';
+  for (const s of [-1, 1]){ x.beginPath(); x.ellipse(cx + s * r * 0.35, cy + r * 0.05, r * 0.11, r * 0.2, 0, 0, Math.PI * 2); x.fill(); }
+  if (who === 'hero' || who === 'rival'){ x.lineWidth = 3; x.beginPath(); for (const s of [-1, 1]){ x.moveTo(cx + s * r * 0.6, cy - r * 0.35); x.lineTo(cx + s * r * 0.15, cy - r * 0.15); } x.stroke(); }
+}
+function bubble(x, bx, by, w, text){
+  x.font = '900 21px "Noto Sans TC", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  const lines = []; let line = '';
+  for (const ch of text){ if (x.measureText(line + ch).width > w - 24){ lines.push(line); line = ''; } line += ch; }
+  lines.push(line);
+  const h = lines.length * 26 + 18;
+  x.fillStyle = '#fff'; x.strokeStyle = '#1a1210'; x.lineWidth = 3;
+  x.beginPath(); x.ellipse(bx, by, w / 2, h / 2, 0, 0, Math.PI * 2); x.fill(); x.stroke();
+  x.fillStyle = '#1a1210'; lines.forEach((l, i) => x.fillText(l, bx, by - (lines.length - 1) * 13 + i * 26));
+}
+function paintComic(ch, k){
+  const x = comicTex.x, C = COMIC[Math.min(ch, COMIC.length - 1)];
+  x.fillStyle = '#fffdf6'; x.fillRect(0, 0, 400, 560);
+  x.fillStyle = '#e0584a'; x.font = '900 24px "Noto Sans TC", sans-serif'; x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+  x.fillText('熱血格鬥王', 16, 34); x.fillStyle = '#1a1210'; x.font = '900 19px "Noto Sans TC", sans-serif'; x.fillText(C.title, 160, 34);
+  C.panels.forEach(([who, text], i) => {
+    const y0 = 50 + i * 240;
+    x.fillStyle = i ? '#f3f0ff' : '#fff6e0'; x.fillRect(14, y0, 372, 226); x.strokeStyle = '#1a1210'; x.lineWidth = 5; x.strokeRect(14, y0, 372, 226);
+    // speed lines behind the speaker
+    x.strokeStyle = 'rgba(26,18,16,.18)'; x.lineWidth = 2;
+    for (let j = 0; j < 14; j++){ const a = j / 14 * Math.PI * 2; x.beginPath(); x.moveTo(110 + Math.cos(a) * 60, y0 + 150 + Math.sin(a) * 60); x.lineTo(110 + Math.cos(a) * 160, y0 + 150 + Math.sin(a) * 160); x.stroke(); }
+    mangaFace(x, 110, y0 + 150, 48, who);
+    bubble(x, 262, y0 + 72, 220, text);
+  });
+  x.fillStyle = 'rgba(26,18,16,.15)'; x.fillRect(14, 540, 372, 8); x.fillStyle = '#e0584a'; x.fillRect(14, 540, 372 * Math.min(1, k), 8);   // reading progress
+  comicTex.t.needsUpdate = true;
+}
+paintComic(0, 0);
+{ const g = new THREE.Group();
   const b = box(1.75, 0.08, 2.4, LM(0xfff8ec)); g.add(b);
-  const c = plane(1.72, 2.36, new THREE.MeshLambertMaterial({ map: cov.t })); c.rotation.x = -Math.PI / 2; c.position.y = 0.05; g.add(c);
+  const c = plane(1.72, 2.36, new THREE.MeshLambertMaterial({ map: comicTex.t })); c.rotation.x = -Math.PI / 2; c.position.y = 0.05; g.add(c);
   ITEMS[1].mesh = g; ITEMS[1].at = new THREE.Vector3(0.98, 3.25, -0.5); ITEMS[1].rot = new THREE.Euler(0, 0.06, 0); }
+// YouTube: a playlist; each finished video is a small mood bonus and Eddie comments
+const VIDEOS = [
+  { title: '貓咪跳跳 第 87 集', views: '1,234,567', emo: '🐱', kid: '哈哈哈貓咪摔倒了！' },
+  { title: '挑戰一口氣吃 100 顆水餃', views: '890 萬', emo: '🥟', kid: '他真的吃完了……' },
+  { title: '用方塊蓋出整顆土星！', views: '52 萬', emo: '🪐', kid: '我也要蓋一個！' },
+  { title: '開箱！一千元神秘福袋', views: '301 萬', emo: '🎁', kid: '居然是襪子？！' },
+  { title: '史上最好笑失敗合集 #12', views: '2,048 萬', emo: '🤣', kid: '笑到肚子痛……' },
+  { title: '讓水火箭飛上天', views: '77 萬', emo: '🚀', kid: '好想自己做！' },
+];
+const VID_TIME = 9;                   // seconds of watching per video
 // phone (a cat video)
 const phoneScreen = canvasTex(128, 240, () => {});
 function paintPhone(t){
-  const x = phoneScreen.x;
+  const x = phoneScreen.x, V = VIDEOS[S.vid % VIDEOS.length];
   x.fillStyle = '#111'; x.fillRect(0, 0, 128, 240);
-  x.fillStyle = '#9fd3ff'; x.fillRect(0, 40, 128, 120);
-  x.fillStyle = '#7cc79a'; x.fillRect(0, 138, 128, 22);
-  const bob = Math.abs(Math.sin(t * 6)) * 26, cx = 64 + Math.sin(t * 2) * 26;
-  x.fillStyle = '#ff9a3c'; x.beginPath(); x.ellipse(cx, 124 - bob, 22, 17, 0, 0, Math.PI * 2); x.fill();
-  x.beginPath(); x.moveTo(cx - 18, 112 - bob); x.lineTo(cx - 12, 96 - bob); x.lineTo(cx - 4, 110 - bob); x.fill();
-  x.beginPath(); x.moveTo(cx + 18, 112 - bob); x.lineTo(cx + 12, 96 - bob); x.lineTo(cx + 4, 110 - bob); x.fill();
-  x.fillStyle = '#2a1a12'; x.fillRect(cx - 9, 120 - bob, 4, 4); x.fillRect(cx + 5, 120 - bob, 4, 4);
-  x.fillStyle = '#e0584a'; x.fillRect(0, 160, 128 * ((t * 0.04) % 1), 4);
-  x.fillStyle = '#fff'; x.font = '700 12px "Noto Sans TC", sans-serif'; x.fillText('貓咪跳跳 第 87 集', 8, 182);
-  x.fillStyle = '#aaa'; x.font = '600 10px sans-serif'; x.fillText('觀看次數 1,234,567', 8, 198);
+  x.fillStyle = ['#9fd3ff', '#ffe0a8', '#1d2550', '#ffd0e0', '#d8f5c8', '#cfe8ff'][S.vid % 6]; x.fillRect(0, 40, 128, 120);
+  if (S.vid % VIDEOS.length === 0){
+    x.fillStyle = '#7cc79a'; x.fillRect(0, 138, 128, 22);
+    const bob = Math.abs(Math.sin(t * 6)) * 26, cx = 64 + Math.sin(t * 2) * 26;
+    x.fillStyle = '#ff9a3c'; x.beginPath(); x.ellipse(cx, 124 - bob, 22, 17, 0, 0, Math.PI * 2); x.fill();
+    x.beginPath(); x.moveTo(cx - 18, 112 - bob); x.lineTo(cx - 12, 96 - bob); x.lineTo(cx - 4, 110 - bob); x.fill();
+    x.beginPath(); x.moveTo(cx + 18, 112 - bob); x.lineTo(cx + 12, 96 - bob); x.lineTo(cx + 4, 110 - bob); x.fill();
+    x.fillStyle = '#2a1a12'; x.fillRect(cx - 9, 120 - bob, 4, 4); x.fillRect(cx + 5, 120 - bob, 4, 4);
+  } else {
+    x.font = '56px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.save(); x.translate(64, 100 - Math.abs(Math.sin(t * 5)) * 14); x.rotate(Math.sin(t * 3) * 0.2); x.fillText(V.emo, 0, 0); x.restore();
+    x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+  }
+  x.fillStyle = '#444'; x.fillRect(0, 160, 128, 4); x.fillStyle = '#e0584a'; x.fillRect(0, 160, 128 * Math.min(1, S.vidT / VID_TIME), 4);
+  x.fillStyle = '#fff'; x.font = '700 11px "Noto Sans TC", sans-serif';
+  const T = V.title; x.fillText(T.slice(0, 10), 6, 180); if (T.length > 10) x.fillText(T.slice(10), 6, 194);
+  x.fillStyle = '#aaa'; x.font = '600 10px sans-serif'; x.fillText('觀看次數 ' + V.views, 6, 210);
   phoneScreen.t.needsUpdate = true;
 }
 { const g = new THREE.Group();
@@ -1562,7 +1625,7 @@ const LINES = {
 let S;
 function newState(){
   return {
-    running: false, t: 0, kidT: 0, hitAt: 0, hitW: 'glue', mood: 0, anger: 0, hits: 0, di: 0, prog: 0, drawn: 0, scribble: 0, erasing: false, flips: 0, leftDoodle: null, pendingLeft: null, hitsBy: { glue: 0, hand: 0, hanger: 0 }, streak: 0, firstLook: true,
+    running: false, t: 0, kidT: 0, ch: 0, chT: 0, vid: 0, vidT: 0, hitAt: 0, hitW: 'glue', mood: 0, anger: 0, hits: 0, di: 0, prog: 0, drawn: 0, scribble: 0, erasing: false, flips: 0, leftDoodle: null, pendingLeft: null, hitsBy: { glue: 0, hand: 0, hanger: 0 }, streak: 0, firstLook: true,
     cur: -1, itemState: 'hidden', itemT: 0,   // hidden | rising | out | stowing
     pageIdle: 0, flipT: -1,
     g: { st: 'away', weapon: 'glue', waitFlip: false, waitT: 0, t: rand(3, 5), dur: 0, fake: false, caught: false, idleWarned: false, guard: 0, stepT: 0, stepN: 0 },
@@ -1712,6 +1775,14 @@ function update(dt){
       else if (S.itemState === 'out'){
         S.mood += it.rate * dt; it.mins += dt * 120 / ROUND;
         if (S.cur === 0) doodle(dt);
+        if (S.cur === 1 && S.ch < COMIC.length){
+          S.chT += dt; S.chD = (S.chD || 0) + dt; if (S.chD > 0.25){ S.chD = 0; paintComic(S.ch, S.chT / CH_TIME); }
+          if (S.chT >= CH_TIME){ S.mood += 10; say(COMIC[S.ch].kid, 2, true); S.ch++; S.chT = 0; sfx.page(); if (S.ch < COMIC.length) paintComic(S.ch, 0); else pop('📖 漫畫看完了！'); }
+        }
+        if (S.cur === 2){
+          S.vidT += dt;
+          if (S.vidT >= VID_TIME){ S.mood += 4; say(VIDEOS[S.vid % VIDEOS.length].kid, 1.8, true); S.vid++; S.vidT = 0; }
+        }
       }
     }
     if (S.itemState === 'hidden') S.mood = Math.max(0, S.mood - 0.1 * dt);
@@ -1875,7 +1946,7 @@ addEventListener('resize', resize); resize();
 // ---------- start / end ----------
 function start(){
   S = newState(); for (const it of ITEMS){ it.mins = 0; it.mesh.visible = false; }
-  resetDoodles(); spread = 0; paintSpread(); lastMin = -1; $('win').hidden = true; doorHinge.rotation.y = 0; gma.position.z = 22;
+  resetDoodles(); paintComic(0, 0); spread = 0; paintSpread(); lastMin = -1; $('win').hidden = true; doorHinge.rotation.y = 0; gma.position.z = 22;
   $('startCard').hidden = true; $('endCard').hidden = true; $('say').hidden = true; $('kidSay').hidden = true;
   S.running = true; updateButtons();
   say('（八點了，媽媽剛走出去……）', 2.2, true);
@@ -1890,6 +1961,8 @@ const ACHIEVEMENTS = [
   { id: 'max',     name: '💯 心情爆表',     desc: '心情 200 以上',               test: s => s.mood >= 200 },
   { id: 'saint',   name: '😇 真的有在讀書', desc: '心情不到 20 就撐到十點',      test: (s, win) => win && s.mood < 20 },
   { id: 'flipper', name: '📄 翻頁大師',     desc: '一晚翻頁 15 次以上',          test: s => s.flips >= 15 },
+  { id: 'reader',  name: '📖 追完一集',     desc: '熱血格鬥王 7 話全部看完',      test: s => s.ch >= COMIC.length },
+  { id: 'manager', name: '⏰ 時間管理大師', desc: '畫畫、漫畫、YouTube、電動都玩到 8 分鐘以上', test: s => ITEMS.every(it => it.mins >= 8) },
 ];
 // confetti + the clock striking ten + a big stamp, before the results
 function pop(text){ const el = $('pop'); el.textContent = text; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); }
