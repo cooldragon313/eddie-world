@@ -138,6 +138,8 @@
   .card .sub{display:inline-block;margin:10px 0 4px;background:#e0584a;color:#fff;font:900 15px var(--sb-font);padding:2px 14px;border:2.5px solid var(--sb-ink);border-radius:999px;transform:rotate(1.5deg)}
   .card p{margin:8px 0;font-size:15px;line-height:1.55}
   .card ul{text-align:left;margin:8px auto;padding-left:20px;max-width:340px;font-size:14px;line-height:1.6}
+  .btn.ghost{display:inline-block;background:#fff;font-size:15px;padding:6px 18px;text-decoration:none;margin-left:6px}
+  .homeLink[hidden]{display:none}
   .btn{border:3px solid var(--sb-ink);border-radius:999px;background:var(--sb-gold-soft);color:var(--sb-ink);font:900 22px var(--sb-font);padding:8px 30px;margin-top:10px;cursor:pointer;box-shadow:0 5px 0 rgba(91,58,41,.35)}
   .stat{display:grid;grid-template-columns:1fr auto;gap:2px 14px;text-align:left;max-width:300px;margin:10px auto;font-size:15px;font-variant-numeric:tabular-nums}
   .stat b{text-align:right}
@@ -206,6 +208,7 @@
     <li>撐到十點過關。被抽太多下，媽媽爆炸就結束。</li>
   </ul>
   <button class="btn" id="startBtn" type="button">開始寫功課</button>
+  <a class="btn ghost homeLink" href="index.html">🏠 回土星之家</a>
   <p class="muted">開著聲音更可怕（右上角可以關）。電腦：1–4 偷玩、空白鍵裝乖、F 翻頁</p>
 </div></div>
 
@@ -216,6 +219,7 @@
   <p id="endLine"></p>
   <div id="endAch"></div>
   <button class="btn" id="againBtn" type="button">🔄 再來一次</button>
+  <a class="btn ghost homeLink" href="index.html">🏠 回土星之家</a>
   <p class="muted" id="bestLine"></p>
 </div></div>
 
@@ -1067,6 +1071,10 @@ $('good').addEventListener('click', stow);
 $('flip').addEventListener('click', flip);
 $('startBtn').addEventListener('click', start);
 $('againBtn').addEventListener('click', start);
+// 🏠 back to 土星之家 (the hub is the front page of the main site; the race also lives on saturnfamily)
+{ const h = document.querySelectorAll('.homeLink'), live = /github\.io$/.test(location.hostname), local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  h.forEach(a => { if (live) a.href = 'https://cooldragon313.github.io/escapetsunamiformoney/'; else if (!local) a.hidden = true; }); }
+
 $('soundBtn').textContent = sfx.on ? '🔊 聲音' : '🔇 聲音';
 $('soundBtn').addEventListener('click', () => { const on = sfx.toggle(); $('soundBtn').textContent = on ? '🔊 聲音' : '🔇 聲音'; });
 addEventListener('keydown', e => {

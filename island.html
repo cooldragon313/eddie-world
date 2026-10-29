@@ -663,7 +663,7 @@
       <strong>你能跑到 1000 公尺嗎？</strong>
     </div>
     <button id="title-continue">開始冒險 →</button>
-    <a id="title-race" href="index.html" style="display:block; margin: 10px auto 0; width: max-content; padding: 9px 22px;
+    <a id="title-race" href="race.html" style="display:block; margin: 10px auto 0; width: max-content; padding: 9px 22px;
        border-radius: 999px; border: 2.5px solid #5b3a29; background: #e6d4f2; color: #5b3a29; font-weight: 700;
        text-decoration: none; box-shadow: 0 3px 0 rgba(91,58,41,0.3);">🪐 逃離土星（新！）</a>
     <div id="title-account-info" style="color:#888; font-size:11px; margin-top:10px; letter-spacing:1px;"></div>
@@ -6143,7 +6143,7 @@ function updateTitleAccountInfo(){
   if (sw) sw.textContent = authToken ? '登出 / 切換帳號' : '已有帳號？登入';
 }
 updateTitleAccountInfo();
-// The race is the site's home page (index.html); the claude.ai preview has no race page to link to.
+// The race is race.html (the site's front page is 土星之家); the claude.ai preview has no race page to link to.
 if (PREVIEW_SOLO && !SERVER_DOWN){ const r = document.getElementById('title-race'); if (r) r.hidden = true; }
 // 逃離土星 has its own site now
 if (/github\.io$/.test(location.hostname)){ const r = document.getElementById('title-race'); if (r) r.href = 'https://cooldragon313.github.io/saturnfamily/'; }
