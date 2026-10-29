@@ -1,4 +1,7 @@
-# 土星之家 — 一個遊戲、很多關卡（藍圖）
+# 艾迪的幻想世界 — 一個遊戲、很多關卡（藍圖）
+
+> 2026-10-29 遊戲正式名稱：**艾迪的幻想世界**（主角＝艾迪，Bernie 的兒子）。大廳仍叫「土星之家」。
+> 主角原型：`prototypes/eddie.src.html` → `python tools/build_proto.py eddie`，試玩 https://claude.ai/artifact/ （見 HANDOFF）
 
 > 2026-10-29 Bernie 定方向。動工前藍圖。
 

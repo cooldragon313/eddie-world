@@ -125,3 +125,10 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 試玩連結：https://claude.ai/artifact/7CVMoMJmmk3GrbZScdNTsQ
 - 做了：8×8 房間、11 件家具（買／擺／轉／收）、4 地板 4 壁紙、門→選關卡、點地板走路；存在瀏覽器（`etfm-home-v1`），試玩錢 777
 - 下一步 H2：伺服器存 `home`、扣真的金幣；H3：關卡結束「回家」；H4：首頁改成土星之家
+
+## 2026-10-29 — 遊戲名稱：艾迪的幻想世界＋主角原型
+- 整個遊戲叫 **艾迪的幻想世界**；大廳＝土星之家；關卡：逃離土星／恐怖考前複習夜／土星拆家王
+- 主角艾迪原型（照 Bernie 兒子的照片做 Q 版）：`prototypes/eddie.src.html` → `python tools/build_proto.py eddie [--preview 檔]`
+  - 試玩：https://claude.ai/artifact/MBhMn3kJ2zYcC2Hn9VNxtT （若連結不同以 artifact 清單「艾迪原型」為準）
+  - 特徵：黑色短髮頭頂往上抓、兩側短、開口大笑、粗眉、白 T、軍綠短褲、白鞋黑襪、白手環、星空背包、橘色猩猩圍巾（可開關）
+- 還沒做：把艾迪放進土星之家和各關當預設角色
