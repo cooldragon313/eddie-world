@@ -60,6 +60,16 @@
   .card h1{font-size:34px;margin:0;color:#e9822c;-webkit-text-stroke:1.5px var(--sb-ink);line-height:1.1}
   .card p{margin:8px 0;font-size:15px}
   .who{font-size:13px;color:var(--sb-muted)}
+  .who a{color:inherit}
+  #authBox{max-width:320px;margin:8px auto 0;display:flex;flex-direction:column;gap:8px}
+  #authBox[hidden]{display:none}
+  #authBox input{font:600 16px var(--sb-font);padding:9px 12px;border:2px solid var(--sb-line);border-radius:12px;background:#fff;color:var(--sb-ink)}
+  #authBox input[hidden]{display:none}
+  .authTabs{display:flex;gap:6px}
+  .authTabs button{flex:1;font:700 15px var(--sb-font);padding:6px;border:2px solid var(--sb-ink);border-radius:999px;background:#fff;color:var(--sb-ink);cursor:pointer}
+  .authTabs button.on{background:var(--sb-gold-soft)}
+  .authMsg{font-size:13px;color:var(--sb-muted);margin:0}
+  .authMsg.err{color:#c0392b;font-weight:700}
   .keys{font-size:13px;color:var(--sb-muted);line-height:1.9}
   kbd{background:#fff;border:1.5px solid var(--sb-ink);border-bottom-width:3px;border-radius:6px;padding:0 6px;font-family:var(--sb-font);font-size:12px;color:var(--sb-ink)}
   .btn{display:inline-block;font:700 18px var(--sb-font);background:var(--sb-gold-soft);color:var(--sb-ink);border:2.5px solid var(--sb-ink);border-radius:999px;padding:8px 28px;cursor:pointer;box-shadow:0 4px 0 rgba(91,58,41,.35);margin:8px 4px 0;text-decoration:none}
@@ -136,6 +146,14 @@
   <h1>刺牆賽跑</h1>
   <p>刺牆從背後追上來！選一關，撿金幣衝到終點。</p>
   <p class="who" id="who">讀取角色中…</p>
+  <form id="authBox" hidden autocomplete="on">
+    <div class="authTabs"><button type="button" id="tabLogin" class="on">登入</button><button type="button" id="tabReg">註冊新帳號</button></div>
+    <input id="aUser" name="username" placeholder="帳號（3-16 個英文、數字或底線）" autocomplete="username" maxlength="16" required>
+    <input id="aDisp" name="nickname" placeholder="遊戲裡顯示的名字（1-16 字）" maxlength="16" hidden>
+    <input id="aPass" name="password" type="password" placeholder="密碼（至少 6 字）" autocomplete="current-password" required>
+    <button class="btn" id="aGo" type="submit">登入開跑</button>
+    <p class="authMsg" id="aMsg">要先登入才能跑。帳號跟海嘯島共用，金幣、造型都通用。</p>
+  </form>
   <p class="keys">
     <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向鍵 移動 · <kbd>空白鍵</kbd> 跳（空中再按＝二段跳）<br>
     <kbd>Shift</kbd> 衝刺（有體力限制）· <kbd>C</kbd> 按住蹲下（躲高的竹箭）· <kbd>F</kbd> 揮棒（可以把子彈打回去）<br>
@@ -992,6 +1010,7 @@ function reset(){
 // ---------- input ----------
 const keys = {};
 addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
   if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
   if ((e.code === 'Enter' || e.code === 'Space') && S.phase !== 'run' && S.phase !== 'count'){ e.preventDefault(); startRun(L); return; }
   if (e.code === 'KeyR' && (S.phase === 'run' || S.phase === 'count')){ startRun(L); return; }
@@ -1090,6 +1109,7 @@ function boardHtml(rows, meName){
 let myName = '';
 function renderLevelButtons(){
   const wrap = $('levelBtns'); wrap.innerHTML = '';
+  wrap.hidden = needLogin();
   for (const lv of LEVELS){
     const card = document.createElement('div'); card.className = 'lvlcard';
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn lvl';
@@ -1110,7 +1130,10 @@ async function loadBoards(){
   if (S.phase === 'menu') renderLevelButtons();
 }
 renderLevelButtons(); loadBoards();
+function needLogin(){ return !!API && !authToken; }
 function startRun(level){
+  if (needLogin()){ showAuth(); return; }
+  if (API) fetch(API + '/race_start', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ level: level.id, device: DEVICE }) }).catch(() => {});
   if (level !== L || !chaser) buildLevel(level);
   reset(); $('startCard').hidden = true; $('endCard').hidden = true;
   $('gateChip').hidden = true;
@@ -1161,21 +1184,64 @@ async function claimReward(coins, time, misses){
     else el.textContent = j.message || '獎金沒存到，等一下再跑一次';
   } catch(e){ el.textContent = '連不上伺服器，這次的獎金沒存到'; }
 }
-// Load the island character for this account
-(async () => {
+// ---------- account: log in / register (same accounts as the island) ----------
+let authMode = 'login';
+function setAuthMode(m){
+  authMode = m;
+  $('tabLogin').classList.toggle('on', m === 'login'); $('tabReg').classList.toggle('on', m === 'reg');
+  $('aDisp').hidden = m !== 'reg'; $('aDisp').required = m === 'reg';
+  $('aPass').autocomplete = m === 'reg' ? 'new-password' : 'current-password';
+  $('aGo').textContent = m === 'reg' ? '註冊並開跑' : '登入開跑';
+  authMsg(m === 'reg' ? '帳號註冊後不能改，顯示名稱是大家在排行榜看到的。' : '要先登入才能跑。帳號跟海嘯島共用，金幣、造型都通用。');
+}
+function authMsg(t, err){ const m = $('aMsg'); m.textContent = t; m.classList.toggle('err', !!err); }
+function showAuth(){
+  $('authBox').hidden = false; $('levelBtns').hidden = true;
+  $('who').textContent = '先登入或註冊，才能上場';
+  $('startCard').hidden = false; $('endCard').hidden = true;
+}
+$('tabLogin').onclick = () => setAuthMode('login');
+$('tabReg').onclick = () => setAuthMode('reg');
+$('authBox').addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = $('aUser').value.trim().toLowerCase(), password = $('aPass').value, displayName = $('aDisp').value.trim();
+  $('aGo').disabled = true; authMsg('連線中…');
+  try {
+    const r = await fetch(API + (authMode === 'reg' ? '/register' : '/login'), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(authMode === 'reg' ? { username, password, displayName } : { username, password }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.token){ authMsg(j.message || '登入失敗，再試一次', true); return; }
+    authToken = j.token;
+    try { localStorage.setItem('etfm-token', j.token); localStorage.setItem('etfm-username', j.username); localStorage.setItem('etfm-display', j.displayName || j.username); } catch(_){}
+    $('aPass').value = ''; $('authBox').hidden = true;
+    await loadMe();
+  } catch(err){ authMsg('連不上伺服器，等一下再試', true); }
+  finally { $('aGo').disabled = false; }
+});
+function logout(){
+  authToken = ''; myName = '';
+  try { for (const k of ['etfm-token', 'etfm-username', 'etfm-display']) localStorage.removeItem(k); } catch(_){}
+  setAvatar({ ...DEFAULT_CUSTOM }); setAuthMode('login'); showAuth();
+}
+// Load the island character for this account (and say we were here)
+async function loadMe(){
   const who = $('who');
   if (!API){ who.textContent = '試玩版：用預設角色'; return; }
-  if (!authToken){ who.innerHTML = '還沒登入：用預設角色。<a href="island.html">去海嘯島登入</a>就能用自己的角色、存獎金。'; return; }
+  if (!authToken){ showAuth(); return; }
   try {
-    const r = await fetch(API + '/me', { headers: { Authorization: 'Bearer ' + authToken } });
+    const r = await fetch(API + '/me?device=' + DEVICE, { headers: { Authorization: 'Bearer ' + authToken } });
     const j = await r.json();
+    if (r.status === 401 || r.status === 404){ logout(); authMsg('登入過期了，再登入一次', true); return; }
     if (!r.ok) throw new Error(j.error || 'me');
     const custom = j.profile && j.profile.custom;
     if (custom) setAvatar({ ...DEFAULT_CUSTOM, ...custom, cosmetics: { ...DEFAULT_CUSTOM.cosmetics, ...(custom.cosmetics || {}) } });
-    myName = j.displayName || j.username || ''; renderLevelButtons();
-    who.textContent = `${myName} 準備上場`;
-  } catch(e){ who.textContent = '讀不到帳號：先用預設角色跑'; }
-})();
+    myName = j.displayName || j.username || '';
+    who.innerHTML = `${esc(myName)} 準備上場 · <a href="#" id="logoutLink">換人</a>`;
+    $('logoutLink').onclick = ev => { ev.preventDefault(); logout(); };
+  } catch(e){ who.textContent = '讀不到帳號，等一下再試'; }
+  renderLevelButtons();
+}
+loadMe();
 
 // ---------- game loop ----------
 let last = 0;
