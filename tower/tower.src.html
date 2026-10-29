@@ -107,6 +107,26 @@
   .btn[hidden],.homeLink[hidden]{display:none}
   .muted{color:var(--sb-muted);font-size:13px}
   .times{text-align:left;font-size:14px;background:#fff;border:2px solid var(--sb-ink);border-radius:12px;padding:6px 12px;margin:8px 0;font-variant-numeric:tabular-nums}
+  /* ---- 🚁 drone photos: the white flash, the polaroid, the album badge + album ---- */
+  #shotFlash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:9}
+  #albumTag{position:fixed;right:calc(22px + env(safe-area-inset-right,0px));top:calc(98px + env(safe-area-inset-top,0px));z-index:7;background:var(--sb-paper);border:2.5px solid var(--sb-ink);border-radius:12px;
+            padding:2px 9px;font:900 15px var(--sb-font);color:var(--sb-ink);box-shadow:0 3px 0 rgba(91,58,41,.3);pointer-events:none}
+  #albumTag[hidden]{display:none}
+  #albumTag.bump{animation:bump .45s cubic-bezier(.3,1.8,.5,1)}
+  @keyframes bump{40%{transform:scale(1.3) rotate(-6deg)}}
+  .pola{position:fixed;left:0;top:0;z-index:10;width:150px;padding:9px 9px 0;background:#fffdf7;border-radius:3px;box-shadow:0 10px 24px rgba(40,25,15,.35),0 2px 0 rgba(91,58,41,.25);pointer-events:none;will-change:transform}
+  .pola .img{width:132px;height:132px;background:#2a2a2a center/cover;position:relative;overflow:hidden}
+  .pola .img::after{content:'';position:absolute;inset:0;background:#3b3f45;opacity:var(--dev,1)}
+  .pola p{margin:0;height:38px;display:flex;align-items:center;justify-content:center;font:16px var(--sb-pop);color:#3a5a9a;transform:rotate(-2deg);white-space:nowrap}
+  .pola .tape{position:absolute;left:50%;top:-10px;width:54px;height:20px;margin-left:-27px;background:rgba(255,214,120,.75);transform:rotate(-4deg)}
+  .album h2{font:900 16px var(--sb-font);margin:10px 0 4px;text-align:left}
+  .album .row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .album figure{margin:0;background:#fffdf7;padding:5px 5px 0;border-radius:3px;box-shadow:0 3px 8px rgba(40,25,15,.25)}
+  .album figure:nth-child(odd){transform:rotate(-2deg)} .album figure:nth-child(even){transform:rotate(2deg)}
+  .album img,.album .hole{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:#d9d2c5}
+  .album .hole{display:flex;align-items:center;justify-content:center;font:900 26px var(--sb-font);color:#a89d8c}
+  .album figcaption{font:12px/1.25 var(--sb-pop);color:#3a5a9a;padding:4px 0 5px;min-height:30px}
+  .album .miss figcaption{color:var(--sb-muted)}
 </style>
 </head>
 <body>
@@ -121,6 +141,8 @@
 <div id="wind">🌪️➡️</div>
 <div id="flash"></div>
 <div id="tired"></div>
+<div id="shotFlash"></div>
+<div id="albumTag" hidden>📖 0/3</div>
 <div id="splat"><i></i><i></i><i></i><i></i></div>
 <div id="news"><b>📺 新聞快報</b><span id="newsTxt"></span></div>
 <div class="say" id="sayMe"></div><div class="say npc" id="sayNpc"></div>
@@ -142,6 +164,7 @@
   </ul>
   <button class="btn" id="startBtn" type="button">🎬 開拍！從 1F 開始</button>
   <button class="btn" id="contBtn" type="button" hidden></button>
+  <div><button class="btn ghost" id="albumBtn1" type="button" hidden>📖 101 相簿</button> <button class="btn ghost" id="droneBtn" type="button" hidden>🧪 試玩：直接給空拍機</button></div>
   <div><a class="btn ghost homeLink" href="index.html">🏠 回土星之家</a></div>
   <p class="muted" id="loginLine"></p>
 </div></div>
@@ -153,7 +176,15 @@
   <div class="achs" id="endAch"></div>
   <p id="endLine"></p>
   <button class="btn" id="againBtn" type="button">繼續爬</button>
+  <button class="btn ghost" id="albumBtn2" type="button" hidden>📖 相簿</button>
   <div><a class="btn ghost homeLink" href="index.html">🏠 回土星之家</a></div>
+</div></div>
+
+<div class="card" id="albumCard" hidden><div class="album">
+  <h1>📖 101 相簿</h1>
+  <div class="sub" id="albumSub"></div>
+  <div id="albumPages"></div>
+  <button class="btn" id="albumClose" type="button">關閉</button>
 </div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -198,7 +229,7 @@ function softNormal(s){
 const faceAngle = s => Math.floor(wrapS(s) / SIDE) * Math.PI / 2;
 
 // ---------- renderer ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });   // so the drone can copy a frame into a photo
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
 $('stage').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
@@ -267,9 +298,11 @@ const TYPES = {
   node:    { col: 0x2f6e68, depth: 3.4, h: 0.6 },           // the top of a bamboo node (you mantle onto it)
 };
 const ROUTE = [];   // footholds + walls in climbing order (for the "next step" marker)
+const PHOTOS = [];  // the drone's hidden photo spots, 3 a segment (docs/PLAN-101跑酷.md): stand on the foothold to take it
+const photo = (id, title, hint, p, o) => { PHOTOS.push(Object.assign({ id, title, hint, plat: p, s: (p.s0 + p.s1) / 2, r: (p.s1 - p.s0) / 2 + 0.2 }, o || {})); return p; };
 function plat(type, s0, w, y, o){ const p = Object.assign({ type, s0, s1: s0 + w, y, y0: y }, o || {}); plats.push(p); return p; }
 function wall(s0, w, y0, y1, o){ const z = Object.assign({ s0, s1: s0 + w, y0, y1, over: false }, o || {}); walls.push(z); return z; }
-plat('street', 0, PER, 0, { ring: true, floor: 0 });
+photo('start', '出發前的帥照', '一切從這裡開始…', plat('street', 0, PER, 0, { ring: true, floor: 0 }), { s: 11.5, r: 0.8 });
 // route builder: cursor = right edge + height of the last foothold
 let cs = 7, cy = 0;
 const foot = (type, gap, rise, w, o) => { const p = plat(type, cs + gap, w, cy + rise, o); cs = p.s1; cy = p.y; ROUTE.push(p); return p; };
@@ -295,7 +328,8 @@ foot('sill', 1.4, 2.1, 2.8, { pigeon: true });
 foot('ac',   1.2, 2.2, 2.2);
 foot('sill', 1.6, 2.2, 2.6);
 climb(1.2, 6.5, 2.4, { hint: true });                        // first wall: "touch it and you grab on"
-branch(ROUTE[ROUTE.length - 1], -1, [['flag', 1.6, 2.0, 1.4], ['sill', 1.5, 2.1, 2.0, { item: 'bento' }]]);   // 🍱 up and left
+photo('wall1', '第一面牆', '第一次抓牆的感覺', ROUTE[ROUTE.length - 1]);
+photo('bento', '便當時間', '有東西好香…', branch(ROUTE[ROUTE.length - 1], -1, [['flag', 1.6, 2.0, 1.4], ['sill', 1.5, 2.1, 2.0, { item: 'bento' }]]));   // 🍱 up and left
 foot('sill', 1.4, 2.0, 2.6);
 foot('ac',   1.6, 2.3, 2.0);
 branch(foot('sill', 1.6, 2.2, 2.4, { pigeon: true }), -1, [['ac', 2.0, 2.2, 1.6], ['flag', 2.3, 2.1, 1.1, { item: 'coin', id: 'coin1' }]]);   // 🥇 two long jumps
@@ -306,11 +340,12 @@ checkpoint(10);                                              // y 30
 // ---- segment 2: 11–20F — round the corner, a flagpole, a cradle, a bulging wall
 cs += 1.5;
 foot('sill', 1.0, 2.2, 2.6);
-foot('flag', 1.8, 2.0, 1.6, { line: '這根旗桿好細…' });       // a flagpole: tiny landing
+photo('flag', '細細的旗桿', '很細很細的地方', foot('flag', 1.8, 2.0, 1.6, { line: '這根旗桿好細…' }));       // a flagpole: tiny landing
 foot('sill', 1.4, 2.3, 2.4);
 const cradle = foot('gondola', 1.5, 1.8, 2.6, { range: 5.0, speed: 0.4 }); // rides up 5 → reach the next sill from the top
 cy += 5.0;
-branch(foot('sill', 1.4, 2.0, 2.4), -1, [['sill', 1.6, 2.2, 2.0], ['balcony', 1.6, 2.2, 2.6, { item: 'reporter' }]]);   // 📸 the TV crew
+photo('cradle', '吊籃兜風', '坐車要記得跟司機打招呼', cradle, { ride: true });
+photo('news', '📺 上電視了', '有人在等你受訪', branch(foot('sill', 1.4, 2.0, 2.4), -1, [['sill', 1.6, 2.2, 2.0], ['balcony', 1.6, 2.2, 2.6, { item: 'reporter' }]]));   // 📸 the TV crew
 climb(1.0, 4.5, 2.2, { chalk: true, momWall: true });   // mom's 18F window is next to its top
 branch(foot('ac',   1.4, 2.1, 2.0), -1, [['flag', 2.0, 2.1, 1.2], ['flag', 2.2, 2.0, 1.0, { item: 'coin', id: 'coin2' }]]);   // 🥇 over mom's head
 climb(1.2, 2.5, 2.6, { over: true });                        // a small bulge: a taste of what the bamboo node (31–40F) will be
@@ -320,19 +355,19 @@ checkpoint(20);                                              // y 60
 // ---- segment 3: 21–30F 冷氣機森林 — dripping ACs you slide off, two short walls back to back
 cs += 1.5;
 foot('sill', 1.0, 2.2, 3.0);                                 // a breather first
-foot('sill', 1.2, 2.2, 2.8, { pigeon: true });
+photo('pigeons', '鴿子大合照', '咕咕咕～', foot('sill', 1.2, 2.2, 2.8, { pigeon: true }));
 foot('ac',   1.4, 2.2, 2.2);
 foot('drip', 1.5, 2.2, 1.9, { slide: 1, first: true });      // first wet one: it carries you right
 const toyFrom = foot('sill', 1.4, 2.1, 2.2);
 climb(1.0, 2.6, 1.8);                                        // two short walls, one straight after the other
 climb(1.2, 2.6, 1.8);
 foot('drip', 1.4, 2.2, 1.7, { slide: -1, chain: true });     // three wet ones in a row = 冷氣機溜冰王
-foot('drip', 1.5, 2.2, 1.7, { slide: 1, chain: true });
+photo('skate', '冷氣機溜冰', '冷氣機上有東西在看你…', foot('drip', 1.5, 2.2, 1.7, { slide: 1, chain: true }));
 foot('drip', 1.5, 2.2, 1.7, { slide: -1, chain: true });
 branch(foot('sill', 1.4, 2.2, 2.4, { pigeon: true }), -1, [['flag', 1.8, 2.1, 1.2], ['sill', 2.0, 2.2, 1.6, { item: 'gripup', id: 'g1' }]]);   // 💪 #1
 climb(1.0, 3.0, 2.2, { chalk: true });
 checkpoint(30);                                              // y 90
-branch(toyFrom, -1, [['ac', 1.8, 2.2, 1.6], ['drip', 2.0, 2.2, 1.4, { slide: -1 }], ['sill', 2.0, 2.1, 1.6, { item: 'toy', id: 'bey' }]]);   // 🌀 Eddie's battle top 爆破貝利亞
+photo('bey', '爆破貝利亞！', '最愛的玩具在高處閃閃發亮', branch(toyFrom, -1, [['ac', 1.8, 2.2, 1.6], ['drip', 2.0, 2.2, 1.4, { slide: -1 }], ['sill', 2.0, 2.1, 1.6, { item: 'toy', id: 'bey' }]]));   // 🌀 Eddie's battle top 爆破貝利亞
 // ---- segment 4: 31–40F 竹節初登場 — traverse under a lip, then the bamboo node: two walls leaning
 // out over the street (steeper = more grip), a seam to catch your breath in, and a mantle over the top
 cs += 1.5;
@@ -354,6 +389,9 @@ plat('net', 0, PER, cy - 0.6, { ring: true, net: true });    // a slip anywhere 
   const seam = plat('seam', lo.s0 - 0.6, 3.0, lo.y1 + 0.1, { depth: seamOut + 0.9, standOut: seamOut + 0.4, mountOnly: true });   // the seam: a ledge sticking out past the glass (a slip from above falls past it)
   const hi = wall(lo.s0 - 0.2, 2.2, lo.y1 - 0.1, NODE.y1, { node: NODE });           // upper half, straight above (a bit wider, so a jump off the seam always grabs it)
   const cap = plat('node', lo.s0 - NODE_W, hi.s1 - lo.s0 + NODE_W + NODE_WR, hi.y1 + 0.1, { depth: NODE.out1 + 0.5, standOut: 2.6, nodeTop: true });   // mantle over the top: the whole green top is walkable
+  photo('seam', '竹節上的男人', '斜斜的地方，喘口氣', seam);
+  photo('view', '全台北都在腳下', '爬上竹節頂之後，往左邊看看', cap, { s: cap.s0 + 0.9, r: 0.8 });
+  branch(cap, -1, [['flag', 1.2, 2.0, 1.0], ['ac', 1.6, 2.2, 1.4, { item: 'drone' }]]);   // 🚁 the documentary crew's crashed drone
   ROUTE.push(lo, seam, hi, cap); cs = cap.s1; cy = cap.y; Object.assign(NODE, { s0: lo.s0, s1: hi.s1, seamY: seam.y });
 }
 foot('drip', 1.4, 2.1, 1.6, { slide: 1 });
@@ -374,6 +412,8 @@ const MOM_SPOTS = walls.filter(z => z.momWall).map(z => {   // next to the top o
   if (deck - y < 3.8) y = deck + 0.3;   // a checkpoint deck would cut across her window (and her sign): put her just above it
   return [s, y];
 });
+// 📷 the 39F mom photo is taken up on the 40F deck, standing right next to her window
+photo('mom', '跟媽媽比愛心', '媽媽心情好的時候…', plats.find(p => p.cp && p.floor === 40), { mom: 1, s: MOM_SPOTS[1][0] - 1.9, r: 1.0 });
 
 // ---------- build the meshes ----------
 const woodTex = canvasTex(64, 32, (x, w, h) => { x.fillStyle = '#c98a4a'; x.fillRect(0, 0, w, h); x.strokeStyle = '#a8743f'; x.lineWidth = 2; for (let i = 1; i < 3; i++){ x.beginPath(); x.moveTo(0, i * h / 3); x.lineTo(w, i * h / 3); x.stroke(); } });
@@ -449,6 +489,10 @@ for (const it of ITEMS){
     const bey = buildBey(c => LM(c), (pa, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); pa.add(m); return m; }, sbRoundBox);
     bey.scale.setScalar(1.3); bey.rotation.x = -0.4; g.add(bey);
     const glow = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.62, 24), new THREE.MeshBasicMaterial({ color: 0xfff3a0, transparent: true, opacity: 0.8, side: THREE.DoubleSide })); glow.position.y = 0.3; g.add(glow);
+  } else if (it.kind === 'drone'){   // 🚁 crashed, tipped over, a little smoke
+    const d = makeDrone(); d.rotation.set(0.2, 0.6, 0.55); d.scale.setScalar(1.3); g.add(d);
+    const glow = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.76, 24), new THREE.MeshBasicMaterial({ color: 0xfff3a0, transparent: true, opacity: 0.8, side: THREE.DoubleSide })); g.add(glow);
+    for (let i = 0; i < 3; i++){ const puff = new THREE.Mesh(new THREE.SphereGeometry(0.14 + i * 0.05, 8, 6), new THREE.MeshBasicMaterial({ color: 0xbfbfbf, transparent: true, opacity: 0.6 })); puff.position.set(0.2 + i * 0.08, 0.3 + i * 0.25, 0); g.add(puff); }
   } else if (it.kind === 'bento'){
     g.add(new THREE.Mesh(sbRoundBox(0.8, 0.3, 0.55, 0.06), LM(0xe0584a)));
     const lid = new THREE.Mesh(sbRoundBox(0.84, 0.08, 0.6, 0.03), LM(0xfff8ec)); lid.position.y = 0.19; g.add(lid);
@@ -588,6 +632,11 @@ const sfx = (() => {
     whoosh: () => hiss(1.2, 0.15, 200, 1200),
     bonk: () => { tone('sine', 180, 60, 0.25, 0.3); hiss(0.1, 0.15, 900, 300); },
     bounce: () => tone('sine', 220, 520, 0.25, 0.15),
+    beep: () => { tone('square', 1320, 0, 0.06, 0.04); tone('square', 1760, 0, 0.06, 0.04, 0.09); },
+    kacha: () => { hiss(0.03, 0.5, 2500, 2500); tone('square', 180, 90, 0.03, 0.15); setTimeout(() => hiss(0.04, 0.4, 1800, 1800), 70); },   // 喀—嚓
+    eject: () => { tone('sawtooth', 120, 90, 0.5, 0.05); hiss(0.5, 0.05, 600, 600); },                                                      // the polaroid motor
+    swish: () => hiss(0.3, 0.12, 1200, 2400),
+    pop: () => [784, 988, 1319].forEach((f, i) => tone('triangle', f, 0, 0.18, 0.08, i * 0.07)),
     mantle: () => { hiss(0.2, 0.15, 600, 1800); tone('triangle', 392, 784, 0.25, 0.1, 0.12); },
     splash: () => { hiss(0.15, 0.12, 2500, 900); },
     splat: () => { hiss(0.18, 0.3, 700, 200); tone('sine', 300, 120, 0.15, 0.12); },
@@ -657,6 +706,7 @@ function startAt(floor){
   for (const it of ITEMS){ it.taken = false; it.mesh.visible = true; }
   for (const M of MOMS){ M.love = Math.random() < 0.5; M.npc.pose(M.love); M.said = false; }   // each window: a good day or a bad day
   S.segPoop = 0; S.segPhotos = 0; for (const q of people) q.snapped = false;
+  DRONE = hasDrone(); BOOK = loadBook(); S.newPhotos = []; buddyPos.set(0, 0, 0);
   PO.state = 'idle'; PO.next = 6; flyer.visible = false; poop.visible = false;
   for (const p of plats) if (p.bird){ p.bird.fly = 0; p.bird.g.visible = true; p.bird.g.position.copy(p.bird.home); p.bird.g.rotation.z = 0; }
   P.peak = null; P.jumped = false;
@@ -744,7 +794,7 @@ function step(dt){
     if (landed){
       const drop = (P.peak == null ? P.y : P.peak) - P.y, speed = -P.vy; P.peak = null;
       if (drop > 5){ S.segFalls = (S.segFalls || 0) + 1; S.dripChain = 0; }
-      if (landed.net && speed > 9){ P.vy = speed * 0.45; P.mode = 'air'; P.on = null; P.jumped = true; sfx.bounce(); say(pick(['好險有網子！', '彈彈彈～', '嚇死我了…'])); }
+      if (landed.net && speed > 9){ P.vy = speed * 0.45; P.mode = 'air'; P.on = null; P.jumped = true; sfx.bounce(); say(pick(['好險有網子！', '彈彈彈～', '嚇死我了…'])); eventPhoto('net'); }
       else {
         P.vy = 0; P.mode = 'ground'; P.on = landed; P.jumped = false; P.slipped = false;
         if (drop > 5){ sfx.bonk(); say(pick(['唉呦好痛！', '我的屁股…', '痛痛痛…', '摔得好慘…'])); S.shake = 0.35; }
@@ -777,6 +827,7 @@ function step(dt){
     if (it.kind === 'coin'){ it.mesh.visible = false; sfx.cp(); flash('🥇 找到 101 金色紀念幣！'); say('閃閃發亮！'); gotCoin(it.id); }
     else if (it.kind === 'toy'){ it.mesh.visible = false; sfx.cp(); gotToy(it.id); }
     else if (it.kind === 'gripup'){ it.mesh.visible = false; sfx.cp(); gotGripUp(it.id); }
+    else if (it.kind === 'drone'){ it.mesh.visible = false; sfx.cp(); gotDrone(); }
     else if (it.kind === 'bento'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍱 吃便當！握力補滿，6 秒內跑得快、爬得快'); say('好好吃！力氣來了！'); unlock('bento'); }
     else { npcSay(it.sprite, '看這邊！笑一個！'); news('12 歲男孩徒手攀爬台北 101！目前高度 ' + Math.round(P.y * METERS) + ' 公尺，現場群眾驚呼連連……'); say('我上電視了！'); unlock('news'); }
   }
@@ -859,6 +910,141 @@ function buildBey(m, part, RB){
   part(g, new THREE.OctahedronGeometry(0.045), m(0x3aa0ff), 0, 0.43, 0.04);
   return g;
 }
+// ============================================================
+// 🚁 THE DRONE + HIDDEN PHOTOS (v2.5) — rescue the crashed drone on the segment-4 side path;
+// from then on it follows you, and a 📷 spot (only visible with the drone) gets you a polaroid:
+// beep → Eddie poses → 喀嚓 + white flash → the photo pops out of him, develops, flies into the album.
+// Effect prototype: prototypes/polaroid.src.html. Photos are kept in this browser (etfm-tower2-photos-<who>).
+// ============================================================
+const DRONE_KEY = () => 'etfm-tower2-drone-' + who(), PHOTO_KEY = () => 'etfm-tower2-photos-' + who();
+const hasDrone = () => { try { return !!localStorage.getItem(DRONE_KEY()); } catch (e) { return false; } };
+const loadBook = () => { try { return JSON.parse(localStorage.getItem(PHOTO_KEY()) || '{}'); } catch (e) { return {}; } };
+let DRONE = hasDrone(), BOOK = loadBook();
+const EVENT_PHOTOS = { poop: { title: '💩 鴿屎運', hint: '天上掉下來的…運氣？' }, net: { title: '🕸️ 好險有網子', hint: '掉下去也沒關係' } };
+function makeDrone(){
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(sbRoundBox(0.62, 0.2, 0.62, 0.08), LM(0xf2f2ee)));
+  g.userData.props = [];
+  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]){
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.08), LM(0x555a60)); arm.position.set(x * 0.32, 0.02, z * 0.32); arm.rotation.y = x * z > 0 ? -Math.PI / 4 : Math.PI / 4; g.add(arm);
+    const pr = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.02, 16), new THREE.MeshBasicMaterial({ color: 0x9aa3ad, transparent: true, opacity: 0.55 })); pr.position.set(x * 0.48, 0.1, z * 0.48); g.add(pr); g.userData.props.push(pr);
+  }
+  const lens = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 8), LM(0x2a2a2a)); lens.position.set(0, -0.15, 0.18); g.add(lens);
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3b30 })); led.position.set(0, 0.13, 0.3); g.add(led); g.userData.led = led;
+  sbOutline(g, 0.03); return g;
+}
+const buddy = makeDrone(); buddy.visible = false; scene.add(buddy);
+const bigHeart = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex(128, 128, (x) => { x.font = '100px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('💖', 64, 70); }), transparent: true }));
+bigHeart.scale.set(1.4, 1.4, 1); bigHeart.visible = false; scene.add(bigHeart);
+const buddyPos = new THREE.Vector3(), droneCam = new THREE.PerspectiveCamera(45, 1, 0.1, 900);
+function gotDrone(){
+  const fresh = !DRONE; try { localStorage.setItem(DRONE_KEY(), '1'); } catch (e) {} DRONE = true; buddyPos.copy(me.group.position); buddyPos.y += 2;
+  flash(fresh ? '🚁 救到空拍機！以後它會跟著你，走到 📷 就幫你拍照（回去前面幾段找找！）' : '🚁 空拍機（已經是你的了）', 3.2);
+  say(fresh ? '嗶嗶！它開機了！以後你就跟著我吧！' : '好乖～');
+}
+// the 📷 spots: a dashed gold frame that bobs over the foothold
+const spotTex = canvasTex(128, 128, (x) => { x.strokeStyle = '#ffcf5a'; x.lineWidth = 8; x.setLineDash([16, 10]); x.strokeRect(8, 8, 112, 112);
+  x.font = '48px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('📷', 64, 66); });
+for (const ph of PHOTOS){ ph.mesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: spotTex, transparent: true, depthWrite: false })); ph.mesh.scale.set(1.5, 1.5, 1); ph.mesh.visible = false; scene.add(ph.mesh); }
+const spotY = ph => ph.plat.type === 'gondola' ? (ph.plat.cur == null ? ph.plat.y0 : ph.plat.cur) : ph.plat.y;
+const segPhotos = n => PHOTOS.filter(ph => segOf(ph.plat.y) === n);
+function startShot(ph, now){ S.snap = { ph, t0: now }; sfx.beep(); }
+function eventPhoto(id){ if (DRONE && !BOOK[id] && !S.snap) startShot(Object.assign({ id, event: true }, EVENT_PHOTOS[id]), performance.now() / 1000); }
+function updatePhotos(dt, now){
+  const run = S.phase === 'run';
+  for (const ph of PHOTOS){
+    const live = DRONE && run && !BOOK[ph.id] && !(S.snap && S.snap.ph === ph) && (!ph.mom || MOMS[ph.mom].love);
+    ph.mesh.visible = live;
+    if (live){ ph.mesh.position.copy(surf(ph.s, 1.2, spotY(ph) + 1.3 + Math.sin(now * 3 + ph.s) * 0.1)); ph.mesh.material.opacity = 0.6 + Math.sin(now * 5) * 0.25; }
+  }
+  if (DRONE && run && !S.snap && P.mode === 'ground')
+    for (const ph of PHOTOS) if (ph.mesh.visible && P.on === ph.plat && sDist(P.s, ph.s) < ph.r && (!ph.ride || ph.plat.cur > ph.plat.y0 + ph.plat.range - 0.4)){ startShot(ph, now); break; }
+  // the drone: over his shoulder; for a photo it swings round in front of him (and backs off to get mom in too)
+  buddy.visible = DRONE && run;
+  const out = P.rOut == null ? 0.75 : P.rOut, eye = me.group.position.clone(); eye.y += 1.1;
+  const sh = S.snap, momShot = sh && sh.ph.mom ? MOMS[sh.ph.mom] : null;
+  let want;
+  if (momShot){ const mid = (P.s + momShot.s) / 2; want = surf(mid, out + 6.5, (P.y + momShot.y) / 2 + 2.0); eye.lerp(surf(mid, 0.5, (P.y + momShot.y) / 2 + 1.4), 1); }
+  else if (sh) want = surf(P.s + 0.6, out + 4.6, P.y + 1.9);
+  else want = surf(P.s - P.face * 1.4, out + 1.6, P.y + 2.7 + Math.sin(now * 2) * 0.12);
+  if (buddyPos.lengthSq() === 0) buddyPos.copy(want);
+  buddyPos.lerp(want, Math.min(1, dt * (sh ? 5 : 2.5)));
+  buddy.position.copy(buddyPos); buddy.lookAt(eye);
+  for (const pr of buddy.userData.props) pr.rotation.y += dt * 40;
+  buddy.userData.led.visible = Math.sin(now * (sh ? 30 : 6)) > 0;
+  if (!sh) return;
+  const t = now - sh.t0;
+  if (momShot){
+    if (t > 0.35){ heartArms(momShot.npc.arms); momShot.npc.sign.visible = false; bigHeart.visible = true; bigHeart.position.copy(surf((P.s + momShot.s) / 2, 1.2, P.y + 2.6 + Math.sin(t * 8) * 0.08)); }
+    if (t > 1.4){ momShot.npc.pose(momShot.love); bigHeart.visible = false; }
+  }
+  if (!sh.taken && t > 0.75){ sh.taken = true; snapPhoto(sh.ph, eye); }
+  if (t > 1.4) S.snap = null;
+}
+function snapPhoto(ph, eye){
+  // what the drone sees goes into the canvas for one frame (the white flash covers it), copied out as a square JPEG
+  droneCam.position.copy(buddy.position); droneCam.lookAt(eye); droneCam.aspect = camera.aspect; droneCam.updateProjectionMatrix();
+  const hide = [buddy, marker, ...PHOTOS.map(q => q.mesh)], was = hide.map(o => o.visible); hide.forEach(o => { o.visible = false; });
+  renderer.render(scene, droneCam); hide.forEach((o, i) => { o.visible = was[i]; });
+  const src = renderer.domElement, side = Math.min(src.width, src.height), c = document.createElement('canvas'); c.width = c.height = 264;
+  c.getContext('2d').drawImage(src, (src.width - side) / 2, (src.height - side) / 2, side, side, 0, 0, 264, 264);
+  const url = c.toDataURL('image/jpeg', 0.78), cap = ph.event ? ph.title : Math.max(1, floorOf(P.y)) + 'F・' + ph.title;
+  BOOK[ph.id] = { img: url, cap }; (S.newPhotos = S.newPhotos || []).push(ph.id);
+  try { localStorage.setItem(PHOTO_KEY(), JSON.stringify(BOOK)); } catch (e) { flash('手機空間不夠，這張照片沒存到 😢', 2); }
+  sfx.kacha(); $('shotFlash').animate([{ opacity: 0.95 }, { opacity: 0 }], { duration: 380, easing: 'ease-out' });
+  polaroid(url, cap, ph);
+}
+function polaroid(url, cap, ph){
+  const v = me.group.position.clone(); v.y += 1.0; v.project(camera);
+  const x0 = (v.x * 0.5 + 0.5) * innerWidth - 75, y0 = (-v.y * 0.5 + 0.5) * innerHeight - 95;
+  const el = document.createElement('div'); el.className = 'pola';
+  el.innerHTML = '<div class="tape"></div><div class="img"></div><p></p>'; el.querySelector('.img').style.backgroundImage = 'url(' + url + ')'; el.querySelector('p').textContent = cap;
+  document.body.appendChild(el);
+  const midX = clamp(x0 + 30, 16, innerWidth - 166), midY = clamp(y0 - 170, 70, innerHeight - 260);
+  const tag = $('albumTag'); tag.hidden = false; const al = tag.getBoundingClientRect(), x2 = al.left + al.width / 2 - 75, y2 = al.top + al.height / 2 - 95;
+  el.animate([
+    { transform: `translate(${x0}px,${y0}px) scale(.15) rotate(0deg)`, opacity: 0 },
+    { transform: `translate(${x0 + 10}px,${y0 - 60}px) scale(.6) rotate(-14deg)`, opacity: 1, offset: 0.35 },
+    { transform: `translate(${midX}px,${midY}px) scale(1.06) rotate(-6deg)`, offset: 0.8 },
+    { transform: `translate(${midX}px,${midY}px) scale(1) rotate(-5deg)` },
+  ], { duration: 650, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' });
+  sfx.eject();
+  el.querySelector('.img').animate([{ filter: 'sepia(.9) brightness(.55) contrast(.7)' }, { filter: 'sepia(.15) brightness(1.02) contrast(1)' }], { duration: 1500, delay: 400, fill: 'forwards' });
+  const t0 = performance.now(); (function dev(){ const k = clamp((performance.now() - t0 - 400) / 1300, 0, 1); el.style.setProperty('--dev', (1 - k).toFixed(3)); if (k < 1) requestAnimationFrame(dev); })();
+  setTimeout(() => {
+    sfx.swish();
+    el.animate([
+      { transform: `translate(${midX}px,${midY}px) scale(1) rotate(-5deg)` },
+      { transform: `translate(${midX - 20}px,${midY - 20}px) scale(1.04) rotate(-12deg)`, offset: 0.25 },
+      { transform: `translate(${x2}px,${y2}px) scale(.12) rotate(25deg)`, opacity: 0.9 },
+    ], { duration: 600, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' }).onfinish = () => {
+      el.remove(); updateAlbumTag(); tag.classList.remove('bump'); void tag.offsetWidth; tag.classList.add('bump'); sfx.pop();
+      if (ph.event) flash('📖 收進相簿！（特別照片）', 1.8);
+      else { const n = segOf(ph.plat.y), have = segPhotos(n).filter(q => BOOK[q.id]).length;
+        flash(have === 3 ? '🎉 第 ' + n + ' 段的 3 張照片都拍到了！' : '📖 收進相簿！（第 ' + n + ' 段 ' + have + ' / 3）', 2); }
+    };
+  }, 2300);
+}
+function updateAlbumTag(){
+  const tag = $('albumTag'); tag.hidden = !(DRONE && S.phase === 'run'); if (tag.hidden) return;
+  const n = segOf(P.y), list = segPhotos(n); tag.textContent = list.length ? '📖 ' + list.filter(q => BOOK[q.id]).length + '/' + list.length : '📖';
+}
+// the album: one page per segment, 3 polaroids each; the ones you haven't got are grey with a hint
+function showAlbum(){
+  const segs = [...new Set(PHOTOS.map(ph => segOf(ph.plat.y)))].sort((a, b) => a - b);
+  const fig = (b, hint) => b ? '<figure><img src="' + b.img + '" alt=""><figcaption>' + b.cap + '</figcaption></figure>' : '<figure class="miss"><div class="hole">?</div><figcaption>' + hint + '</figcaption></figure>';
+  let html = '';
+  for (const n of segs) html += '<h2>第 ' + n + ' 段・' + SEGS[n][0] + '</h2><div class="row">' + segPhotos(n).map(ph => fig(BOOK[ph.id], ph.hint)).join('') + '</div>';
+  html += '<h2>✨ 特別照片</h2><div class="row">' + Object.entries(EVENT_PHOTOS).map(([id, e]) => fig(BOOK[id], e.hint)).join('') + '</div>';
+  const all = PHOTOS.length + Object.keys(EVENT_PHOTOS).length, got = PHOTOS.filter(ph => BOOK[ph.id]).length + Object.keys(EVENT_PHOTOS).filter(id => BOOK[id]).length;
+  $('albumPages').innerHTML = html;
+  $('albumSub').textContent = DRONE ? '收集了 ' + got + ' / ' + all + ' 張' : '還沒有空拍機：第 4 段竹節附近好像有東西卡住了…';
+  $('albumCard').hidden = false;
+}
+$('albumClose').onclick = () => { $('albumCard').hidden = true; };
+$('albumBtn1').onclick = $('albumBtn2').onclick = showAlbum;
+$('albumBtn1').hidden = !DRONE;
+if (!ON_LIVE){ $('droneBtn').hidden = false; $('droneBtn').onclick = () => { try { localStorage.setItem(DRONE_KEY(), '1'); } catch (e) {} DRONE = true; $('albumBtn1').hidden = false; $('droneBtn').textContent = '🧪 已經有空拍機了'; }; }
 // toys go onto the toy shelf at home (土星之家 reads etfm-toys from the same browser)
 const TOY_NAMES = { bey: '爆破貝利亞', ipad: 'iPad', paddle: '乒乓球拍', cards: '寶可夢卡冊', piggy: '存錢小豬公', cd: 'JJ CD' };
 function gotToy(id){
@@ -960,6 +1146,7 @@ function pooped(){
   sfx.splat(); const sp = $('splat'); sp.classList.add('on'); setTimeout(() => sp.classList.remove('on'), 900);
   say(pick(['呸呸呸！', '鴿子你給我記住！', '噁～掉在我頭上！', '今天是怎樣啦！']));
   if (S.segPoop >= 3) unlock('poop3');
+  eventPhoto('poop');
 }
 // little hearts when mom cheers
 const heartSprites = [];
@@ -1057,7 +1244,8 @@ async function endCard(done){
   else if (res && res.error) line = '（' + res.error + '）';
   else if (res && res.money != null) line = '金幣已存入帳號（現在 $' + res.money + '）';
   if (done) line += '　' + (BUILT + 1) + 'F 以上還在施工，下一段「' + SEGS[BUILT / 10 + 1][0] + '」快來了！';
-  $('endLine').textContent = line;
+  if (S.newPhotos && S.newPhotos.length) line += '　📷 新照片 ' + S.newPhotos.length + ' 張，收進相簿了！';
+  $('endLine').textContent = line; $('albumBtn2').hidden = !DRONE;
   const cp = Math.min(savedCp(), BUILT - 10);
   $('againBtn').textContent = cp ? '從 ' + cp + 'F 繼續' : '再爬一次';
   $('endCard').hidden = false;
@@ -1070,9 +1258,12 @@ $('againBtn').onclick = () => { startAt(Math.min(savedCp(), BUILT - 10)); update
   $('contBtn').hidden = !cp; $('contBtn').textContent = '從 ' + cp + 'F 繼續';
   $('loginLine').textContent = (!API ? '試玩版：金幣不會存進帳號。' : token() ? '金幣會存進你的帳號。' : '還沒登入：先到「逃離土星」登入，金幣才會存。') + '　目前開放到 ' + BUILT + 'F。'; }
 document.querySelectorAll('.homeLink').forEach(a => { if (ON_LIVE) a.href = 'https://cooldragon313.github.io/eddie-world/'; else if (!ON_LOCAL) a.hidden = true; });
-if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt) };   // local testing only
+if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, get BOOK(){ return BOOK; } };   // local testing only
 
 // ---------- Eddie's pose ----------
+// both arms up in a big V (Q-version heads are too big to make a heart over them; a big 💖 floats between the two instead)
+function heartArms(arms){ const [l, r] = arms; l.rotation.set(0, 0, -2.4); r.rotation.set(0, 0, 2.4); l.userData.elbow.rotation.set(0.6, 0, 0); r.userData.elbow.rotation.set(0.6, 0, 0); }
+function peaceArm(arms){ arms[1].rotation.set(0, 0, 2.5); arms[1].userData.elbow.rotation.set(0, 0, -0.5); }   // ✌️ up beside his head, so it shows face-on
 function poseEddie(dt, now){
   const e = me.eddie;
   const wantOut = P.mode === 'wall' ? wallOut(P.wall, P.y + 1) + (P.wall.over ? 0.25 : 0.32) : P.on && P.on.standOut != null ? P.on.standOut : 0.75;
@@ -1096,16 +1287,21 @@ function poseEddie(dt, now){
     if (moving) P.phase += dt * Math.abs(P.vs) * 1.7;
     animateEddie(me, { t: now, dt, moving, phase: P.phase, onGround: P.mode === 'ground', mood: S.windDir ? 'surprised' : 'smile' });
     if (S.t < (S.vUntil || 0)){ e.arms[1].rotation.set(2.7, 0, -0.35); e.arms[1].userData.elbow.rotation.x = 0.2; e.face.set('laugh'); }   // ✌️ for the camera
+    const sh = S.snap;
+    if (sh && !sh.ph.event && now - sh.t0 > 0.35){   // posing for the drone: turn to it, ✌️ (or a big heart with mom)
+      me.group.rotation.set(0, fa + Math.PI, 0); e.face.set('laugh');
+      if (sh.ph.mom) heartArms(e.arms); else peaceArm(e.arms);
+    }
   }
   if (S.t < (S.ptooUntil || 0)){ e.head.rotation.z = Math.sin(now * 32) * 0.45; e.face.set('sad'); }    // 呸呸呸: shake it off
 }
 
 // ---------- loop ----------
 let last = 0;
-function frame(nowMs){
-  requestAnimationFrame(frame);
+function frame(nowMs, manual){
+  if (!manual) requestAnimationFrame(frame);   // (local tests call frame(t, true) to step by hand)
   const dt = last ? Math.min(0.033, Math.max(0, (nowMs - last) / 1000)) : 0.016; last = nowMs; const now = nowMs / 1000;
-  if (S.phase === 'run') step(dt);
+  if (S.phase === 'run' && !S.snap) step(dt);   // the world holds still for a drone photo
   if (S.phase === 'intro'){
     S.cine = (performance.now() - S.cine0) / 1000; introFrame(S.cine); introText(S.cine);   // real time, so a slow phone still gets 15 s
     me.group.position.copy(surf(9, 0.75, 0)); me.group.rotation.set(0, 0, 0);
@@ -1115,7 +1311,7 @@ function frame(nowMs){
     if (S.cine > INTRO) endIntro();
   } else {
     poseEddie(dt, now);
-    updateTalk(dt); updateMarker(now); updatePoop(dt); updateHearts(dt);
+    updateTalk(dt); updateMarker(now); updatePoop(dt); updateHearts(dt); updatePhotos(dt, now); updateAlbumTag();
     splatHat.visible = S.t < (S.splatUntil || 0); tongue.visible = S.t < (S.ptooUntil || 0);
     // pigeons fly off; the cleaner rides along
     for (const p of plats) if (p.bird && p.bird.fly){ const b = p.bird; b.fly += dt; b.g.position.y += dt * 4; b.g.position.addScaledVector(softNormal(p.s0), dt * 3); b.g.rotation.z = Math.sin(now * 30) * 0.3; if (b.fly > 3) b.g.visible = false; }
