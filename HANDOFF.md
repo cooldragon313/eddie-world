@@ -119,3 +119,9 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 難度用機器人模擬調過：只看漫畫穩過、YouTube 要反應快、一直打電動必爆
 - 還沒做：金幣入帳海嘯島帳號／排行榜、首頁「家庭小遊戲」入口、真人手感測試
 - ⚠️ 本機測試另開 `.claude/launch.json` 的 `etfm-family`（port 8767），跟 etfm-web 8765 分開
+## 2026-10-29 — 土星之家 H1（公司 PC，分支上、還沒上架）
+- 方向（Bernie）：**一個遊戲、很多關卡**。大廳＝自己的 3D 家 → 出門選關卡：逃離土星／恐怖考前複習夜（原熱熔膠條之夜）／**土星拆家王**（原拆家寶寶，還沒做）。海嘯撿錢不再當入口。藍圖 `docs/PLAN-土星之家.md`
+- 原始碼 `home/home.src.html` → `python tools/build_home.py [--preview 檔]` → `home.html`
+- 試玩連結：https://claude.ai/artifact/7CVMoMJmmk3GrbZScdNTsQ
+- 做了：8×8 房間、11 件家具（買／擺／轉／收）、4 地板 4 壁紙、門→選關卡、點地板走路；存在瀏覽器（`etfm-home-v1`），試玩錢 777
+- 下一步 H2：伺服器存 `home`、扣真的金幣；H3：關卡結束「回家」；H4：首頁改成土星之家
