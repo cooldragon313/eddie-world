@@ -50,6 +50,9 @@
   .meter.warn i{background:var(--sb-gold-soft)} .meter.danger i{background:var(--sb-red)}
   .meter.stam{height:9px} .meter.stam i{background:var(--sb-sky)} .meter.stam.tired i{background:#cdb999}
   #danger{position:fixed;inset:auto 0 0 0;height:38vh;z-index:4;pointer-events:none;opacity:0;background:linear-gradient(to top,rgba(200,30,40,.7),rgba(200,30,40,0))}
+  #hint{position:fixed;left:50%;top:calc(96px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:7;max-width:min(92vw,520px);
+    background:#fff6d8;border:2.5px solid var(--sb-ink);border-radius:14px;padding:8px 14px;font:700 15px/1.45 var(--sb-font);color:var(--sb-ink);
+    box-shadow:0 4px 0 rgba(91,58,41,.3);pointer-events:none;text-align:center}
   #impact{position:fixed;left:50%;top:38%;z-index:9;transform:translate(-50%,-50%) scale(0);pointer-events:none;font:900 64px/1 var(--sb-font);color:#fff;
     -webkit-text-stroke:4px var(--sb-ink);paint-order:stroke fill;white-space:nowrap;opacity:0}
   #impact.go{animation:stamp .9s ease-out forwards}
@@ -100,6 +103,13 @@
   .board li.me{font-weight:700;color:#c27a00}
   .board .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .board .ms{color:var(--sb-muted);font-size:12px}
+  .ach{font-size:14px;margin:6px auto;max-width:340px;text-align:left}
+  .ach .achNew{color:#c27a00;font-size:17px}
+  .ach small{color:var(--sb-muted);font-weight:500}
+  .ach details{margin-top:6px}
+  .ach summary{cursor:pointer;font-weight:700}
+  .ach div{padding:2px 0}
+  .ach div.off{color:var(--sb-muted)}
   .rank{font-weight:900;font-size:17px;color:var(--sb-ink);margin:4px 0}
   #touch{display:none} body.touch #touch{display:block}
   /* Joystick: the whole bottom-left zone grabs your thumb; the ring shows where it is */
@@ -151,6 +161,7 @@
 <div id="danger"></div>
 <div class="flash" id="flash"></div>
 <div id="bubbles"></div>
+<div id="hint" hidden></div>
 <div id="impact"></div><div id="impactFlash"></div>
 <button id="restartBtn" type="button" hidden>🔄 重來</button>
 <div id="lineHint" hidden>LINE 裡不能全螢幕：點右上角 ⋯ 選「用預設瀏覽器開啟」<button type="button" id="lineHintX">知道了</button></div>
@@ -189,6 +200,7 @@
   <p id="rTitle" style="font-weight:900;font-size:18px"></p>
   <p class="reward" id="rReward"></p>
   <p class="rank" id="rRank"></p>
+  <div class="ach" id="rAch" hidden></div>
   <button class="btn" id="againBtn" type="button">再跑一次</button>
   <button class="btn ghost" id="menuBtn" type="button">選別關</button>
   <br><a class="btn ghost" id="islandLink2" href="island.html">🏝 回海嘯島花錢</a>
@@ -708,9 +720,23 @@ const LEVEL1 = {
   covers: [[452,-3],[466,3.5],[480,-4],[494,2],[508,-2.5],[520,3]],
   // ⑤ fire monsters: slow, walk toward you, spit fireballs; touching one hurts
   // ⑤ little kids sitting on the floor: throw remotes (fly) and toy cars (roll) at you
-  minions: { from: 440, to: 526, count: 10, fireEvery: 2.4, fireSpeed: 8, carSpeed: 7 },
+  minions: { from: 440, to: 526, count: 6, fireEvery: 2.4, fireSpeed: 8, carSpeed: 7 },
   // the end boss behind the podium: rolls barrels down the road and breathes fire
   boss: { m: 554, from: 455, barrelEvery: 1.7, barrelSpeed: 9, fireEvery: 3.0, fireSpeed: 10 },
+  achievements: [
+    { id: 'perfect',  name: '👑 完美過關',     desc: '一次都沒失誤',               test: s => s.misses === 0 },
+    { id: 'flash',    name: '⚡ 閃電俠',       desc: '65 秒內跑完',                test: s => s.t < 65 },
+    { id: 'untouch',  name: '🙅 酒鬼摸不到',   desc: '整場沒被酒鬼抱到',           test: s => s.caught === 0 },
+    { id: 'sweeper',  name: '🍾 掃酒王',       desc: '路上的酒全部撞倒',           test: s => s.knocked >= 16 },
+    { id: 'crybaby',  name: '😭 把小屁孩打哭', desc: '用遙控器打中大魔王',         test: s => s.bossCried > 0 },
+    { id: 'homerun',  name: '⚾ 全壘打王',     desc: '打回去 3 個遙控器或火球',     test: s => s.reflected >= 3 },
+    { id: 'shopper',  name: '🛍 逛街掩護',     desc: '鬼媽媽一下都沒抽到你',       test: s => s.whipped === 0 },
+    { id: 'rich',     name: '💰 撿錢達人',     desc: '撿到 30 個金幣',             test: s => s.coins >= 30 },
+    { id: 'iron',     name: '🪨 鐵頭',         desc: '被石頭砸 4 次以上',          test: s => s.rocked >= 4 },
+    { id: 'glue',     name: '💢 熱熔膠收藏家', desc: '被鬼媽媽抽 3 下以上',        test: s => s.whipped >= 3 },
+    { id: 'tipsy',    name: '🥴 酒鬼喝到飽',   desc: '讓酒鬼喝了 8 瓶以上',        test: s => s.drank >= 8 },
+    { id: 'buddy',    name: '🍺 酒鬼的好麻吉', desc: '被酒鬼抱了 3 次以上',        test: s => s.caught >= 3 },
+  ],
   // bottles on the road: knock them over, or the drunk drinks them and speeds up
   bottles: [[20,-3],[36,4],[56,5],[80,-5],[100,3],[128,-2],[150,5],[178,-5],[240,3],[262,-4],[300,5],[340,-3],[365,4],[410,-4],[445,5],[490,-5]],
   // ghost mom patrols an O or an upright 8 and whips you with a glue stick;
@@ -1061,6 +1087,24 @@ function impact(text, color, shake){
   shakeUntil = performance.now() / 1000 + 0.35; shakeAmp = shake || 0.35;
   try { navigator.vibrate && navigator.vibrate(120); } catch(_){}
 }
+const HINTS = {
+  bottle: '🍾 撞倒路上的酒！沒撞到的會被酒鬼喝掉，他會越跑越快喔',
+  thorn:  '🌵 地刺會冒出來又縮回去，看準縮下去的時候衝',
+  rock:   '🪨 看地上的影子，石頭會砸在那裡',
+  ghost:  '👻 鬼媽媽看到你會衝過來抽，抽到會跌坐、變慢喔！等她低頭逛網拍再衝過去',
+  kids:   '👶 小屁孩會丟遙控器跟小車，被砸到會被撞退、變慢；按揮棒把遙控器打回去！',
+  boss:   '🧸 打回去的遙控器砸中大魔王，他會哭著暈 2.5 秒',
+};
+let hintTimer = 0;
+function hint(key){
+  if (S.hinted[key] || !$('hint').hidden) return;      // one at a time; the next waits its turn
+  S.hinted[key] = true;
+  let n = 0; try { n = +localStorage.getItem('etfm-hint-' + key) || 0; } catch(_){}
+  if (n >= 3) return;                                   // seen it three runs: stop nagging
+  try { localStorage.setItem('etfm-hint-' + key, String(n + 1)); } catch(_){}
+  const el = $('hint'); el.textContent = HINTS[key]; el.hidden = false;
+  clearTimeout(hintTimer); hintTimer = setTimeout(() => { el.hidden = true; }, 4200);
+}
 function hurt(kind, text, knock){
   if (S.time < S.hurtUntil) return false;
   S.hurtUntil = S.time + 0.9; S.knockV = knock; S.slowUntil = S.time + 0.5;
@@ -1256,7 +1300,7 @@ const S = { phase: 'menu', time: 0 };
 function reset(){
   Object.assign(S, { x: 0, m: 0, y: 0, vy: 0, onGround: true, djUsed: false, jumpHeld: false, knockV: 0, knockX: 0, slowUntil: 0, downUntil: 0,
     swingUntil: 0, swingCd: 0, wallM: -WALL_START_GAP, cp: 0, cpX: 0, time: 0, caught: 0, pits: 0, shot: 0, hits: 0, rockNext: 0,
-    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99 });
+    stamina: 1, tired: false, coins: 0, flipT: 0, runPhase: 0, gateOpenUntil: 0, gatePassed: false, onMover: null, jumped: false, crouch: false, speared: 0, rocked: 0, thorned: 0, hurtUntil: 0, rockSafe: 0, vmS: RUN, vxS: 0, heldUntil: 0, puked: false, boost: 0, nearSaidAt: -99, knocked: 0, drank: 0, whipped: 0, reflected: 0, bossCried: 0, hinted: {} });
   for (const f of flying) world.remove(f.mesh); flying.length = 0;
   for (const sp of spears){ sp.next = 0; sp.armed = true; }
   for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
@@ -1399,7 +1443,7 @@ function startRun(level){
   if (needLogin()){ showAuth(); return; }
   if (API) fetch(API + '/race_start', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + authToken }, body: JSON.stringify({ level: level.id, device: DEVICE }) }).catch(() => {});
   if (level !== L || !chaser) buildLevel(level);
-  reset(); $('startCard').hidden = true; $('endCard').hidden = true;
+  reset(); $('startCard').hidden = true; $('endCard').hidden = true; $('hint').hidden = true;
   $('gateChip').hidden = true;
   S.phase = 'count'; S.countAt = performance.now();
   if (L.drunk) say(chaser, '你先跑我再追，追到我就對你嘿嘿嘿～', 4, { name: '酒鬼大叔', y: 4.6 });
@@ -1430,6 +1474,25 @@ function finish(){
   $('endTitle').textContent = L.short + ' 通關！';
   $('rTime').textContent = t + ' 秒'; $('rBest').textContent = (newBest ? t : prevBest) + ' 秒' + (newBest ? ' 🆕' : '');
   $('rCoins').textContent = S.coins; $('rCaught').textContent = S.caught + ' 次'; $('rFails').textContent = misses + (clean ? ' 👑 完美' : ' 次');
+  // level 1: achievements; the title is the best thing you did this run
+  if (L.achievements){
+    const got = L.achievements.filter(a => a.test({ ...S, misses, t }));
+    let have = []; const key = 'etfm-ach-' + L.id + '-' + (localStorage.getItem('etfm-username') || 'guest');
+    try { have = JSON.parse(localStorage.getItem(key) || '[]'); } catch(_){}
+    const fresh = got.filter(a => !have.includes(a.id));
+    const all = [...new Set([...have, ...got.map(a => a.id)])];
+    try { localStorage.setItem(key, JSON.stringify(all)); } catch(_){}
+    $('rTitle').textContent = '稱號：' + (got[0] ? got[0].name : '🏃 穩穩跑完');
+    $('rAch').innerHTML = (fresh.length ? '<b class="achNew">🏆 成就已解鎖！</b><br>' + fresh.map(a => `${a.name}<small>（${a.desc}）</small>`).join('<br>') + '<br>' : '') +
+      `<details><summary>成就收集 ${all.length} / ${L.achievements.length}</summary>` +
+      L.achievements.map(a => `<div class="${all.includes(a.id) ? 'on' : 'off'}">${all.includes(a.id) ? a.name : '🔒 ???'}<small>　${a.desc}</small></div>`).join('') + '</details>';
+    $('rAch').hidden = false;
+    $('endCard').hidden = false; $('againBtn').focus();
+    $('rRank').textContent = '';
+    claimReward(reward, t, misses);
+    return;
+  }
+  $('rAch').hidden = true;
   const title = clean ? '👑 完美過關' : S.pits >= 3 ? (L.id === 2 ? '☁️ 高空墜落專家' : '🕳 坑底常客') : S.caught >= 3 ? (L.drunk ? '🍺 酒鬼的好麻吉' : '🦔 刺牆的好朋友')
     : S.hits >= 4 ? '🍢 被烤肉棒串起來' : S.speared >= 4 ? '🎋 竹箭靶子' : S.shot >= 3 ? '🎯 人肉標靶' : S.coins >= 30 ? '💰 撿錢達人' : '🏃 穩穩跑完';
   $('rTitle').textContent = '稱號：' + title;
@@ -1545,6 +1608,14 @@ function thornLevel(o, time){
 }
 function step(dt){
   S.time += dt;
+  if (L.drunk){
+    if (S.time > 1.2) hint('bottle');
+    if (S.m > 132) hint('thorn');
+    if (ghosts.some(g => g.mm - S.m > 0 && g.mm - S.m < 26)) hint('ghost');
+    if (S.m > 222) hint('rock');
+    if (S.m > 428) hint('kids');
+    if (boss && S.m > boss.from) hint('boss');
+  }
   // caught by the drunk: held for a moment (hug from behind, then he throws up)
   if (S.heldUntil){
     if (S.time < S.heldUntil){
@@ -1699,7 +1770,7 @@ function step(dt){
       gh.hitDone = true;
       if (d < 3.4 && S.y < 2 && hurt('hit', '💢 被熱熔膠條抽到！屁股好痛', 6)){
         // the real cost: you sit down rubbing your butt, then limp — and the drunk closes in
-        S.downUntil = S.time + 0.6; S.slowUntil = S.time + 2.0; gh.rushUntil = 0;
+        S.downUntil = S.time + 0.6; S.slowUntil = S.time + 2.0; gh.rushUntil = 0; S.whipped++;
         impact('啪！', '#ff5a3c', 0.6);
         say(gh.g, GHOST_LINES[(Math.random() * GHOST_LINES.length) | 0], 2, { name: '鬼媽媽', y: 3.7 });
       }
@@ -1719,7 +1790,6 @@ function step(dt){
       if (mn.car){
         const mesh = makeCar(); mesh.scale.setScalar(0.75); add(mesh);
         barrels.push({ x: mn.x, m: mn.m - 0.8, vx: dx / d * MN.carSpeed, vm: dm / d * MN.carSpeed, mesh, minM: mn.m - 30 });
-        say(mn.g, '咻咻咻', 0.8, { name: '小屁孩', y: 2.6 });
       } else spitFire(mn.x, mn.m - 0.8, 0.28, MN.fireSpeed, 0, 'kid');
     }
   }
@@ -1727,7 +1797,7 @@ function step(dt){
   if (boss && S.m > boss.from && S.time > boss.stunUntil){
     if (S.time > boss.nextBarrel){
       boss.nextBarrel = S.time + boss.barrelEvery * (0.75 + Math.random() * 0.5); boss.throwT = S.time;
-      say(boss.g, '咻咻咻', 0.9, { name: '小屁孩', y: 9.6 });
+      if ((boss.throws = (boss.throws || 0) + 1) % 3 === 1) say(boss.g, '咻咻咻', 0.9, { name: '小屁孩', y: 9.6 });
       const bx = Math.random() < 0.6 ? S.x + (Math.random() - 0.5) * 3 : (Math.random() * 2 - 1) * (L1_LANE - 1.5);
       const mesh = makeBarrel(); add(mesh);
       barrels.push({ x: Math.max(-L1_LANE + 1, Math.min(L1_LANE - 1, bx)), m: boss.m - 9, vx: 0, vm: -boss.barrelSpeed, mesh, minM: boss.from - 30 });
@@ -1750,13 +1820,13 @@ function step(dt){
     f.m += f.vm * dt; f.x += f.vx * dt; f.life -= dt;
     let gone = f.life <= 0 || Math.abs(f.x) > L1_LANE + 1;
     if (swinging && !f.back && f.m > S.m && f.m - S.m < 2.8 && Math.abs(f.x - S.x) < 1.9){
-      f.back = true; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash(f.from === 'minion' ? '⚾ 火球打回去！' : '⚾ 遙控器打回去！');
+      f.back = true; S.reflected++; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash(f.from === 'minion' ? '⚾ 火球打回去！' : '⚾ 遙控器打回去！');
     }
     for (const c of covers) if (Math.abs(f.m - c.m) < 0.9 && Math.abs(f.x - c.x) < 1.3) gone = true;
     if (!gone && !f.back && Math.abs(f.m - S.m) < 0.75 && Math.abs(f.x - S.x) < 0.85 && S.y < 1.9 && hurt('shot', f.from === 'minion' ? '🔥 被火球燒到！' : '📺 被遙控器砸到！', 7)) gone = true;
     if (!gone && f.back){
       for (const mn of minions) if (Math.hypot(f.m - mn.m, f.x - mn.x) < 1.1){ mn.stunUntil = S.time + 3; gone = true; flash('💫 小屁孩被打哭了！'); say(mn.g, '哇～～', 1.5, { name: '小屁孩', y: 2.6 }); break; }
-      if (!gone && boss && Math.abs(f.m - boss.m) < 3 && Math.abs(f.x) < 3){ boss.stunUntil = S.time + 2.5; gone = true; flash('💥 打中小屁孩！他哭了！'); say(boss.g, '哇～～～', 2, { name: '小屁孩', y: 9.6 }); }
+      if (!gone && boss && Math.abs(f.m - boss.m) < 3 && Math.abs(f.x) < 3){ boss.stunUntil = S.time + 2.5; gone = true; S.bossCried++; flash('💥 打中小屁孩！他哭了！'); say(boss.g, '哇～～～', 2, { name: '小屁孩', y: 9.6 }); }
     }
     if (gone){ world.remove(f.mesh); fireballs.splice(i, 1); }
   }
@@ -1858,8 +1928,8 @@ function step(dt){
     // bottles: knock them over; the ones you leave, he drinks (and gets faster)
     for (const b of bottles){
       if (b.state !== 'up') continue;
-      if (Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.0 && S.y < 1.4){ b.state = 'down'; b.t = 0; b.dir = Math.sign(S.x - b.x) || 1; S.coins++; flash('🍾 酒瓶撞倒！'); }
-      else if (S.wallM >= b.m){ b.state = 'drunk'; b.g.visible = false; S.boost = Math.min(6, S.boost + 1); say(chaser, '嗝～好喝！', 1.5, { name: '酒鬼大叔', y: 4.6 }); flash('🍺 酒鬼喝了一瓶，變快了！'); }
+      if (Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.0 && S.y < 1.4){ b.state = 'down'; b.t = 0; b.dir = Math.sign(S.x - b.x) || 1; S.coins++; S.knocked++; flash('🍾 酒瓶撞倒！'); }
+      else if (S.wallM >= b.m){ b.state = 'drunk'; b.g.visible = false; S.boost = Math.min(6, S.boost + 1); S.drank++; say(chaser, '嗝～好喝！', 1.5, { name: '酒鬼大叔', y: 4.6 }); flash('🍺 酒鬼喝了一瓶，變快了！'); }
     }
   }
   if (S.wallM >= S.m - 0.6){
