@@ -861,7 +861,7 @@ function buildMom(){
   const Cy = (a, b, h, n) => new THREE.CylinderGeometry(a, b, h, n || 16);
   // hair colour runs dark at the roots to ash-blonde at the tips (by height)
   const DARK = new THREE.Color(0x2b1e18), MID = new THREE.Color(0x5a4334), ASH = new THREE.Color(0xc2b3a3);
-  const hairMat = LM(0xffffff, { vertexColors: true, side: THREE.DoubleSide });
+  const hairMat = LM(0xffffff, { vertexColors: true });
   function hairPiece(p, geo, x, y, z, sx, sy, sz, y0, y1){
     const m = part(p, geo, hairMat, x, y, z); m.scale.set(sx || 1, sy || 1, sz || 1);
     const pos = geo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
@@ -911,27 +911,34 @@ function buildMom(){
   const NECK = 2.72, HY = 0.45;
   const headG = new THREE.Group(); headG.position.y = NECK; headG.scale.setScalar(1.4); body.add(headG);   // storybook: a bit big-headed
   const head = part(headG, S(0.5, 32, 22), skin, 0, HY, 0); head.scale.set(0.94, 1.06, 0.96);
-  // hair, hugging the head (no hat!): a crown that stops at the hairline, a
-  // shell round the sides and back that leaves the face open, a long back
-  // curtain, and strands framing the face. One gradient: roots dark → ash tips.
-  const H0 = 0.95, H1 = -1.3;
-  const crown = hairPiece(headG, new THREE.SphereGeometry(0.515, 32, 10, 0, Math.PI * 2, 0, Math.PI * 0.24), 0, HY, 0, 0.97, 1.06, 0.98, H0, H1);
-  const shell = hairPiece(headG, new THREE.SphereGeometry(0.515, 32, 20, Math.PI * 1.74, Math.PI * 1.46, Math.PI * 0.12, Math.PI * 0.66), 0, HY, 0, 0.98, 1.06, 0.99, H0, H1);
-  // side-swept lock from the parting: covers the top corner of the forehead on a slant
-  const lock = hairPiece(headG, new THREE.SphereGeometry(0.52, 20, 10, Math.PI * 1.42, Math.PI * 0.34, Math.PI * 0.2, Math.PI * 0.15), 0, HY, 0, 0.98, 1.06, 0.99, H0, H1);
-  lock.rotation.z = 0.35;
-  hairPiece(headG, S(0.56, 26, 20), 0, HY - 0.55, 0.26, 1.06, 1.75, 0.45, H0, H1);
-  for (const s of [-1, 1]){
-    // long strands framing the face, falling in front of the shoulders
-    const fr = hairPiece(headG, S(0.2, 16, 14), s * 0.47, HY - 0.4, -0.08, 0.42, 2.3, 0.42, H0, H1); fr.rotation.z = s * -0.06;
-    const lo = hairPiece(headG, S(0.2, 16, 12), s * 0.53, HY - 1.02, -0.13, 0.55, 1.4, 0.45, H0, H1); lo.rotation.z = s * 0.2;
-    const tip = hairPiece(headG, S(0.12, 14, 10), s * 0.48, HY - 1.36, -0.15, 1.0, 1.0, 0.7, H0, H1); tip.rotation.z = s * -0.4;
+  // hair: ONE piece over the whole head (no seams, so nothing reads as a hat).
+  // A sphere a touch bigger than the head; the vertices where the face is get
+  // pulled inside the head, which carves a curved hairline. The parting sits a
+  // little left of centre, so the hair dips lower over the right temple.
+  // Plus a long back curtain and two strands framing the face. One gradient:
+  // dark roots → ash-blonde tips.
+  const H0 = 0.95, H1 = -1.2, PART = -0.1;
+  {
+    const geo = new THREE.SphereGeometry(0.525, 96, 64), pos = geo.attributes.position, v = new THREE.Vector3();
+    const ss = k => { k = Math.min(1, Math.max(0, k)); return k * k * (3 - 2 * k); };
+    for (let i = 0; i < pos.count; i++){
+      v.fromBufferAttribute(pos, i);
+      const d = (v.x - PART) / 0.43, line = 0.38 - 0.3 * d * d;   // hairline height (arch, highest at the parting)
+      // soft edge: vertices sink gradually, so the hairline is smooth, not stepped
+      const k = ss((line - v.y) / 0.05) * ss((0.47 - Math.abs(v.x)) / 0.04) * ss((-0.05 - v.z) / 0.06);
+      if (k > 0){ v.multiplyScalar(1 - 0.45 * k); pos.setXYZ(i, v.x, v.y, v.z); }
+    }
+    geo.computeVertexNormals();
+    hairPiece(headG, geo, 0, HY, 0.01, 0.98, 1.06, 0.99, H0, H1);
   }
-  // side parting line on top (a little left of centre)
-  const parting = part(headG, sbRoundBox(0.022, 0.012, 0.34, 0.006), skin, -0.1, HY + 0.535, -0.16, true); parting.rotation.x = -0.35;
+  hairPiece(headG, S(0.56, 26, 20), 0, HY - 0.45, 0.24, 1.04, 1.45, 0.42, H0, H1);
+  for (const s of [-1, 1]){
+    // long strands framing the face, lying in front of the shoulders
+    const fr = hairPiece(headG, S(0.2, 16, 16), s * 0.47, HY - 0.62, -0.08, 0.4, 2.75, 0.4, H0, H1); fr.rotation.z = s * -0.05;
+  }
   for (let i = 0; i < 4; i++){   // wavy ends at the back
     const x = (i - 1.5) * 0.24;
-    hairPiece(headG, S(0.17, 14, 10), x, HY - 1.38 + Math.abs(x) * 0.15, 0.32, 1, 1.2, 0.8, H0, H1);
+    hairPiece(headG, S(0.16, 14, 10), x, HY - 1.2 + Math.abs(x) * 0.12, 0.3, 1, 1.1, 0.75, H0, H1);
   }
   // face
   const ink = flat(0x241812), white = flat(0xffffff), lip = flat(0xc96a6a), mouthDark = flat(0x6e2626);
