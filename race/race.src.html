@@ -371,7 +371,7 @@ const LEVEL1 = {
     { id: 'untouch',  name: '🙅 酒鬼摸不到',   desc: '整場沒被酒鬼抱到',           test: s => s.caught === 0 },
     { id: 'sweeper',  name: '🍾 掃酒王',       desc: '路上的酒全部撞倒',           test: s => s.knocked >= 10 },
     { id: 'laundry',  name: '👕 床單沒糊臉',   desc: '頂樓曬衣場一次都沒被床單打到', test: s => s.sheeted === 0 },
-    { id: 'homerun',  name: '⚾ 全壘打王',     desc: '打回去 3 個遙控器或火球',     test: s => s.reflected >= 3 },
+    { id: 'homerun',  name: '⚾ 全壘打王',     desc: '打回去 3 台小車或遙控器',     test: s => s.reflected >= 3 },
     { id: 'shopper',  name: '🛍 逛街掩護',     desc: '鬼媽媽一下都沒抽到你',       test: s => s.whipped === 0 },
     { id: 'rich',     name: '💰 撿錢達人',     desc: '撿到 30 個金幣',             test: s => s.coins >= 30 },
     { id: 'iron',     name: '🛏 枕頭靶',       desc: '被樓上丟的東西砸 4 次以上',   test: s => s.rocked >= 4 },
@@ -823,7 +823,7 @@ const HINTS = {
   spear:  '💦 房門口會噴水槍！水槍頭發紅就要射了，「跳」過去，噴到會看不清楚',
   rock:   '🛏 樓上會丟枕頭、球、臉盆下來，看地上的影子閃開',
   ghost:  '👻 鬼媽媽看到你會衝過來抽，抽到會跌坐、變慢喔！等她低頭逛網拍再衝過去',
-  kids:   '👶 小屁孩丟玩具車跟遙控器！看他「舉手」就要閃，或按揮棒把遙控器打回去！',
+  kids:   '👶 小屁孩丟玩具車跟遙控器！看他「舉手」就要閃，或按揮棒打回去砸他！',
   laundry:'👕 頂樓曬衣場：大風會把你吹歪（看箭頭）、床單擋路、襪子內褲亂飛！盆栽要跳過去。',
   boss:   '🧸 打回去的遙控器砸中大魔王，他會哭著暈 2.5 秒',
   ghostDrunk: '👻 酒鬼喝超過一半的酒了！鬼媽媽會改去抽他！',
@@ -899,17 +899,22 @@ function updateLaundry(time){
   }
 }
 // a sock or a pair of undies blowing across the roof at chest height
+const _clothTex = {};
+function clothTexture(kind){
+  if (_clothTex[kind]) return _clothTex[kind];
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+  x.fillStyle = 'rgba(255,255,255,0.85)'; x.beginPath(); x.arc(128, 128, 118, 0, Math.PI * 2); x.fill();
+  x.lineWidth = 8; x.strokeStyle = '#ff7a59'; x.stroke();
+  x.font = '170px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(kind === 'sock' ? '🧦' : '🩲', 128, 140);
+  return (_clothTex[kind] = new THREE.CanvasTexture(c));
+}
 function spawnFlyingCloth(){
   const kind = Math.random() < 0.55 ? 'sock' : 'undies', dir = Math.random() < 0.5 ? -1 : 1;
+  // drawn as a big emoji card so you can tell what it is at a glance on a phone
   const g = new THREE.Group();
-  if (kind === 'sock'){
-    const leg = new THREE.Mesh(sbRoundBox(0.32, 0.7, 0.14, 0.06), LM([0xffffff, 0xff8fb0, 0x6fb3e0][(Math.random() * 3) | 0])); g.add(leg);
-    const toe = new THREE.Mesh(sbRoundBox(0.45, 0.3, 0.14, 0.06), leg.material); toe.position.set(0.1, -0.35, 0); g.add(toe);
-  } else {
-    const u = new THREE.Mesh(sbRoundBox(0.8, 0.45, 0.12, 0.08), LM([0xffcf5a, 0x7cc79a, 0xff8fb0][(Math.random() * 3) | 0])); g.add(u);
-    const band = new THREE.Mesh(sbRoundBox(0.84, 0.1, 0.14, 0.03), LM(0xffffff)); band.position.y = 0.22; g.add(band);
-  }
-  sbOutline(g, 0.03);
+  const card = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: clothTexture(kind), transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+  card.userData.noLine = true; g.add(card);
   const m = S.m + 5 + Math.random() * 9, x = -dir * (L1_LANE + 2), y = 0.8 + Math.random() * 1.2;
   g.position.set(x, FY(m) + y, -m); add(g);
   flyingCloth.push({ mesh: g, m, x, y, vx: dir * (6 + Math.random() * 3), kind, hit: false });
@@ -1344,7 +1349,7 @@ const INTRO = [
   { at: 'drunk',  title: '🍺 酒鬼大叔', text: '從玄關一路逃上頂樓陽台！他一直在後面追你，被他從後面抱住會被定住，還會吐你一身！' },
   { at: 'bottle', title: '🍾 路上的酒', text: '撞倒加金幣。漏掉的會被酒鬼喝掉，他會越跑越快——左上角看他喝了幾瓶。' },
   { at: 'ghost',  title: '👻 鬼媽媽',   text: '看到你就衝過來抽熱熔膠條，抽到會跌坐、變慢。等她低頭逛網拍再衝過去！酒鬼喝超過一半，她會改去抽酒鬼。' },
-  { at: 'kid',    title: '🧸 小屁孩',   text: '頂樓遊戲室的小屁孩坐在地上丟玩具車跟遙控器。看他舉手就閃開，或按「揮棒」把遙控器打回去！' },
+  { at: 'kid',    title: '🧸 小屁孩',   text: '頂樓遊戲室的小屁孩坐在地上丟玩具車跟遙控器。看他舉手就閃開，或按「揮棒」把小車、遙控器打回去！' },
   { at: 'all',    title: '👕 頂樓曬衣場', text: '最後在頂樓陽台：大風會把你吹歪、床單擋路、襪子內褲亂飛，地上的盆栽要跳過去。' },
   { at: 'all',    title: '⚠️ 路上的機關', text: '🦶 按摩腳墊會冒凸點　🧱 樂高踩到很痛　🛏 看影子躲樓上丟的東西　💦 房門口的水槍要跳過　🕳 樓上地板破洞，掉下去要重爬樓梯' },
   { at: 'all',    title: '🎮 怎麼操作', text: isTouch ? '左邊搖桿移動；右邊「跳」（空中再按一次＝二段跳）、「衝刺」、「揮棒」；左上「重來」。'
@@ -1647,7 +1652,7 @@ function step(dt){
   }
   for (let i = flyingCloth.length - 1; i >= 0; i--){
     const fc = flyingCloth[i];
-    fc.x += fc.vx * dt; fc.mesh.position.x = fc.x; fc.mesh.rotation.z += dt * 6; fc.mesh.position.y = FY(fc.m) + fc.y + Math.sin(S.time * 6 + i) * 0.2;
+    fc.x += fc.vx * dt; fc.mesh.position.x = fc.x; fc.mesh.rotation.z = Math.sin(S.time * 5 + i) * 0.5; fc.mesh.position.y = FY(fc.m) + fc.y + Math.sin(S.time * 6 + i) * 0.2;
     if (!fc.hit && Math.abs(S.m - fc.m) < 0.7 && Math.abs(S.x - fc.x) < 0.7 && Math.abs((S.y || 0) + 1 - fc.y) < 0.9 && hurt('hit', fc.kind === 'sock' ? '🧦 被飛來的襪子打到！' : '🩲 內褲糊臉！', 4)) fc.hit = true;
     if (Math.abs(fc.x) > L1_LANE + 3){ world.remove(fc.mesh); flyingCloth.splice(i, 1); }
   }
@@ -1799,7 +1804,7 @@ function step(dt){
       mn.car = !mn.car;
       if (mn.car){
         const mesh = makeCar(); mesh.scale.setScalar(0.75); add(mesh);
-        barrels.push({ x: mn.x, m: mn.m - 0.8, vx: dx / d * MN.carSpeed, vm: dm / d * MN.carSpeed, mesh, minM: mn.m - 30 });
+        barrels.push({ x: mn.x, m: mn.m - 0.8, vx: dx / d * MN.carSpeed, vm: dm / d * MN.carSpeed, mesh, minM: mn.m - 30, kid: true });
       } else spitFire(mn.x, mn.m - 0.8, 0.28, MN.fireSpeed, 0, 'kid');
     }
   }
@@ -1820,9 +1825,15 @@ function step(dt){
   for (let i = barrels.length - 1; i >= 0; i--){
     const b = barrels[i];
     b.m += b.vm * dt; b.x += b.vx * dt;
-    let gone = b.m < b.minM || Math.abs(b.x) > L1_LANE + 1;
+    let gone = (!b.back && b.m < b.minM) || Math.abs(b.x) > L1_LANE + 1;
     for (const c of covers) if (Math.abs(b.m - c.m) < 1.2 && Math.abs(b.x - c.x) < 2) gone = true;
-    if (!gone && Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.2 && S.y < 1.3 && hurt('hit', '🚗 被小車撞飛！', 10)) gone = true;
+    if (b.kid && swinging && !b.back && b.m > S.m && b.m - S.m < 2.8 && Math.abs(b.x - S.x) < 1.9){
+      b.back = true; S.reflected++; b.vm = Math.abs(b.vm) + 6; b.vx = -b.vx * 0.3; b.maxM = b.m + 30; flash('⚾ 小車打回去！');
+    }
+    if (b.back){
+      if (b.m > b.maxM) gone = true;
+      for (const mn of minions) if (!gone && Math.hypot(b.m - mn.m, b.x - mn.x) < 1.3){ mn.stunUntil = S.time + 3; gone = true; flash('💫 小屁孩被自己的車撞哭了！'); say(mn.g, '哇～～', 1.5, { name: '小屁孩', y: 2.6 }); }
+    } else if (!gone && Math.abs(b.m - S.m) < 1.0 && Math.abs(b.x - S.x) < 1.2 && S.y < 1.3 && hurt('hit', '🚗 被小車撞飛！', 10)) gone = true;
     if (gone){ world.remove(b.mesh); barrels.splice(i, 1); }
   }
   for (let i = fireballs.length - 1; i >= 0; i--){
@@ -1830,7 +1841,7 @@ function step(dt){
     f.m += f.vm * dt; f.x += f.vx * dt; f.life -= dt;
     let gone = f.life <= 0 || Math.abs(f.x) > L1_LANE + 1;
     if (swinging && !f.back && f.m > S.m && f.m - S.m < 2.8 && Math.abs(f.x - S.x) < 1.9){
-      f.back = true; S.reflected++; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash(f.from === 'minion' ? '⚾ 火球打回去！' : '⚾ 遙控器打回去！');
+      f.back = true; S.reflected++; f.vm = Math.abs(f.vm) + 6; f.vx = -f.vx * 0.3; f.life = 3; f.mesh.children[0].material = mats.fireBack; flash('⚾ 遙控器打回去！');
     }
     for (const c of covers) if (Math.abs(f.m - c.m) < 0.9 && Math.abs(f.x - c.x) < 1.3) gone = true;
     if (!gone && !f.back && Math.abs(f.m - S.m) < 0.75 && Math.abs(f.x - S.x) < 0.85 && S.y < 1.9 && hurt('shot', f.from === 'minion' ? '🔥 被火球燒到！' : '📺 被遙控器砸到！', 7)) gone = true;
