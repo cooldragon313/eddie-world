@@ -552,10 +552,10 @@ function groundAt(m, x){
 
 // ---------- fire monster + end boss models ----------
 function makeMinion(){
-  // a little kid sitting on the floor (a small copy of the end boss, no sign, no toys)
+  // a little kid sitting on the floor (the shared toddler, holding the next toy he'll throw)
   const g = new THREE.Group(), kid = makeKid(false);
   kid.scale.setScalar(0.32); g.add(kid);
-  g.userData.armR = kid.userData.armR; g.userData.armL = kid.userData.armL;
+  g.userData.armR = kid.userData.armR; g.userData.armL = kid.userData.armL; g.userData.kid = kid.userData.kid;
   return g;
 }
 // ---------- speech bubbles (above a 3D object, or a caption when it's off screen) ----------
@@ -760,6 +760,7 @@ function makeKid(isBoss){
   for (const l of k.legs){ l.rotation.x = 1.45; } k.legs[0].rotation.z = -0.25; k.legs[1].rotation.z = 0.25;
   k.body.position.y = -0.24;
   g.userData.armL = k.arms[0]; g.userData.armR = k.arms[1]; g.userData.kid = k;
+  const rem = makeRemote(); rem.scale.setScalar(0.55); rem.position.copy(k.toy.position); rem.visible = false; k.arms[1].userData.elbow.add(rem); k.remote = rem;
   if (!isBoss) return g;
   const name = bossNameSprite('小屁孩大魔王'); name.position.set(0, 8.8, 0); g.add(name);
   // toy pile beside him
@@ -794,10 +795,11 @@ function makeSaturn(){
 }
 function makeRemote(){
   const g = new THREE.Group();
-  const b = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.95), mats.remote); g.add(b);
+  const b = new THREE.Mesh(sbRoundBox(0.38, 0.14, 0.95, 0.05), mats.remote); g.add(b);
   for (const [bx, bz, c] of [[0, -0.3, mats.nose], [-0.09, 0, mats.phone], [0.09, 0, mats.phone], [0, 0.2, mats.gold]]){
     const k = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), c); k.position.set(bx, 0.08, bz); g.add(k);
   }
+  sbOutline(g, 0.03);
   return g;
 }
 function makeFireball(r){
@@ -1540,7 +1542,7 @@ function spitFire(x, m, r, speed, angle, from){
   const dx = S.x - x, dm = S.m - m, d = Math.hypot(dx, dm) || 1;
   const ca = Math.cos(angle), sa = Math.sin(angle);
   const ux = (dx * ca - dm * sa) / d, um = (dx * sa + dm * ca) / d;
-  const mesh = from === 'minion' ? makeFireball(r) : makeRemote(); add(mesh);
+  const mesh = from === 'minion' ? makeFireball(r) : makeRemote(); if (from !== 'minion') mesh.scale.setScalar(1.9); add(mesh);
   fireballs.push({ x, m, vx: ux * speed, vm: um * speed, mesh, back: false, life: 4, r, from });
 }
 // thorn state: 1 = up (hurts), 0.35 = poking (about to come up), 0 = down (safe)
@@ -2018,7 +2020,8 @@ function render(dt, clock){
     // wind-up: arm cocked back over the head; release: snaps forward
     mn.g.userData.armR.rotation.x = wind > 0 ? 2.6 * wind : thr < 0.35 ? 2.6 * (1 - thr / 0.35) - 1.2 * Math.sin(thr / 0.35 * Math.PI) : 0;
     if (k){
-      k.toy.visible = !(thr < 0.6);
+      const held = !(thr < 0.6);   // next throw alternates: car, remote, car…
+      k.toy.visible = held && !mn.car; k.remote.visible = held && !!mn.car;
       k.face.set(stun ? 'cry' : wind > 0 || thr < 0.4 ? 'naughty' : 'smile');
       k.head.rotation.z = stun ? Math.sin(t * 14) * 0.15 : 0;
     }
