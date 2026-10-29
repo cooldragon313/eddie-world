@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>101 跑酷</title>
+<!--
+  SOURCE — edit this file, then run:  python tools/build_family.py --only tower
+  艾迪的提案（docs/PLAN-101跑酷.md）：從一樓往上跳木頭塊，一層 +10 金幣，爬到 101 樓頂，
+  最後抓著避雷針擺大金剛姿勢。側面看的往上爬跑酷，手機直式也好玩。
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Huninn&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+  :root{
+    --sb-paper:#fff8ec; --sb-ink:#5b3a29; --sb-text:#4a3426; --sb-muted:#9a7d5f; --sb-gold-soft:#ffcf5a; --sb-sky:#6fb3e0;
+    --sb-font:"Fredoka","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --sb-pop:"Huninn","Fredoka","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+    color-scheme:light;
+  }
+  html,body{height:100%}
+  body{margin:0;position:fixed;inset:0;overflow:hidden;background:#8cc4ea;color:var(--sb-text);font-family:var(--sb-font);
+       user-select:none;-webkit-user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent}
+  #stage{position:fixed;inset:0}
+  .hud{position:fixed;z-index:5;display:flex;gap:6px;pointer-events:none}
+  .hud.tl{left:calc(8px + env(safe-area-inset-left,0px));top:calc(8px + env(safe-area-inset-top,0px));flex-direction:column;align-items:flex-start}
+  .hud.tr{right:calc(8px + env(safe-area-inset-right,0px));top:calc(8px + env(safe-area-inset-top,0px));flex-direction:column;align-items:flex-end}
+  .chip{background:rgba(255,248,236,.94);border:2px solid var(--sb-ink);border-radius:999px;padding:3px 12px;font:700 15px/1.2 var(--sb-font);color:var(--sb-ink);box-shadow:0 3px 0 rgba(91,58,41,.25)}
+  .chip.big{font-size:20px;padding:4px 14px}
+  .hud button{pointer-events:auto;cursor:pointer}
+  #flash{position:fixed;left:50%;top:22%;transform:translateX(-50%) scale(.85);z-index:8;font:20px/1.2 var(--sb-pop);color:var(--sb-ink);background:#fff8ec;
+    border:2.5px solid var(--sb-ink);border-radius:999px;padding:6px 18px;box-shadow:0 4px 0 rgba(91,58,41,.35);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;white-space:nowrap}
+  #flash.on{opacity:1;transform:translateX(-50%) scale(1)}
+  /* touch controls */
+  .tb{position:fixed;z-index:6;width:76px;height:76px;border-radius:50%;border:3px solid var(--sb-ink);background:rgba(255,248,236,.9);font:900 26px var(--sb-font);color:var(--sb-ink);
+      display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 rgba(91,58,41,.35);touch-action:none}
+  .tb.on{transform:translateY(3px);box-shadow:0 1px 0 rgba(91,58,41,.35)}
+  #tL{left:calc(14px + env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+  #tR{left:calc(102px + env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+  #tJ{right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));width:92px;height:92px;background:var(--sb-gold-soft);font-size:20px}
+  @media (hover:hover) and (pointer:fine){ .tb{display:none} }
+  .card{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(20,30,60,.45);padding:14px}
+  .card[hidden]{display:none!important}
+  .card>div{background:var(--sb-paper);border:3px solid var(--sb-ink);border-radius:22px;padding:16px 20px;max-width:420px;width:100%;max-height:92vh;overflow:auto;text-align:center;box-shadow:0 8px 0 rgba(91,58,41,.25)}
+  .card h1{font:900 40px/1.1 var(--sb-font);margin:0;color:#ffcf5a;-webkit-text-stroke:5px var(--sb-ink);paint-order:stroke fill;text-shadow:0 5px 0 var(--sb-ink);transform:rotate(-2deg)}
+  .card .sub{display:inline-block;margin:10px 0 4px;background:#3a7bc8;color:#fff;font:900 15px var(--sb-font);padding:2px 14px;border:2.5px solid var(--sb-ink);border-radius:999px}
+  .card ul{text-align:left;font-size:14px;line-height:1.6;padding-left:20px;margin:8px 0}
+  .btn{display:inline-block;font:900 19px var(--sb-font);background:var(--sb-gold-soft);color:var(--sb-ink);border:2.5px solid var(--sb-ink);border-radius:999px;padding:8px 24px;margin:6px 4px 0;
+       cursor:pointer;box-shadow:0 4px 0 rgba(91,58,41,.35);text-decoration:none}
+  .btn.ghost{background:#fff;font-size:15px;padding:6px 16px}
+  .btn[hidden],.homeLink[hidden]{display:none}
+  .muted{color:var(--sb-muted);font-size:13px}
+  #win{position:fixed;left:50%;top:18%;transform:translate(-50%,-50%) scale(0);z-index:9;pointer-events:none;text-align:center;white-space:nowrap}
+  #win.go{animation:wstamp 1s cubic-bezier(.2,1.4,.4,1) forwards}
+  @keyframes wstamp{to{transform:translate(-50%,-50%) scale(1) rotate(-3deg)}}
+  #win b{display:block;font:900 min(12vw,60px)/1 var(--sb-font);color:#fff;-webkit-text-stroke:5px var(--sb-ink);paint-order:stroke fill;text-shadow:0 6px 0 var(--sb-ink)}
+  #win span{display:inline-block;margin-top:8px;background:#e0584a;color:#fff;font:900 min(6vw,26px)/1.2 var(--sb-font);padding:5px 18px;border:3px solid var(--sb-ink);border-radius:999px}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="hud tl">
+  <span class="chip big">🏢 <b id="hFloor">1</b> / 101F</span>
+  <span class="chip">🪙 +<b id="hCoins">0</b>　⏱ <b id="hTime">0:00</b></span>
+</div>
+<div class="hud tr">
+  <button class="chip" id="soundBtn" type="button">🔊</button>
+  <button class="chip" id="quitBtn" type="button">🏠 存檔回家</button>
+</div>
+<div id="flash"></div>
+<div id="win"><b>🏙️ 101 征服者！</b><span>爬到台北 101 頂端了！</span></div>
+<div class="tb" id="tL">◀</div><div class="tb" id="tR">▶</div><div class="tb" id="tJ">⤴ 跳</div>
+
+<div class="card" id="startCard"><div>
+  <h1>101 跑酷</h1>
+  <div class="sub">艾迪的提案 · 爬到台北 101 頂端</div>
+  <ul>
+    <li>跳木頭塊往上爬，<b>每到新的一層 +10 金幣</b>，101 層全爬完 = $1010！</li>
+    <li>每 10 層有<b>檢查點</b>（大樓板），摔下來會被接住；下次可以從檢查點繼續。</li>
+    <li>越高越難：會動的木塊、會碎的木塊、彈簧、大鳥、颱風……</li>
+    <li>操作：◀ ▶ 移動、⤴ 跳（電腦：A/D 或方向鍵、空白鍵跳）。</li>
+  </ul>
+  <button class="btn" id="startBtn" type="button">從 1F 開始</button>
+  <button class="btn" id="contBtn" type="button" hidden></button>
+  <div><a class="btn ghost homeLink" href="index.html">🏠 回土星之家</a></div>
+  <p class="muted" id="loginLine"></p>
+</div></div>
+
+<div class="card" id="endCard" hidden><div>
+  <h1 id="endTitle">存檔了！</h1>
+  <div class="sub" id="endSub"></div>
+  <p id="endLine"></p>
+  <button class="btn" id="againBtn" type="button">繼續爬</button>
+  <div><a class="btn ghost homeLink" href="index.html">🏠 回土星之家</a></div>
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*@@INCLUDE:LOOK@@*/
+
+/*@@INCLUDE:AVATAR@@*/
+
+(() => {
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+let flashT = 0;
+function flash(t, secs){ const f = $('flash'); f.textContent = t; f.classList.add('on'); clearTimeout(flashT); flashT = setTimeout(() => f.classList.remove('on'), (secs || 1.3) * 1000); }
+
+// ---------- world constants ----------
+const FLOORS = 101, H = 4.6, W = 15, HALFW = W / 2;   // narrow enough that a phone in portrait sees the next way up     // floor height, tower width
+const GRAV = 30, JUMP_V = 13.2, SPRING_V = 21, RUN = 7.5;
+const topY = FLOORS * H;
+
+// ---------- renderer ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+$('stage').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 600);
+scene.add(new THREE.HemisphereLight(0xfff2dc, 0x8aa0b8, 0.85));
+const sun = new THREE.DirectionalLight(0xffeccc, 0.6); sun.position.set(10, 30, 20); scene.add(sun);
+function fit(){ const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.fov = w < h ? 70 : 50; camera.updateProjectionMatrix(); }
+addEventListener('resize', fit); fit();
+const LM = (c, o) => new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {}));
+const BM = c => new THREE.MeshBasicMaterial({ color: c });
+function canvasTex(w, h, paint){ const c = document.createElement('canvas'); c.width = w; c.height = h; paint(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); return t; }
+
+// ---------- sky: day → sunset → night as you climb ----------
+const SKY = [[0, new THREE.Color(0x8cc4ea)], [0.45, new THREE.Color(0xa9d6f2)], [0.62, new THREE.Color(0xffb47a)], [0.8, new THREE.Color(0x6a4b8c)], [1, new THREE.Color(0x1d2550)]];
+scene.background = new THREE.Color(0x8cc4ea);
+function skyAt(k){ for (let i = 1; i < SKY.length; i++) if (k <= SKY[i][0]){ const [a, ca] = SKY[i - 1], [b, cb] = SKY[i]; return ca.clone().lerp(cb, (k - a) / (b - a)); } return SKY[SKY.length - 1][1]; }
+// stars + Saturn up high
+{ const g = new THREE.BufferGeometry(), pts = [];
+  for (let i = 0; i < 500; i++) pts.push((Math.random() - 0.5) * 400, topY * 0.7 + Math.random() * 260, -120 - Math.random() * 60);
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xfff3c4, size: 1.4 }))); }
+const saturn = new THREE.Group(); saturn.position.set(-55, topY + 30, -140); scene.add(saturn);
+{ saturn.add(new THREE.Mesh(new THREE.SphereGeometry(16, 32, 20), BM(0xf2b26a)));
+  const ring = new THREE.Mesh(new THREE.RingGeometry(21, 32, 64), new THREE.MeshBasicMaterial({ color: 0xffe0a8, side: THREE.DoubleSide, transparent: true, opacity: 0.8 })); ring.rotation.x = 1.25; ring.rotation.y = 0.3; saturn.add(ring); }
+
+// ---------- the tower: 8 stacked "flower" sections like Taipei 101 + a spire ----------
+const tower = new THREE.Group(); scene.add(tower);
+const glassTex = canvasTex(128, 128, (x, w, h) => {
+  x.fillStyle = '#4f9c95'; x.fillRect(0, 0, w, h);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++){ x.fillStyle = (i + j) % 3 ? '#7cc7bd' : '#a6e0d6'; x.fillRect(i * 32 + 3, j * 32 + 3, 26, 26); }
+});
+glassTex.wrapS = glassTex.wrapT = THREE.RepeatWrapping;
+{
+  const body = new THREE.Mesh(new THREE.BoxGeometry(W + 2, topY, 3), new THREE.MeshLambertMaterial({ map: glassTex }));
+  glassTex.repeat.set(6, FLOORS); body.position.set(0, topY / 2, -3.2); tower.add(body);
+  // the flared sections (every 8 floors from 25F) — the shape everyone knows
+  const sectionMat = LM(0x3f8b84);
+  for (let f = 25; f < 92; f += 8){
+    const wedge = new THREE.Mesh(new THREE.CylinderGeometry(W / 2 + 1.8, W / 2 + 0.6, 0.9, 4, 1), sectionMat);
+    wedge.rotation.y = Math.PI / 4; wedge.scale.z = 0.25; wedge.position.set(0, f * H - 0.2, -2.6); tower.add(wedge);
+    for (const s of [-1, 1]){ const ruyi = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.22, 8, 16), LM(0xffcf5a)); ruyi.position.set(s * 6, f * H + 1.6, -1.6); tower.add(ruyi); }
+  }
+  // the crown + spire with a lightning rod on top
+  const crown = new THREE.Mesh(new THREE.BoxGeometry(8, 6, 3), LM(0x3f8b84)); crown.position.set(0, topY + 3, -3.2); tower.add(crown);
+  const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.9, 16, 10), LM(0xcfd6dc)); spire.position.set(0, topY + 14, -1); tower.add(spire);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff5a4a })); tip.position.set(0, topY + 22.2, -1); tower.add(tip);
+  tower.userData.tip = tip;
+  // a little city at the bottom
+  for (let i = 0; i < 40; i++){
+    const hgt = 3 + Math.random() * 14, b = new THREE.Mesh(new THREE.BoxGeometry(3 + Math.random() * 4, hgt, 3 + Math.random() * 4), LM([0xe8d6b8, 0xc9d7e0, 0xf2c9a8, 0xbfe0cc][i % 4]));
+    const sx = (i % 2 ? 1 : -1) * (14 + Math.random() * 40); b.position.set(sx, hgt / 2, -10 - Math.random() * 40); scene.add(b);
+  }
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 200), LM(0x9cc98a)); ground.rotation.x = -Math.PI / 2; ground.position.set(0, -0.05, -40); scene.add(ground);
+}
+sbOutline(tower, 0.05);
+
+// ---------- floors + wooden blocks (generated, same layout every time) ----------
+function rng(seed){ let s = seed * 9301 + 49297; return () => ((s = (s * 9301 + 49297) % 233280) / 233280); }
+const plats = [];           // { x, y, w, kind:'ledge'|'block', type, floor, mesh, ... }
+const woodTex = canvasTex(128, 64, (x, w, h) => { x.fillStyle = '#c98a4a'; x.fillRect(0, 0, w, h); x.strokeStyle = '#a8743f'; x.lineWidth = 3; for (let i = 1; i < 4; i++){ x.beginPath(); x.moveTo(0, i * h / 4 + Math.sin(i) * 3); x.lineTo(w, i * h / 4 - Math.sin(i) * 3); x.stroke(); } });
+const MAT = {
+  ledge: LM(0xe9e2d4), cp: LM(0xffe08a), block: new THREE.MeshLambertMaterial({ map: woodTex }), move: LM(0xd99a5a), crumble: LM(0xb57c48),
+  spring: LM(0xe0584a), coil: LM(0xb8c0c8),
+};
+function labelSprite(text, color){
+  const t = canvasTex(256, 96, (x, w, h) => { x.font = '900 64px Fredoka, "Noto Sans TC", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 10; x.strokeStyle = '#5b3a29'; x.strokeText(text, w / 2, h / 2); x.fillStyle = color || '#fff'; x.fillText(text, w / 2, h / 2); });
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true })); s.scale.set(3, 1.1, 1); return s;
+}
+function addPlat(p){
+  const thick = p.kind === 'ledge' ? 0.6 : 0.55, depth = p.kind === 'ledge' ? 3 : 1.6;
+  const g = new THREE.Group();
+  const mat = p.kind === 'ledge' ? (p.cp ? MAT.cp : MAT.ledge) : MAT[p.type === 'static' ? 'block' : p.type];
+  const m = new THREE.Mesh(sbRoundBox(p.w, thick, depth, 0.12), mat); m.position.y = -thick / 2; g.add(m);
+  if (p.type === 'spring'){ const c = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.5, 10), MAT.coil); c.position.y = 0.2; g.add(c); const top = new THREE.Mesh(sbRoundBox(1, 0.18, 1, 0.06), MAT.spring); top.position.y = 0.5; g.add(top); p.springTop = top; }
+  if (p.kind === 'ledge' && p.floor > 0){ const lab = labelSprite(p.floor + 'F', p.cp ? '#ffcf5a' : '#fff'); lab.position.set(p.x - p.w / 2 + 1.4, 1.2, 0.4); g.add(lab); }
+  if (p.cp){ const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.4, 8), LM(0x8a5a32)); pole.position.set(p.x + p.w / 2 - 1.5 - p.x, 1.2, -0.5); g.add(pole);
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshBasicMaterial({ color: 0xe0584a, side: THREE.DoubleSide })); fl.position.set(pole.position.x + 0.6, 2.0, -0.5); g.add(fl); }
+  g.position.set(p.x, p.y, 0); sbOutline(g, 0.04); scene.add(g); p.mesh = g; p.x0 = p.x; p.alive = true;
+  plats.push(p); return p;
+}
+const LEDGE_X = [0];
+// floor 0: the street; every 10th floor: a full-width checkpoint slab
+addPlat({ kind: 'ledge', floor: 0, x: 0, y: 0, w: W, cp: true });
+for (let n = 1; n <= FLOORS; n++){
+  const r = rng(n * 7 + 3), cp = n % 10 === 0 || n === FLOORS;
+  const prevX = LEDGE_X[n - 1];
+  let x = cp ? 0 : clamp(prevX + (r() < 0.5 ? -1 : 1) * (3.5 + r() * 2.5), -HALFW + 2.5, HALFW - 2.5);
+  if (!cp && Math.abs(x - prevX) < 3) x = clamp(prevX + (prevX > 0 ? -4.5 : 4.5), -HALFW + 2.5, HALFW - 2.5);
+  const w = cp ? W : (n < 20 ? 4.4 : n < 50 ? 3.8 : 3.2);
+  LEDGE_X[n] = x;
+  addPlat({ kind: 'ledge', floor: n, x, y: n * H, w, cp });
+  // the way up from floor n-1: a spring on the old ledge, or a wooden block halfway
+  const midX = (prevX + x) / 2 + (r() - 0.5) * 1.5, midY = (n - 1) * H + 2.35;
+  const pool = ['static'];
+  if (n >= 10) pool.push('move', 'move');
+  if (n >= 25) pool.push('crumble', 'crumble');
+  if (n >= 40) pool.push('spring');
+  if (n >= 70) pool.push('move', 'crumble');
+  const type = pool[(r() * pool.length) | 0];
+  if (type === 'spring'){
+    addPlat({ kind: 'block', type: 'spring', x: clamp(x + (prevX < x ? -1.2 : 1.2), -HALFW + 1, HALFW - 1), y: (n - 1) * H + 0.55, w: 1.4, floor: n });
+  } else {
+    const bw = type === 'crumble' ? 2 : n < 30 ? 2.6 : 2.1;
+    addPlat({ kind: 'block', type, x: midX, y: midY, w: bw, floor: n, range: 1.6 + Math.min(2.5, n / 40), speed: 1.2 + n / 45, ph: r() * 6 });
+  }
+}
+// birds (20F+) and gusts (60F+)
+const birds = [];
+for (let n = 20; n < FLOORS; n += 3){
+  const r = rng(n * 31 + 1), g = new THREE.Group();
+  const bodyM = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 8), LM(0xffffff)); bodyM.scale.set(1.4, 1, 1); g.add(bodyM);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.35, 6), LM(0xffb02e)); beak.rotation.z = -Math.PI / 2; beak.position.x = 0.7; g.add(beak);
+  const wings = [-1, 1].map(s => { const wg = new THREE.Mesh(sbRoundBox(0.6, 0.08, 0.9, 0.04), LM(0xdfe8ee)); wg.position.set(-0.1, 0.15, s * 0.55); g.add(wg); return wg; });
+  sbOutline(g, 0.03); scene.add(g);
+  birds.push({ g, wings, y: n * H + 1.4 + r() * 1.6, ph: r() * 10, speed: 4 + n / 25, dir: r() < 0.5 ? -1 : 1 });
+}
+
+// ---------- Eddie ----------
+const me = buildEddieAvatar(DEFAULT_CUSTOM, { bat: false });
+{ const b = new THREE.Box3().setFromObject(me.group); me.group.scale.setScalar(2.0 / (b.max.y - b.min.y)); }
+scene.add(me.group);
+const P = { x: 0, y: 0, vx: 0, vy: 0, onGround: true, on: null, face: 1, phase: 0 };
+
+// ---------- sound (synth, nothing to download; on by default, remembered) ----------
+const sfx = (() => {
+  let ac = null, on = true; try { on = localStorage.getItem('race.sound') !== 'off'; } catch (e) {}
+  const ctx = () => { if (!ac){ try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; };
+  addEventListener('pointerdown', () => { if (on) ctx(); }, true); addEventListener('keydown', () => { if (on) ctx(); }, true);
+  function tone(type, f0, f1, dur, vol, delay){ if (!on || !ctx()) return; const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + 0.05); }
+  return {
+    get on(){ return on; }, toggle(){ on = !on; try { localStorage.setItem('race.sound', on ? 'on' : 'off'); } catch (e) {} return on; },
+    jump: () => tone('square', 330, 660, 0.11, 0.07), spring: () => tone('triangle', 200, 1200, 0.3, 0.12),
+    coin: () => { tone('square', 988, 0, 0.06, 0.06); tone('square', 1319, 0, 0.14, 0.06, 0.06); },
+    crack: () => tone('sawtooth', 160, 60, 0.25, 0.08), bonk: () => tone('sine', 160, 60, 0.2, 0.3),
+    cp: () => [784, 988, 1175, 1568].forEach((f, i) => tone('triangle', f, 0, 0.25, 0.09, i * 0.08)),
+    win: () => [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone('square', f, 0, i === 6 ? 0.8 : 0.14, 0.07, i * 0.13)),
+    wind: () => tone('sawtooth', 120, 80, 1.0, 0.03),
+  };
+})();
+$('soundBtn').textContent = sfx.on ? '🔊' : '🔇';
+$('soundBtn').onclick = () => { $('soundBtn').textContent = sfx.toggle() ? '🔊' : '🔇'; };
+
+// ---------- account (same as the other levels): coins + checkpoint ----------
+const ON_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), ON_LIVE = /github\.io$/.test(location.hostname);
+const API = ON_LOCAL ? 'http://localhost:1999/parties/main/global' : ON_LIVE ? 'https://etfm.cooldragon313.workers.dev/parties/main/global' : '';
+const token = () => { try { return localStorage.getItem('etfm-token') || ''; } catch (e) { return ''; } };
+const who = () => { try { return localStorage.getItem('etfm-username') || 'guest'; } catch (e) { return 'guest'; } };
+const CP_KEY = () => 'etfm-tower-cp-' + who();
+function savedCp(){ try { return +localStorage.getItem(CP_KEY()) || 0; } catch (e) { return 0; } }
+function storeCp(n){ try { if (n > savedCp()) localStorage.setItem(CP_KEY(), String(n)); } catch (e) {} }
+let claimFrom = 0, claimAt = 0;     // floors [claimFrom+1 .. S.best] not yet paid
+async function claim(){
+  const to = S.best, from = claimFrom;
+  if (to <= from) return null;
+  if (!API || !token()) return { offline: true, coins: (to - from) * 10 };
+  const secs = (performance.now() - claimAt) / 1000;
+  try {
+    const r = await fetch(API + '/tower_reward', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() }, body: JSON.stringify({ from, to, secs }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok){ claimFrom = to; claimAt = performance.now(); return j; }
+    return { error: j.message || '金幣沒存到' };
+  } catch (e){ return { error: '連不上伺服器' }; }
+}
+
+// ---------- input ----------
+const keys = {};
+addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space') e.preventDefault(); });
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+const touch = { L: false, R: false, J: false };
+for (const [id, k] of [['tL', 'L'], ['tR', 'R'], ['tJ', 'J']]){
+  const el = $(id);
+  el.addEventListener('pointerdown', e => { e.preventDefault(); touch[k] = true; el.classList.add('on'); el.setPointerCapture(e.pointerId); });
+  const up = () => { touch[k] = false; el.classList.remove('on'); };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+}
+
+// ---------- game state ----------
+let S = { phase: 'menu', t: 0, best: 0, start: 0, coins: 0, jumpHeld: false, windNext: 0, windDir: 0, windAt: 0, hitCool: 0, cut: 0 };
+function startAt(floor){
+  const L = plats.find(p => p.kind === 'ledge' && p.floor === floor);
+  S = { phase: 'run', t: 0, best: floor, start: floor, coins: 0, jumpHeld: true, windNext: 2, windDir: 0, windAt: 0, hitCool: 0, cut: 0 };
+  claimFrom = floor; claimAt = performance.now();
+  Object.assign(P, { x: L.x, y: L.y, vx: 0, vy: 0, onGround: true, on: L });
+  for (const p of plats){ p.alive = true; p.crumbleAt = 0; p.mesh.visible = true; p.mesh.position.y = p.y; }
+  $('startCard').hidden = true; $('endCard').hidden = true;
+  flash(floor ? '從 ' + floor + 'F 繼續！' : '出發！目標 101 樓！');
+}
+function floorOfY(y){ return Math.floor((y + 0.3) / H); }
+
+function step(dt){
+  S.t += dt;
+  const left = keys.KeyA || keys.ArrowLeft || touch.L, right = keys.KeyD || keys.ArrowRight || touch.R, jump = keys.Space || keys.KeyW || keys.ArrowUp || touch.J;
+  const want = (right ? 1 : 0) - (left ? 1 : 0);
+  P.vx += (want * RUN - P.vx) * Math.min(1, dt * (P.onGround ? 14 : 5));
+  if (want) P.face = want;
+  // wind (60F+): warned gusts that shove you sideways
+  if (P.y > 60 * H){
+    if (S.t > S.windNext - 1 && !S.windDir){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; flash(S.windDir < 0 ? '⬅️ 🌪 颱風要來了！' : '🌪 颱風要來了！➡️'); sfx.wind(); }
+    if (S.windDir && S.t > S.windAt && S.t < S.windAt + 1.3) P.x += S.windDir * 4.5 * dt;
+    if (S.windDir && S.t > S.windAt + 1.3){ S.windDir = 0; S.windNext = S.t + 3.5 + Math.random() * 2; }
+  }
+  // jump (fresh press)
+  if (jump && !S.jumpHeld && P.onGround){ P.vy = JUMP_V; P.onGround = false; P.on = null; sfx.jump(); }
+  S.jumpHeld = jump;
+  // moving platforms
+  for (const p of plats){
+    if (p.type === 'move'){ const nx = p.x0 + Math.sin(S.t * p.speed + p.ph) * p.range; p.dx = nx - p.x; p.x = nx; p.mesh.position.x = nx; }
+    if (p.type === 'crumble' && p.crumbleAt){
+      const k = S.t - p.crumbleAt;
+      if (k > 0 && p.alive){ p.mesh.position.x = p.x + Math.sin(S.t * 60) * 0.06; }
+      if (k > 0.6 && p.alive){ p.alive = false; sfx.crack(); if (P.on === p){ P.on = null; P.onGround = false; } }
+      if (!p.alive){ p.mesh.position.y -= dt * (6 + k * 10); }
+      if (k > 3.5){ p.alive = true; p.crumbleAt = 0; p.mesh.position.set(p.x, p.y, 0); }
+    }
+  }
+  if (P.on && P.on.dx) P.x += P.on.dx;
+  // integrate
+  const prevY = P.y;
+  P.vy -= GRAV * dt; P.y += P.vy * dt; P.x += P.vx * dt;
+  P.x = clamp(P.x, -HALFW + 0.4, HALFW - 0.4);
+  // land on platforms from above (one-way: you can jump up through them)
+  P.onGround = false;
+  if (P.vy <= 0){
+    for (const p of plats){
+      if (!p.alive) continue;
+      if (Math.abs(P.x - p.x) > p.w / 2 + 0.3) continue;
+      if (prevY >= p.y - 0.05 && P.y <= p.y){
+        P.y = p.y; P.vy = 0; P.onGround = true; P.on = p;
+        if (p.type === 'spring'){ P.vy = SPRING_V; P.onGround = false; P.on = null; sfx.spring(); p.springT = S.t; }
+        else if (p.type === 'crumble' && !p.crumbleAt){ p.crumbleAt = S.t; }
+        break;
+      }
+    }
+  }
+  if (!P.onGround && P.on && P.vy <= 0) P.on = null;
+  // new floor reached
+  const f = P.onGround && P.on && P.on.kind === 'ledge' ? P.on.floor : -1;
+  if (f > S.best){
+    S.coins += (f - S.best) * 10; S.best = f; sfx.coin();
+    if (f % 10 === 0 && f < FLOORS){ storeCp(f); sfx.cp(); flash('🚩 ' + f + 'F 檢查點！下次可以從這裡繼續'); claim(); }
+    else if (f < FLOORS) flash(f + 'F　+10 🪙', 0.8);
+  }
+  if (f === FLOORS && S.phase === 'run') topReached();
+  // birds
+  for (const b of birds){
+    const bx = ((S.t * b.speed + b.ph * 7) % (W + 16)) - (W / 2 + 8), x = b.dir > 0 ? bx : -bx;
+    b.g.position.set(x, b.y + Math.sin(S.t * 3 + b.ph) * 0.4, 0.3); b.g.rotation.y = b.dir > 0 ? 0 : Math.PI;
+    b.wings.forEach((wg, i) => { wg.rotation.x = Math.sin(S.t * 18 + i * Math.PI) * 0.6; });
+    if (S.t > S.hitCool && Math.abs(P.x - x) < 0.9 && Math.abs(P.y + 1 - b.g.position.y) < 1.0){
+      S.hitCool = S.t + 1; P.vx = b.dir * 11; P.vy = Math.max(P.vy, 5); P.onGround = false; P.on = null; sfx.bonk(); flash('🐦 被大鳥撞到！');
+    }
+  }
+}
+
+// ---------- the top: grab the lightning rod, King-Kong style ----------
+function topReached(){
+  S.phase = 'top'; S.cut = 0; sfx.win(); storeCp(FLOORS - 1);
+  claim();
+
+}
+function poseTop(dt){
+  S.cut += dt;
+  const e = me.eddie, k = Math.min(1, S.cut / 1.4);
+  // climb to the rod tip
+  const tipY = topY + 20.2, sx = 0.75;
+  P.x += (sx - P.x) * Math.min(1, dt * 3); P.y += ((k < 1 ? topY + 20.2 * k : tipY) - P.y) * Math.min(1, dt * 4);
+  me.group.position.set(P.x, P.y, -0.4);
+  me.group.rotation.set(0, Math.PI + 0.35, 0.28);     // facing out over the city, leaning away from the rod
+  // (turned around, arms[1] is on the rod's side) one hand holds the rod above, the other fist beats the chest
+  const [aBeat, aHold] = e.arms;
+  aHold.rotation.set(Math.PI - 0.15, 0, 0.5); aHold.userData.elbow.rotation.x = 0.1;
+  const beat = Math.abs(Math.sin(S.cut * 9));
+  aBeat.rotation.set(1.1 + beat * 0.5, 0, -0.6); aBeat.userData.elbow.rotation.x = 1.8;
+  for (const l of e.legs){ l.rotation.x = 0.4; l.userData.knee.rotation.x = -0.7; }
+  e.legs[1].rotation.x = -0.3;
+  e.head.rotation.x = -0.3; e.face.set(S.cut > 1.6 ? 'laugh' : 'smug');
+  if (S.cut > 1.6 && Math.floor(S.cut * 2) !== Math.floor((S.cut - dt) * 2)) fireworks();
+  if (S.cut > 1.6 && !S.banner){ S.banner = true; const w = $('win'); w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); }
+  if (S.cut > 7 && !S.ended){ S.ended = true; endCard(true); }   // driven by the animation, not a timer
+}
+const fw = [];
+function fireworks(){
+  const colors = [0xff5a4a, 0xffcf5a, 0x6fb3e0, 0x7cc79a, 0xff8fb0];
+  const c = colors[(Math.random() * colors.length) | 0], cx = (Math.random() - 0.5) * 30, cy = topY + 14 + Math.random() * 18;
+  const g = new THREE.BufferGeometry(), pts = [], vel = [];
+  for (let i = 0; i < 60; i++){ pts.push(cx, cy, -6); const a = Math.random() * Math.PI * 2, b = Math.random() * Math.PI, s = 6 + Math.random() * 4; vel.push(Math.cos(a) * Math.sin(b) * s, Math.cos(b) * s, Math.sin(a) * Math.sin(b) * s * 0.3); }
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  const m = new THREE.Points(g, new THREE.PointsMaterial({ color: c, size: 0.6, transparent: true })); scene.add(m);
+  fw.push({ m, vel, life: 1.6 });
+}
+function updateFireworks(dt){
+  for (let i = fw.length - 1; i >= 0; i--){
+    const f = fw[i], a = f.m.geometry.attributes.position; f.life -= dt;
+    for (let j = 0; j < a.count; j++){ a.setXYZ(j, a.getX(j) + f.vel[j * 3] * dt, a.getY(j) + f.vel[j * 3 + 1] * dt, a.getZ(j) + f.vel[j * 3 + 2] * dt); f.vel[j * 3 + 1] -= 6 * dt; }
+    a.needsUpdate = true; f.m.material.opacity = Math.max(0, f.life / 1.6);
+    if (f.life <= 0){ scene.remove(f.m); f.m.geometry.dispose(); fw.splice(i, 1); }
+  }
+}
+
+// ---------- end / save ----------
+async function endCard(won){
+  S.phase = 'end';
+  const res = await claim();
+  $('endTitle').textContent = won ? '🏙️ 101 征服者！' : '存檔了！';
+  $('endSub').textContent = '這次從 ' + S.start + 'F 爬到 ' + S.best + 'F，拿到 $' + S.coins;
+  const mins = Math.floor(S.t / 60), secs = Math.floor(S.t % 60);
+  let line = '花了 ' + mins + ' 分 ' + secs + ' 秒。';
+  if (res && res.offline) line += API ? '（先到「逃離土星」登入，金幣才會存進帳號）' : '（試玩版不存金幣）';
+  else if (res && res.error) line += '（' + res.error + '）';
+  else if (res && res.money != null) line += '金幣已存入帳號（現在 $' + res.money + '）';
+  const cp = savedCp();
+  line += won ? '　艾迪抓著避雷針大吼：「我是 101 之王！！」' : (cp ? '　下次可以從 ' + cp + 'F 繼續。' : '');
+  $('endLine').textContent = line;
+  $('againBtn').textContent = won ? '再爬一次' : (cp ? '從 ' + cp + 'F 繼續' : '再爬一次');
+  $('endCard').hidden = false;
+}
+$('quitBtn').onclick = () => { if (S.phase === 'run') endCard(false); };
+$('startBtn').onclick = () => startAt(0);
+$('contBtn').onclick = () => startAt(savedCp());
+$('againBtn').onclick = () => { const cp = savedCp(); startAt(S.best >= FLOORS ? 0 : cp); };
+function menu(){
+  const cp = savedCp();
+  $('contBtn').hidden = !cp; $('contBtn').textContent = '從 ' + cp + 'F 繼續';
+  $('loginLine').textContent = !API ? '試玩版：金幣不會存進帳號' : token() ? '金幣會存進你的帳號' : '還沒登入：先到「逃離土星」登入，金幣才會存';
+}
+menu();
+if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, plats, startAt, step, keys, poseTop };   // local testing only
+// 🏠 back to 土星之家 (the hub is the front page of eddie-world)
+{ const live = ON_LIVE, local = ON_LOCAL;
+  document.querySelectorAll('.homeLink').forEach(a => { if (live) a.href = 'https://cooldragon313.github.io/eddie-world/'; else if (!local) a.hidden = true; }); }
+
+// ---------- loop ----------
+let last = 0;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = last ? Math.min(0.033, Math.max(0, (now - last) / 1000)) : 0.016; last = now;
+  if (S.phase === 'run') step(dt);
+  if (S.phase === 'top') poseTop(dt);
+  updateFireworks(dt);
+  // Eddie
+  if (S.phase !== 'top'){
+    me.group.position.set(P.x, P.y, 0);
+    me.group.rotation.set(0, P.face > 0 ? -1.15 : 1.15, 0);
+    const moving = P.onGround && Math.abs(P.vx) > 0.6;
+    if (moving) P.phase += dt * Math.abs(P.vx) * 1.6;
+    animateEddie(me, { t: now / 1000, dt, moving, phase: P.phase, onGround: P.onGround, mood: P.y > 60 * H ? 'surprised' : 'smile' });
+  }
+  for (const p of plats) if (p.springTop){ const k = S.t - (p.springT || -9); p.springTop.position.y = k < 0.25 ? 0.8 : 0.5; }
+  // HUD
+  $('hFloor').textContent = Math.max(S.best, 0) || 1; $('hCoins').textContent = S.coins;
+  $('hTime').textContent = Math.floor(S.t / 60) + ':' + String(Math.floor(S.t % 60)).padStart(2, '0');
+  // sky by height
+  scene.background.copy(skyAt(clamp(P.y / topY, 0, 1)));
+  // camera follows (side view); at the top it swings around for the pose
+  const portrait = innerWidth < innerHeight;
+  if (S.phase === 'top' || (S.phase === 'end' && S.best >= FLOORS)){
+    // close on the pose, then pull back slowly to show the whole city below
+    const a = 0.5 + Math.sin(S.cut * 0.35) * 0.45, r = 6 + Math.min(10, Math.max(0, S.cut - 2.5) * 2);
+    camera.position.set(P.x + Math.sin(a) * r, P.y + 0.8 + r * 0.12, -0.4 + Math.cos(a) * r); camera.lookAt(P.x, P.y + 0.6, -0.4);
+  } else {
+    const cy = P.y + (portrait ? 3.0 : 2.2), cx = P.x * (portrait ? 0.75 : 0.5);
+    camera.position.set(cx, cy + 1.2, portrait ? 15 : 15); camera.lookAt(cx * 0.9, cy, 0);
+  }
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -14,17 +14,20 @@ import re
 from build_race import block_until_function_end
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-GAMES = {'gluenight': 'family/gluenight.src.html'}
+GAMES = {'gluenight': 'family/gluenight.src.html', 'tower': 'tower/tower.src.html'}
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--preview', help='also write a copy without <html>/<head>/<body> for a claude.ai preview')
+    ap.add_argument('--only', help='build just this game (gluenight / tower); --preview then writes that game')
     args = ap.parse_args()
 
     island = (ROOT / 'island.html').read_text(encoding='utf-8')
     look = block_until_function_end(island, '// STORYBOOK LOOK', 'sbOutline')
     for name, src_path in GAMES.items():
+        if args.only and name != args.only:
+            continue
         src = (ROOT / src_path).read_text(encoding='utf-8')
         marker = '/*@@INCLUDE:LOOK@@*/'
         if marker not in src:
@@ -38,7 +41,7 @@ def main():
         out.write_text(banner + src, encoding='utf-8', newline='\n')
         print('wrote', out, len(src), 'chars')
 
-        if args.preview:
+        if args.preview and (args.only or len(GAMES) == 1):
             head = src.split('<head>', 1)[1].split('</head>', 1)[0]
             body = src.split('<body>', 1)[1].rsplit('</body>', 1)[0]
             head = re.sub(r'<meta[^>]*>\n?', '', head)
