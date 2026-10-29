@@ -58,6 +58,11 @@
   #tired{position:fixed;inset:0;z-index:3;pointer-events:none;box-shadow:inset 0 0 120px 40px rgba(220,40,40,.55);opacity:0;transition:opacity .25s}
   #tired.on{opacity:1;animation:pulseT .55s ease-in-out infinite alternate}
   @keyframes pulseT{from{opacity:.55}to{opacity:1}}
+  #splat{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .8s}
+  #splat.on{opacity:1;transition:none}
+  #splat i{position:absolute;background:#fbfbf2;border-radius:46% 54% 60% 40%;box-shadow:inset -6px -8px 0 rgba(0,0,0,.08)}
+  #splat i:nth-child(1){left:12%;top:8%;width:70px;height:58px}#splat i:nth-child(2){left:70%;top:14%;width:46px;height:40px}
+  #splat i:nth-child(3){left:58%;top:62%;width:34px;height:30px}#splat i:nth-child(4){left:20%;top:70%;width:52px;height:44px}
   #news{position:fixed;left:0;right:0;bottom:calc(118px + env(safe-area-inset-bottom,0px));z-index:6;display:flex;align-items:center;background:#c8202a;color:#fff;font:800 15px var(--sb-font);
         transform:translateY(200%);transition:transform .4s;pointer-events:none;overflow:hidden;white-space:nowrap}
   #news.on{transform:none}
@@ -117,6 +122,7 @@
 <div id="wind">🌪️➡️</div>
 <div id="flash"></div>
 <div id="tired"></div>
+<div id="splat"><i></i><i></i><i></i><i></i></div>
 <div id="news"><b>📺 新聞快報</b><span id="newsTxt"></span></div>
 <div class="say" id="sayMe"></div><div class="say npc" id="sayNpc"></div>
 <div class="topbtns"><button id="soundBtn" type="button">🔊</button><button id="quitBtn" type="button">🏠 存檔</button></div>
@@ -1257,8 +1263,8 @@ checkpoint(20);                                              // y 60
 plat('net', 0, PER, 5 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 15 * FLOOR_H - 0.4, { ring: true, net: true });
 // mom at an 18F window (a cameo from 恐怖考前複習夜)
-const MOM_S = walls[walls.length - 1].s0 - 4.5, MOM_Y = 17 * FLOOR_H + 0.2;
-plat('balcony', MOM_S - 1.2, 2.4, MOM_Y, { decor: true });
+// (she rides the lift up to chase him — she shows up at a window every 20 floors: 18, 38, 58 … only 18F is built so far)
+const MOM_WALL = walls.find(z => z.chalk), MOM_S = MOM_WALL.s0 - 2.6, MOM_Y = MOM_WALL.y1 + 0.5;   // next to the top of the chalk wall (clear of the corner)
 
 // ---------- build the meshes ----------
 const woodTex = canvasTex(64, 32, (x, w, h) => { x.fillStyle = '#c98a4a'; x.fillRect(0, 0, w, h); x.strokeStyle = '#a8743f'; x.lineWidth = 2; for (let i = 1; i < 3; i++){ x.beginPath(); x.moveTo(0, i * h / 3); x.lineTo(w, i * h / 3); x.stroke(); } });
@@ -1344,11 +1350,29 @@ for (const it of ITEMS){
   });
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true })); sp.scale.set(1.3, 1.7, 1); cradle.mesh.add(sp);
   sp.position.copy(surf(cradle.s1 - 0.5, 0.8, cradle.y + 0.85)); cradle.cleaner = sp; }
-// mom, hands on hips, at her window
-const momNpc = (() => { const m = buildMom(); const b = new THREE.Box3().setFromObject(m.g); m.g.scale.setScalar(2.4 / (b.max.y - b.min.y));
-  m.g.position.copy(surf(MOM_S, 0.6, MOM_Y)); m.g.rotation.y = faceAngle(MOM_S) + Math.PI; scene.add(m.g);
-  m.arms[0].rotation.z = -0.75; m.arms[1].rotation.z = 0.75; m.arms[0].userData.elbow.rotation.z = 1.9; m.arms[1].userData.elbow.rotation.z = -1.9; m.face.set('angry');
+// mom at her window: a frame sticking out of the wall, a warm room behind her, a sill hiding her legs, glass in front
+const momWin = (() => {
+  const g = new THREE.Group(), fa = faceAngle(MOM_S), W = 2.8, H = 3.6, frameM = LM(0xf4efe6);
+  const at = (out, y) => surf(MOM_S, out, MOM_Y + y);
+  const room = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({ map: canvasTex(128, 160, (x, w, h) => { x.fillStyle = '#ffe2b8'; x.fillRect(0, 0, w, h); x.fillStyle = '#e8b980'; x.fillRect(0, h * 0.75, w, h); x.fillStyle = '#fff3c4'; x.beginPath(); x.arc(w * 0.75, h * 0.22, 14, 0, 7); x.fill(); x.fillStyle = '#c98a4a'; x.fillRect(12, h * 0.45, 30, h * 0.3); }) }));
+  room.position.copy(at(0.04, H / 2)); room.rotation.y = fa; g.add(room);
+  for (const [w, h, x, y] of [[W + 0.4, 0.25, 0, H], [0.25, H + 0.25, -W / 2, H / 2], [0.25, H + 0.25, W / 2, H / 2]]){
+    const b = new THREE.Mesh(sbRoundBox(w, h, 0.6, 0.06), frameM); b.position.copy(surf(MOM_S + x, 0.3, MOM_Y + y)); b.rotation.y = fa; g.add(b); }
+  const sill = new THREE.Mesh(sbRoundBox(W + 0.4, 1.3, 0.62, 0.08), LM(0x86c9bf)); sill.position.copy(at(0.31, 0.65)); sill.rotation.y = fa; g.add(sill);   // hides her legs
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(W, H - 1.3), new THREE.MeshBasicMaterial({ color: 0xcfeefe, transparent: true, opacity: 0.18, depthWrite: false })); glass.position.copy(at(0.6, 1.3 + (H - 1.3) / 2)); glass.rotation.y = fa; g.add(glass);
+  sbOutline(g, 0.03); scene.add(g); return g; })();
+const momNpc = (() => { const m = buildMom(); const b = new THREE.Box3().setFromObject(m.g); m.g.scale.setScalar(2.5 / (b.max.y - b.min.y));
+  m.g.position.copy(surf(MOM_S, 0.32, MOM_Y + 0.05)); m.g.rotation.y = faceAngle(MOM_S) + Math.PI; scene.add(m.g);
   for (const k in m.weapons) m.weapons[k].visible = false; m.phone.visible = false;
+  // her sign for the good days
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 0.6), new THREE.MeshBasicMaterial({ map: canvasTex(256, 128, (x, w, h) => { x.fillStyle = '#fff8ec'; x.fillRect(0, 0, w, h); x.strokeStyle = '#e0584a'; x.lineWidth = 10; x.strokeRect(5, 5, w - 10, h - 10);
+    x.fillStyle = '#e0584a'; x.font = '900 54px "Noto Sans TC", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('媽媽❤️你', w / 2, h / 2 + 4); }), side: THREE.DoubleSide }));
+  sign.position.copy(surf(MOM_S, 0.55, MOM_Y + 1.62)); sign.rotation.y = faceAngle(MOM_S); sign.visible = false; scene.add(sign); m.sign = sign;
+  m.pose = love => {   // angry: hands on hips. love: both arms up holding the sign
+    if (love){ for (const a of m.arms){ a.rotation.set(1.2, 0, 0); a.userData.elbow.rotation.set(0.5, 0, 0); } m.face.set('smile'); }
+    else { m.arms[0].rotation.set(0, 0, -0.75); m.arms[1].rotation.set(0, 0, 0.75); m.arms[0].userData.elbow.rotation.set(0, 0, 1.9); m.arms[1].userData.elbow.rotation.set(0, 0, -1.9); m.face.set('angry'); }
+    sign.visible = love;
+  };
   return m; })();
 // climbing walls: a panel with coloured holds; the bulging ones stick out
 const holdCols = [0xff6b5a, 0xffcf5a, 0x6fb3e0, 0x7cc79a, 0xc58cf0];
@@ -1410,6 +1434,7 @@ const sfx = (() => {
     whoosh: () => hiss(1.2, 0.15, 200, 1200),
     bonk: () => { tone('sine', 180, 60, 0.25, 0.3); hiss(0.1, 0.15, 900, 300); },
     bounce: () => tone('sine', 220, 520, 0.25, 0.15),
+    splat: () => { hiss(0.18, 0.3, 700, 200); tone('sine', 300, 120, 0.15, 0.12); },
     beat: () => { tone('sine', 70, 50, 0.12, 0.35); tone('sine', 65, 45, 0.12, 0.28, 0.16); },
     coo: () => { tone('sine', 520, 420, 0.12, 0.07); tone('sine', 480, 380, 0.14, 0.07, 0.15); },
   };
@@ -1471,6 +1496,9 @@ function startAt(floor){
   Object.assign(P, { s: floor ? 3 : 9, y, vs: 0, vy: 0, mode: 'ground', on, wall: null, grip: 100, noGrab: 0 });
   for (const c of chalks){ c.taken = false; c.mesh.visible = true; }
   for (const it of ITEMS){ it.taken = false; it.mesh.visible = true; }
+  S.momLove = Math.random() < 0.5; momNpc.pose(S.momLove);   // a good day or a bad day
+  S.segPoop = 0; S.segPhotos = 0; for (const q of people) q.snapped = false;
+  PO.state = 'idle'; PO.next = 6; flyer.visible = false; poop.visible = false;
   for (const p of plats) if (p.bird){ p.bird.fly = 0; p.bird.g.visible = true; p.bird.g.position.copy(p.bird.home); p.bird.g.rotation.z = 0; }
   P.peak = null; P.jumped = false;
   $('startCard').hidden = true; $('endCard').hidden = true; $('wind').classList.remove('on');
@@ -1569,11 +1597,24 @@ function step(dt){
   // standing around too long: Eddie wonders where to go (the marker bounces harder)
   if (P.mode === 'ground' && !ix && !jump){ S.idle = (S.idle || 0) + dt; if (S.idle > 6){ S.idle = -6; say(pick(['要往哪裡跳…？', '下一步呢…', '嗯…（看看箭頭）'])); } } else if (S.idle > 0) S.idle = 0;
   // people at the windows notice you
+  // pose for the phones: stand still by a window with someone holding a phone up
+  for (const q of people){
+    if (!q.photo || q.snapped) continue;
+    const near = Math.abs(q.base - P.y - 1) < 2 && q.sp.position.distanceTo(surf(P.s, 0, q.base)) < 2.6 && P.mode === 'ground' && Math.abs(P.vs) < 0.6;
+    q.nearT = near ? (q.nearT || 0) + dt : 0;
+    if (q.nearT > 0.7){ q.snapped = true; q.fl.material.opacity = 1; sfx.shutter(); S.vUntil = S.t + 1.2; npcSay(q.sp, pick(['喀嚓！好帥！', '再一張！', '上傳 IG！'])); S.segPhotos = (S.segPhotos || 0) + 1;
+      if (S.segPhotos >= 3) unlock('photo3'); else flash('📸 被拍了 ' + S.segPhotos + ' 張（這段拍滿 3 張有成就）', 1.6); }
+  }
   for (const q of people){ if (S.t < (q.saidAt || 0)) continue; if (Math.abs(q.base - P.y - 1) < 2 && q.sp.position.distanceTo(surf(P.s, 0, q.base)) < 2.5){ q.saidAt = S.t + 12; npcSay(q.sp, pick(q.photo ? ['拍一張！', '笑一個～', '要上新聞了！'] : ['你在幹嘛？！', '快下來啦！', '要不要喝飲料？', '小心喔！'])); } }
   // the window cleaner, and mom
   if (!S.cleanerSaid && Math.abs(P.y - (cradle.cur || cradle.y0)) < 4 && Math.abs(P.s - cradle.s0) < 5){ S.cleanerSaid = true; npcSay(cradle.cleaner, '小朋友不能在這裡玩喔～'); }
   if (S.cleanerSaid === true && P.on === cradle){ S.cleanerSaid = 2; npcSay(cradle.cleaner, '要搭便車喔？好啦～'); }
-  if (!S.momSaid && Math.abs(P.y - MOM_Y) < 5 && Math.abs(P.s - MOM_S) < 7){ S.momSaid = 1; unlock('mom'); npcSay(momNpc.g, '艾迪！功課寫完了沒？！', 2.6); setTimeout(() => say('…媽？！你怎麼在這裡？！', 2.2), 1800); }
+  if (!S.momSaid && Math.abs(P.y - MOM_Y) < 5 && Math.abs(P.s - MOM_S) < 7){
+    S.momSaid = 1;
+    if (S.momLove){ npcSay(momNpc.g, '艾迪加油！媽媽在這裡！', 2.6); setTimeout(() => { say('我也愛你～❤️', 2.2); hearts(); P.grip = 100; flash('💖 媽媽的愛：握力補滿！'); unlock('momlove'); }, 1500); }
+    else { npcSay(momNpc.g, '艾迪！功課寫完了沒？！', 2.6); setTimeout(() => say('…媽？！你怎麼搭電梯上來了？！', 2.2), 1800); unlock('mom'); }
+  }
+  if (P.on === cradle && cradle.cur > cradle.y0 + cradle.range - 0.3) unlock('cradle');
   // a new floor counts when you're standing on something
   if (P.mode === 'ground'){
     const f = Math.min(floorOf(P.y), BUILT);
@@ -1593,7 +1634,11 @@ const ACH = [
   { id: 'nochalk', name: '🧂 不靠粉袋',     desc: '沒用粉袋就爬到 20F' },
   { id: 'fast',    name: '⚡ 閃電攀登',     desc: '一段 40 秒內爬完' },
   { id: 'pigeons', name: '🐦 鴿子終結者',   desc: '把所有鴿子都嚇飛' },
-  { id: 'mom',     name: '👩 被媽媽抓包',   desc: '在 18F 遇到媽媽' },
+  { id: 'mom',     name: '👩 被媽媽抓包',   desc: '在 18F 的窗戶遇到生氣的媽媽' },
+  { id: 'momlove', name: '❤️ 媽媽我也愛你', desc: '在 18F 看到媽媽舉愛心牌（每次隨機）' },
+  { id: 'poop3',   name: '💩 鴿屎運',       desc: '同一段被鴿子大便淋到 3 次' },
+  { id: 'photo3',  name: '📸 網美攀岩家',   desc: '同一段讓窗戶裡的人拍 3 張照（站在拿手機的人前面）' },
+  { id: 'cradle',  name: '🚡 搭便車',       desc: '搭擦窗吊籃升到最上面' },
 ];
 const ACH_KEY = () => 'etfm-tower2-ach-' + who(), COIN_KEY = () => 'etfm-tower2-coins-' + who();
 const haveAch = () => { try { return JSON.parse(localStorage.getItem(ACH_KEY()) || '[]'); } catch (e) { return []; } };
@@ -1618,7 +1663,7 @@ function arriveCheckpoint(f){
   if (!S.segFalls) unlock('steady');
   if (t < 40) unlock('fast');
   if (f >= 20 && !S.usedChalk) unlock('nochalk');
-  S.segFalls = 0;
+  S.segFalls = 0; S.segPoop = 0; S.segPhotos = 0;
   if (!prev || t < prev){ best[segNo] = t; try { localStorage.setItem(SEG_KEY(), JSON.stringify(best)); } catch (e) {} }
   flash('🚩 ' + f + 'F 檢查點！第 ' + segNo + ' 段 ' + t.toFixed(1) + ' 秒' + (!prev || t < prev ? '（新紀錄！）' : ''), 2.4);
   S.shot = 'top'; S.shotT = S.t;             // cut to an overhead shot for a moment
@@ -1646,6 +1691,51 @@ function updateTalk(dt){
 const _v2 = new THREE.Vector3();
 const sweat = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex(64, 64, (x) => { x.font = '48px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('💦', 32, 34); }), transparent: true }));
 sweat.scale.set(0.7, 0.7, 1); sweat.visible = false; scene.add(sweat);
+// pigeons flying over drop poop: a falling white blob — dodge it or wear it
+const flyer = (() => { const b = new THREE.Group(); const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), LM(0x9aa3ad)); body.scale.set(1.4, 0.9, 1); b.add(body);
+  const wings = [-1, 1].map(k => { const w = new THREE.Mesh(sbRoundBox(0.5, 0.06, 0.7, 0.03), LM(0x8a939c)); w.position.set(0, 0.1, k * 0.4); b.add(w); return w; });
+  b.userData.wings = wings; sbOutline(b, 0.02); b.visible = false; scene.add(b); return b; })();
+const poop = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), LM(0xfbfbf2)); poop.scale.set(1, 1.3, 1); poop.visible = false; scene.add(poop);
+const splatHat = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), LM(0xfbfbf2)); splatHat.visible = false;
+const tongue = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), LM(0xff7a8a)); tongue.scale.set(1, 0.6, 1.3); tongue.visible = false;
+{ // put the splat on top of his head and the tongue at his mouth, measured from the head itself
+  const head = me.eddie.head; me.group.rotation.set(0, 0, 0); me.group.updateMatrixWorld(true);
+  const hb = new THREE.Box3().setFromObject(head), cx = (hb.min.x + hb.max.x) / 2, cz = (hb.min.z + hb.max.z) / 2, hh = hb.max.y - hb.min.y;
+  const ws = head.getWorldScale(new THREE.Vector3()).x;
+  head.add(splatHat); splatHat.position.copy(head.worldToLocal(new THREE.Vector3(cx, hb.max.y - hh * 0.06, cz))); splatHat.scale.setScalar(0.28 / (0.3 * ws));
+  head.add(tongue); tongue.position.copy(head.worldToLocal(new THREE.Vector3(cx, hb.min.y + hh * 0.3, hb.min.z + 0.02))); tongue.scale.multiplyScalar(0.12 / (0.09 * ws)); }
+const PO = { state: 'idle', next: 6, s: 0, y: 0, dir: 1, ps: 0, py: 0 };
+function updatePoop(dt){
+  if (S.phase !== 'run') { flyer.visible = poop.visible = false; return; }
+  if (PO.state === 'idle' && S.t > PO.next && P.y > 4){
+    PO.state = 'fly'; PO.dir = Math.random() < 0.5 ? -1 : 1; PO.s = P.s - PO.dir * 9; PO.y = P.y + 4.5; PO.dropped = false; flyer.visible = true; sfx.coo();
+  }
+  if (PO.state === 'fly'){
+    PO.s += PO.dir * 6 * dt;
+    flyer.position.copy(surf(PO.s, 1.2, PO.y)); flyer.rotation.y = faceAngle(PO.s) + (PO.dir > 0 ? -Math.PI / 2 : Math.PI / 2);
+    flyer.userData.wings.forEach((w, i) => { w.rotation.x = Math.sin(S.t * 22 + i * Math.PI) * 0.7; });
+    if (!PO.dropped && PO.dir * (P.s + P.vs * 0.35 - PO.s) < 0.2){ PO.dropped = true; PO.ps = PO.s; PO.py = PO.y - 0.3; PO.vy = 0; poop.visible = true; }
+    if (Math.abs(PO.s - P.s) > 12){ PO.state = 'idle'; flyer.visible = false; PO.next = S.t + 6 + Math.random() * 5; }
+  }
+  if (poop.visible){
+    PO.vy -= 22 * dt; PO.py += PO.vy * dt; poop.position.copy(surf(PO.ps, 0.9, PO.py));
+    if (Math.abs(PO.ps - P.s) < 0.55 && PO.py < P.y + 2.1 && PO.py > P.y + 0.6){ poop.visible = false; pooped(); }
+    else if (PO.py < P.y - 6) poop.visible = false;
+  }
+}
+function pooped(){
+  S.segPoop = (S.segPoop || 0) + 1; S.splatUntil = S.t + 4; S.ptooUntil = S.t + 1.3;
+  sfx.splat(); const sp = $('splat'); sp.classList.add('on'); setTimeout(() => sp.classList.remove('on'), 900);
+  say(pick(['呸呸呸！', '鴿子你給我記住！', '噁～掉在我頭上！', '今天是怎樣啦！']));
+  if (S.segPoop >= 3) unlock('poop3');
+}
+// little hearts when mom cheers
+const heartSprites = [];
+function hearts(){
+  const t = canvasTex(64, 64, (x) => { x.font = '48px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('💖', 32, 34); });
+  for (let i = 0; i < 8; i++){ const h = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true })); h.scale.set(0.6, 0.6, 1); h.position.copy(me.group.position); h.position.y += 1.6; h.userData = { vx: (Math.random() - 0.5) * 1.6, vy: 1.5 + Math.random() * 1.5, life: 2 }; scene.add(h); heartSprites.push(h); }
+}
+function updateHearts(dt){ for (let i = heartSprites.length - 1; i >= 0; i--){ const h = heartSprites[i], u = h.userData; u.life -= dt; h.position.x += u.vx * dt; h.position.y += u.vy * dt; h.material.opacity = Math.min(1, u.life); if (u.life <= 0){ scene.remove(h); heartSprites.splice(i, 1); } } }
 // the "next step" marker: a bouncing ▼ over the next foothold (or wall) above you
 const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex(64, 64, (x) => { x.fillStyle = '#ffcf5a'; x.strokeStyle = '#5b3a29'; x.lineWidth = 6; x.beginPath(); x.moveTo(8, 12); x.lineTo(56, 12); x.lineTo(32, 54); x.closePath(); x.fill(); x.stroke(); }), transparent: true, depthTest: false }));
 marker.scale.set(0.9, 0.9, 1); marker.renderOrder = 20; scene.add(marker);
@@ -1746,7 +1836,7 @@ $('againBtn').onclick = () => { startAt(Math.min(savedCp(), BUILT - 10)); update
   $('contBtn').hidden = !cp; $('contBtn').textContent = '從 ' + cp + 'F 繼續';
   $('loginLine').textContent = (!API ? '試玩版：金幣不會存進帳號。' : token() ? '金幣會存進你的帳號。' : '還沒登入：先到「逃離土星」登入，金幣才會存。') + '　目前開放到 ' + BUILT + 'F。'; }
 document.querySelectorAll('.homeLink').forEach(a => { if (ON_LIVE) a.href = 'https://cooldragon313.github.io/eddie-world/'; else if (!ON_LOCAL) a.hidden = true; });
-if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle };   // local testing only
+if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt) };   // local testing only
 
 // ---------- Eddie's pose ----------
 function poseEddie(dt, now){
@@ -1766,7 +1856,9 @@ function poseEddie(dt, now){
     const moving = P.mode === 'ground' && Math.abs(P.vs) > 0.6;
     if (moving) P.phase += dt * Math.abs(P.vs) * 1.7;
     animateEddie(me, { t: now, dt, moving, phase: P.phase, onGround: P.mode === 'ground', mood: S.windDir ? 'surprised' : 'smile' });
+    if (S.t < (S.vUntil || 0)){ e.arms[1].rotation.set(2.7, 0, -0.35); e.arms[1].userData.elbow.rotation.x = 0.2; e.face.set('laugh'); }   // ✌️ for the camera
   }
+  if (S.t < (S.ptooUntil || 0)){ e.head.rotation.z = Math.sin(now * 32) * 0.45; e.face.set('sad'); }    // 呸呸呸: shake it off
 }
 
 // ---------- loop ----------
@@ -1784,7 +1876,8 @@ function frame(nowMs){
     if (S.cine > INTRO) endIntro();
   } else {
     poseEddie(dt, now);
-    updateTalk(dt); updateMarker(now);
+    updateTalk(dt); updateMarker(now); updatePoop(dt); updateHearts(dt);
+    splatHat.visible = S.t < (S.splatUntil || 0); tongue.visible = S.t < (S.ptooUntil || 0);
     // pigeons fly off; the cleaner rides along
     for (const p of plats) if (p.bird && p.bird.fly){ const b = p.bird; b.fly += dt; b.g.position.y += dt * 4; b.g.position.addScaledVector(softNormal(p.s0), dt * 3); b.g.rotation.z = Math.sin(now * 30) * 0.3; if (b.fly > 3) b.g.visible = false; }
     if (S.phase === 'menu'){ const a = now * 0.08; camera.position.set(Math.sin(a) * 80, 60, Math.cos(a) * 80); camera.lookAt(0, 50, 0); }
