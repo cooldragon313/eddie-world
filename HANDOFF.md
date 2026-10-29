@@ -177,3 +177,10 @@ island.html 很長（約 6000 行），不要整份讀，照 HANDOFF 表格裡�
 - 擴建 Lv2 大客廳 10×10（$600），Lv3–5 顯示「施工規劃中」；施工動畫＝圍籬＋鎚子＋敲打聲＋彩帶
 - 試玩版（claude.ai 預覽）仍是本機 777 測試屋；正式網址沒登入不能買
 - 下一個：101 跑酷（docs/PLAN-101跑酷.md，艾迪提案）
+
+## 2026-10-29 — 101 跑酷 1–20F＋玩具架（✅ 已上架 eddie-world main 9d4b8b0；伺服器已 deploy）
+- 101：`tower/tower.src.html` → `python tools/build_family.py --only tower`；設計與版本紀錄看 docs/PLAN-101跑酷.md（v2.2）
+- 金幣：伺服器 `towerCoins`（1–10F 每層 1 … 91–100F 每層 10＋登頂 460＝1010）
+- 玩具架：家具店 $300（server `HOME_FURN.toyshelf`）；6 格佔位玩具；找到的紀錄先在手機 `etfm-toys`
+- 下一步：21F 以上、各關藏玩具（逃離土星）、塗鴉牆（艾迪的畫）、獎盃架、101 排行榜接伺服器
+- ⚠️ wrangler deploy 之後，Cloudflare 大約要 5 分鐘才換成新版，先確認新路由有回應再上網頁
