@@ -54,6 +54,19 @@ const GLUE_MIN_GAP_MS = 120_000;     // a night is 150 s
 const GLUE_BOARD_SIZE = 50;
 const glueBetter = (a, b) => a.mood > b.mood || (a.mood === b.mood && a.hits < b.hits);
 const glueSort = (a, b) => b.mood - a.mood || a.hits - b.hits;
+// 土星之家 (index.html): each account's home lives here, and so do the PRICES —
+// the client only shows them. Keep in sync with home/home.src.html (FURN, FLOORS, WALLS, LEVELS).
+const HOME_FURN = { sofa: [120, 2, 1], bed: [150, 2, 1], desk: [100, 2, 1], tv: [180, 2, 1], shelf: [90, 1, 1], table: [60, 1, 1],
+                    chair: [30, 1, 1], rug: [50, 2, 2], plant: [25, 1, 1], lamp: [40, 1, 1], saturn: [70, 1, 1] };   // [price, w, d]
+const HOME_FLOORS = { wood: 0, tile: 80, mint: 80, check: 120 };
+const HOME_WALLS = { cream: 0, sky: 60, pink: 60, stars: 150 };
+const HOME_LEVELS = { 1: { size: 8 }, 2: { size: 10, price: 600 } };   // next: 3 = 艾迪的房間 (two rooms)
+const HOME_GIFT = 777;               // once per account, the first time the home opens
+function newHome(){
+  return { level: 1, own: { sofa: 1, table: 1, chair: 2, plant: 1 }, floors: ['wood'], walls: ['cream'], floor: 'wood', wall: 'cream', name: '',
+           placed: [{ uid: 1, id: 'sofa', x: 1, z: 1, rot: 0 }, { uid: 2, id: 'table', x: 3, z: 3, rot: 0 }, { uid: 3, id: 'chair', x: 4, z: 3, rot: 3 }, { uid: 4, id: 'plant', x: 0, z: 0, rot: 0 }] };
+}
+function cleanHomeName(n){ return String(n || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12); }
 const raceBetter = (a, b) => a.time < b.time || (a.time === b.time && a.misses < b.misses);
 const raceSort = (a, b) => a.time - b.time || a.misses - b.misses;
 // Visit log for the admin page: per-user counters on the user record plus a
@@ -455,6 +468,62 @@ export default class WorldServer {
       st.lastSeenAt = now;
       await this.room.storage.put('user:' + userId, user);
       return jsonResponse({ ok: true });
+    }
+
+    // ---------- 土星之家 ----------
+    if ((last === 'home' && req.method === 'GET') || ((last === 'home_save' || last === 'home_buy') && req.method === 'POST')){
+      const auth = req.headers.get('authorization') || '';
+      const userId = await verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : '', secret);
+      if (!userId) return jsonResponse({ error:'bad_token' }, 401);
+      const user = await this.room.storage.get('user:' + userId);
+      if (!user) return jsonResponse({ error:'no_user' }, 404);
+      user.profile = user.profile || { custom: null, progress: null };
+      const progress = user.profile.progress || (user.profile.progress = {});
+      if (!user.home) user.home = newHome();
+      const home = user.home;
+      let gift = 0;
+      if (!user.homeGift){ user.homeGift = true; gift = HOME_GIFT; progress.money = (progress.money || 0) + HOME_GIFT; }
+      const reply = extra => jsonResponse(Object.assign({ ok: true, money: progress.money || 0, home, gift }, extra || {}));
+
+      if (last === 'home'){ await this.room.storage.put('user:' + userId, user); return reply(); }
+
+      let body; try { body = await req.json(); } catch(e){ return jsonResponse({ error:'bad_json' }, 400); }
+      if (last === 'home_buy'){
+        const kind = String(body.kind || ''), id = String(body.id || '');
+        let price = null;
+        if (kind === 'furn' && HOME_FURN[id]) price = HOME_FURN[id][0];
+        else if (kind === 'floor' && id in HOME_FLOORS && !home.floors.includes(id)) price = HOME_FLOORS[id];
+        else if (kind === 'wall' && id in HOME_WALLS && !home.walls.includes(id)) price = HOME_WALLS[id];
+        else if (kind === 'expand' && HOME_LEVELS[home.level + 1]) price = HOME_LEVELS[home.level + 1].price;
+        if (price == null) return jsonResponse({ error:'bad_item', message:'買不了這個' }, 400);
+        if ((progress.money || 0) < price) return jsonResponse({ error:'no_money', message:'金幣不夠，去關卡賺一點吧' }, 400);
+        progress.money -= price;
+        if (kind === 'furn') home.own[id] = (home.own[id] || 0) + 1;
+        else if (kind === 'floor'){ home.floors.push(id); home.floor = id; }
+        else if (kind === 'wall'){ home.walls.push(id); home.wall = id; }
+        else home.level += 1;
+        await this.room.storage.put('user:' + userId, user);
+        await this.logActivity(user, 'home_buy', { kind, id: kind === 'expand' ? 'Lv' + home.level : id, price });
+        return reply();
+      }
+      // home_save: the layout, checked against what this account owns
+      const size = HOME_LEVELS[home.level].size, placed = Array.isArray(body.placed) ? body.placed.slice(0, 150) : null;
+      if (!placed) return jsonResponse({ error:'bad_home' }, 400);
+      const count = {}, clean = [];
+      for (const q of placed){
+        const id = String(q && q.id), f = HOME_FURN[id]; if (!f) continue;
+        const rot = ((Math.floor(Number(q.rot)) || 0) % 4 + 4) % 4, x = Math.floor(Number(q.x)), z = Math.floor(Number(q.z));
+        const w = rot % 2 ? f[2] : f[1], d = rot % 2 ? f[1] : f[2];
+        if (!(x >= 0 && z >= 0 && x + w <= size && z + d <= size)) continue;
+        count[id] = (count[id] || 0) + 1; if (count[id] > (home.own[id] || 0)) continue;
+        clean.push({ uid: Math.max(1, Math.floor(Number(q.uid)) || clean.length + 1), id, x, z, rot });
+      }
+      home.placed = clean;
+      if (home.floors.includes(body.floor)) home.floor = body.floor;
+      if (home.walls.includes(body.wall)) home.wall = body.wall;
+      if (typeof body.name === 'string') home.name = cleanHomeName(body.name);
+      await this.room.storage.put('user:' + userId, user);
+      return reply();
     }
 
     // POST /glue_score — a 恐怖考前複習夜 night ended: coins + leaderboard + achievements
