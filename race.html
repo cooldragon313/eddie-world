@@ -1679,11 +1679,19 @@ function poseDrunk(u, mode, ph, t){
     set(u.legR, -sw * 0.75); set(u.kneeR, -Math.max(0, sw) * 1.1 - 0.15);
   }
 }
+const PUKE_COLORS = ['#c9b458', '#a8b04a', '#e0c890', '#8a9a3a', '#d8a860', '#b8c070'];
+let pukeTex = null;
+// a chunky mosaic puddle: pixel blocks inside a rough oval, the corners stay see-through
 function mosaicTexture(){
-  const c = document.createElement('canvas'); c.width = c.height = 8; const x = c.getContext('2d');
-  const pal = ['#c9b458', '#a8b04a', '#e0c890', '#8a9a3a', '#d8a860', '#b8c070'];
-  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++){ x.fillStyle = pal[(Math.random() * pal.length) | 0]; x.fillRect(i, j, 1, 1); }
-  const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; return t;
+  if (pukeTex) return pukeTex;
+  const n = 12, c = document.createElement('canvas'); c.width = c.height = n; const x = c.getContext('2d');
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++){
+    const dx = (i + 0.5) / n * 2 - 1, dy = (j + 0.5) / n * 2 - 1;
+    if (dx * dx + dy * dy > 0.82 + Math.random() * 0.2) continue;
+    x.fillStyle = PUKE_COLORS[(Math.random() * PUKE_COLORS.length) | 0]; x.fillRect(i, j, 1, 1);
+  }
+  pukeTex = new THREE.CanvasTexture(c); pukeTex.magFilter = THREE.NearestFilter; pukeTex.minFilter = THREE.NearestFilter;
+  return pukeTex;
 }
 // ---------- sound effects (synthesised with WebAudio; nothing to download) ----------
 // On by default, remembered per device. No background music (Bernie: songs on a loop get tiring).
@@ -1720,13 +1728,39 @@ const sfx = (() => {
     caught(){ if (ok()){ tone('sawtooth', 300, 90, 0.5, 0.12); hiss(0.2, 0.3, 'lowpass', 800, 200); } },
   };
 })();
+// He turns his head away from the player and spews: mosaic blocks arc from his mouth to a puddle on the
+// floor behind him, on the camera's side, so it stays on screen on upright phones. The mosaic must never
+// cross the player (an adult holding a kid plus a mosaic reads badly), hence the arc away from them.
 function puke(){
   sfx.puke();
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: mosaicTexture() }));
-  // on the ground behind his feet, well clear of the player (the mosaic is the puke, never you)
-  sp.scale.set(1.7, 1.1, 1); sp.position.set(S.x - 0.3, FY(S.m) + 0.45, -(S.m - 2.6)); add(sp);
-  pukes.push({ sp, until: S.time + 2.6 });
+  const m = S.m - 1.3;
+  let off = 1.6; while (off > 0.2 && !groundAt(m, S.x + off + 1)) off -= 0.2;   // stay on the floor next to a wall
+  const pool = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.7), new THREE.MeshBasicMaterial({ map: mosaicTexture(), transparent: true, alphaTest: 0.5, depthWrite: false }));
+  pool.rotation.x = -Math.PI / 2 + Math.atan(FY(m + 0.5) - FY(m - 0.5));    // lie along the stairs too
+  pool.position.set(S.x + off, FY(m) + 0.1, -m); pool.scale.setScalar(0.01); add(pool);
+  pukes.push({ sp: pool, born: S.time, until: S.time + 2.6, bits: [], nextBit: 0 });
 }
+const _mouth = new THREE.Vector3();
+function updatePuke(pk, dt){
+  const age = S.time - pk.born, grow = Math.min(1, Math.max(0, (age - 0.25) / 0.5));
+  pk.sp.scale.setScalar(0.01 + grow);
+  pk.nextBit -= dt;
+  if (age < 0.75 && pk.nextBit <= 0){
+    pk.nextBit = 0.022;
+    chaser.userData.head.getWorldPosition(_mouth); _mouth.x += 0.72; _mouth.y -= 0.2; _mouth.z += 0.15;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ color: PUKE_COLORS[(Math.random() * PUKE_COLORS.length) | 0] }));
+    const size = 0.2 + Math.random() * 0.18; sp.scale.set(size, size, 1); add(sp);
+    pk.bits.push({ sp, t: 0, from: _mouth.clone(),
+      to: new THREE.Vector3(pk.sp.position.x + (Math.random() - 0.5) * 1.0, pk.sp.position.y, pk.sp.position.z + (Math.random() - 0.5) * 0.7) });
+  }
+  for (let i = pk.bits.length - 1; i >= 0; i--){
+    const b = pk.bits[i]; b.t += dt / 0.38;
+    if (b.t >= 1){ world.remove(b.sp); pk.bits.splice(i, 1); continue; }
+    b.sp.position.lerpVectors(b.from, b.to, 1 - (1 - b.t) * (1 - b.t));                 // shoots out fast, away from the player
+    b.sp.position.y = b.from.y + (b.to.y - b.from.y) * b.t * b.t;                        // and only then falls
+  }
+}
+function removePuke(pk){ world.remove(pk.sp); for (const b of pk.bits) world.remove(b.sp); }
 // bottles on the road
 function makeBottle(i){
   const g = new THREE.Group(), mat = i % 2 ? mats.bottleG : mats.bottleB;
@@ -2253,7 +2287,7 @@ function reset(){
   for (const r of rocks){ world.remove(r.mesh); world.remove(r.shadow); } rocks.length = 0;
   for (const b of bullets) world.remove(b.mesh); bullets.length = 0;
   clearShots(); hushBubbles();
-  for (const pk of pukes) world.remove(pk.sp); pukes.length = 0;
+  for (const pk of pukes) removePuke(pk); pukes.length = 0;
   for (const b of bottles){ b.state = 'up'; b.t = 0; b.g.visible = true; b.g.rotation.set(0, 0, 0); b.g.position.set(b.x, FY(b.m), -b.m); }
   for (const [i, gh] of ghosts.entries()){ gh.th = i * 1.3; gh.state = 'watch'; gh.until = 4 + i * 1.5; gh.whipCd = 0; gh.hitDone = true; gh.warned = false; gh.ox = gh.om = 0; gh.rushUntil = 0; gh.rushCd = 0; }
   for (const mn of minions){ mn.m = mn.hm; mn.x = mn.hx; mn.stunUntil = 0; mn.next = 1 + Math.random() * 1.5; mn.windAt = 0; }
@@ -2404,7 +2438,7 @@ async function loadBoards(){
 renderLevelButtons(); loadBoards();
 // ---------- first-time intro: the camera visits each character, a card says what they do ----------
 const INTRO = [
-  { at: 'drunk',  title: '🍺 酒鬼大叔', text: '從玄關一路逃上頂樓陽台！他一直在後面追你，被他從後面抱住會被定住，還會吐你一身！' },
+  { at: 'drunk',  title: '🍺 酒鬼大叔', text: '從玄關一路逃上頂樓陽台！他一直在後面追你，被他從後面抱住會被定住，還會吐得滿地都是！' },
   { at: 'bottle', title: '🍾 路上的酒', text: '撞倒加金幣。漏掉的會被酒鬼喝掉，他會越跑越快——左上角看他喝了幾瓶。' },
   { at: 'ghost',  title: '👻 鬼媽媽',   text: '看到你就衝過來抽熱熔膠條，抽到會跌坐、變慢。等她低頭逛網拍再衝過去！酒鬼喝超過一半，她會改去抽酒鬼。' },
   { at: 'kid',    title: '🧸 小屁孩',   text: '頂樓遊戲室的小屁孩坐在地上丟玩具車跟遙控器。看他舉手就閃開，或按「揮棒」把小車、遙控器打回去！' },
@@ -2645,7 +2679,7 @@ function step(dt){
   if (S.heldUntil){
     if (S.time < S.heldUntil){
       S.wallM = S.m - 0.9;
-      if (!S.puked && S.time > S.heldUntil - 0.75){ S.puked = true; puke(); say(chaser, '嘔～～', 1, { name: '酒鬼大叔', y: 4.6 }); impact('噁～', '#9ccf4a', 0.3); }
+      if (!S.puked && S.time > S.heldUntil - 0.9){ S.puked = true; puke(); say(chaser, '嘔～～', 1, { name: '酒鬼大叔', y: 4.6 }); shakeUntil = performance.now() / 1000 + 0.35; shakeAmp = 0.2; }   // no centre stamp: it would hide the spew
       return;
     }
     S.heldUntil = 0; S.wallM = S.m - 18; S.downUntil = 0;
@@ -3153,12 +3187,13 @@ function render(dt, clock){
     const sore = running && S.time < S.drunkStunUntil;
     const ph = t * 9;
     poseDrunk(cu, held ? 'hug' : sore ? 'sore' : 'run', ph, t);
+    if (held && S.puked) cu.head.rotation.set(0.5, -1.8, 0);                                     // turns away from the player to throw up
     chaser.rotation.z = held ? 0 : Math.sin(t * 2.3) * 0.06;                                      // a happy drunk sway
     chaser.position.y = FY(S.wallM || 0) + (held ? 0 : sore ? Math.abs(Math.sin(t * 16)) * 0.3 : Math.abs(Math.sin(ph)) * 0.18);
     const see = running && !held && (S.m - S.wallM) < 7;             // see-through when he's right behind you
     for (const m of cu.mats){ m.opacity = see ? 0.35 : 1; m.depthWrite = !see; }
   } else chaser.position.set(0, 0, -(S.wallM || -WALL_START_GAP));
-  for (let i = pukes.length - 1; i >= 0; i--){ if (!running || S.time > pukes[i].until){ world.remove(pukes[i].sp); pukes.splice(i, 1); } }
+  for (let i = pukes.length - 1; i >= 0; i--){ if (!running || S.time > pukes[i].until){ removePuke(pukes[i]); pukes.splice(i, 1); } else updatePuke(pukes[i], dt); }
   for (const b of bottles) if (b.state === 'down' && b.t < 1){ b.t += dt * 4; b.g.rotation.z = -b.dir * Math.min(1, b.t) * Math.PI / 2; b.g.position.x = b.x - b.dir * Math.min(1, b.t) * 0.5; }
   for (const gh of ghosts){
     const shop = gh.state !== 'watch';
@@ -3216,7 +3251,7 @@ function render(dt, clock){
   if (!Number.isFinite(camera.position.x + camera.position.y + camera.position.z)) camera.position.copy(_camTarget);
   camera.position.lerp(_camTarget, Math.min(1, dt * (hug ? 10 : 6)));
   if (performance.now() / 1000 < shakeUntil){ camera.position.x += (Math.random() - 0.5) * shakeAmp; camera.position.y += (Math.random() - 0.5) * shakeAmp; }
-  if (hug) camera.lookAt(S.x || 0, fyc + 2, -(S.m || 0) + 0.5);
+  if (hug) camera.lookAt(S.x || 0, fyc + 2, -(S.m || 0) + 0.5 + (pukes.length ? Math.min(1, (S.time - pukes[pukes.length - 1].born) / 0.3) * 0.6 : 0));   // lean over a little so the puddle fits
   else camera.lookAt((S.x || 0) * (L.camFollow >= 1 ? 1 : 0.4), FY((S.m || 0) + 12) + 0.5, -(S.m || 0) - 12);
   const near = running && !L.drunk && (S.m - S.wallM) < 9;
   chaserMat.opacity = chaserSpike.opacity = near ? 0.35 : 1;
