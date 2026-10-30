@@ -264,6 +264,6 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
 ## 2026-10-30 下午：101 調難＋💪 男子漢模式（只在 restyle-storybook，正式站未上）
 一般版跳距拉長、窗台變窄（手殘版＝舊手感），拿掉每層叮聲和窗戶亂閃。男子漢模式：101 層全破才解鎖，一次從 1F 爬到頂，沒網子、一條命，摔超過 3 層樓結束。Bernie 要之後各關過關都有類似的男子漢版，其他關還沒做。細節見 docs/PLAN-101-難度表.md。
 
-## 2026-10-30 下午：逃離土星排行榜顯示「你現在第幾名」（只在 restyle-storybook，正式站未上）
+## 2026-10-30 下午：逃離土星排行榜顯示「你現在第幾名」（✅ 已上架：main `a93918f`，伺服器 Cloudflare 版本 `51e6f85a`）
 開始畫面的排行榜下面多一行：`📍 你現在第 N 名 · 共 M 人 · 最佳 X 秒`（沒成績／前 50 名外各有文字）；跑完沒進前 50 也會提示。伺服器 `GET /race_board` 帶登入 token 會多回 `me`、`total`、`boardMax`，`/race_reward` 也一樣；舊客戶端不受影響。
-**上架要兩步：① 伺服器 `cd cloudflare && npx wrangler deploy` ② 前端照舊推 main。** 伺服器沒部署前，新前端只是不顯示那一行，不會壞。本機測過（wrangler dev＋測試帳號）；真手機和正式資料還沒測。
+只挑這個改動上 main，101 調難／男子漢模式仍留分支。⚠️ wrangler deploy 後舊的 Durable Object 約 5 分鐘才換掉，先確認伺服器回新格式再推前端。正式站已確認沒登入、亂傳 token 都正常；登入後的名次要真人帳號看。
