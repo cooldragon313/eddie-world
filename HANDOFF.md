@@ -257,7 +257,7 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
 - 101 跑酷：https://claude.ai/artifact/LCkqyB3M38ig1bkX7JWaWz
 - 艾迪的幻想世界大廳：https://claude.ai/artifact/TgHYAgVNVqzEnmumwuamNU
 - 恐怖考前複習夜：https://claude.ai/artifact/22KEpAkE6hMkbmHdEin8Bs
-- 逃離土星（嘔吐物改版）：https://claude.ai/artifact/NSNCopmE3ofrp37PmgmTUr — 單機、看不到排行榜；更新：`python tools/build_race.py --preview <scratchpad>/race-preview.html` 後發布到同一個 artifact
+- 逃離土星：沒有試玩版，玩正式網址
 - 角色原型（參考用，保留）：艾迪 11zvrShMMHSVBgN43xA17Z、媽媽 6uHQME8BxUenFG77wqMm3i、小屁孩 4KMMx6mQamrWN8R3XiNfsu、空拍機拍立得 VgkxdJXrupR78ipJ5B5cC6
 - 上面文件裡提到的 EkQswp7…、7CVMoMJ…、2V9EGsX…、1GfYgGk…、2r6p379…、MsykofcN…、KQxdw7J…、JzZMRGc… 都已刪除，別再用
 
@@ -270,5 +270,5 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
 第 6 段 51–60F 天空工地已在分支（BUILT=60）：鷹架板、吊臂、58F 媽媽，另修檢查點第一跳；一樣待 Bernie 點頭才上架。
 調難第二輪也在分支：跳距節奏、落地慣性、撞人鴿、風旗（取代螢幕箭頭），細節見難度表。
 
-## 2026-10-30 傍晚：酒鬼嘔吐物重做（只在 restyle-storybook，正式站未上）
-Bernie 反映看不到嘔吐物，查出直拿手機時會被切在畫面最左邊，又只閃 0.75 秒。改成：被抱住 0.6 秒後，酒鬼轉頭從嘴巴噴一道馬賽克方塊，落成畫面中間地上的馬賽克水窪，留 2.6 秒；拿掉中央「噁～」大字（會擋住）；開場說明改「吐得滿地都是」。⚠️ 馬賽克不能碰到玩家（大人抱小孩＋馬賽克會被解讀歪），噴的方向是刻意往玩家反方向。本機測過直拿、橫拿、樓梯、靠牆；待 Bernie 實玩點頭才上架，上架只要推前端，不用 wrangler deploy。
+## 2026-10-30 傍晚：酒鬼嘔吐物重做（已上架 main `41d6137`）
+Bernie 反映看不到嘔吐物，查出直拿手機時會被切在畫面最左邊，又只閃 0.75 秒。改成：被抱住 0.6 秒後，酒鬼轉頭從嘴巴噴一道馬賽克方塊，落成畫面中間地上的馬賽克水窪，留 2.6 秒；拿掉中央「噁～」大字（會擋住）；開場說明改「吐得滿地都是」。⚠️ 馬賽克不能碰到玩家（大人抱小孩＋馬賽克會被解讀歪），噴的方向是刻意往玩家反方向。本機測過直拿、橫拿、樓梯、靠牆；Bernie 點頭後只把這兩個 race 檔上 main，101 的分支內容沒跟著上。
