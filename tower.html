@@ -49,7 +49,7 @@
   #grip.low i{background:#e0584a}
   #gripLbl{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;font:900 13px var(--sb-font);color:#fff;text-shadow:0 0 3px #000;opacity:0;transition:opacity .25s;pointer-events:none}
   #gripLbl.on{opacity:1}
-  #windFlag{position:fixed;left:50%;top:calc(6px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:170px;height:125px;z-index:6;pointer-events:none}
+  #windLines{position:fixed;inset:0;width:100%;height:100%;z-index:4;pointer-events:none}
   @keyframes windbob{to{transform:translate(-50%,-50%) translateX(var(--wx,20px))}}
   #flash{position:fixed;left:50%;top:22%;transform:translateX(-50%) scale(.85);z-index:8;font:18px/1.3 var(--sb-pop);color:var(--sb-ink);background:#fff8ec;max-width:88vw;text-align:center;
     border:2.5px solid var(--sb-ink);border-radius:18px;padding:6px 16px;box-shadow:0 4px 0 rgba(91,58,41,.35);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s}
@@ -81,7 +81,7 @@
   .bars{position:fixed;left:0;right:0;height:11vh;background:#000;z-index:9;transition:transform .8s;pointer-events:none}
   #barT{top:0;transform:translateY(-100%)}#barB{bottom:0;transform:translateY(100%)}
   body.cine #barT,body.cine #barB{transform:none}
-  body.cine #vf,body.cine .camtxt,body.cine .tb,body.cine #joy,body.cine .topbtns,body.cine #windFlag{visibility:hidden}
+  body.cine #vf,body.cine .camtxt,body.cine .tb,body.cine #joy,body.cine .topbtns,body.cine #windLines{visibility:hidden}
   #cards{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:#000;opacity:0;pointer-events:none;transition:opacity .6s}
   #cards.on{opacity:1}
   #cards p{color:#fff;font:700 min(6vw,30px)/1.7 var(--sb-font);text-align:center;margin:0;letter-spacing:2px;white-space:pre-line}
@@ -138,7 +138,7 @@
 <div class="camtxt" id="coinTag">🪙 +0</div>
 <div id="lower"><b id="lowerB"></b><span id="lowerS"></span></div>
 <div id="gripLbl">💪 握力</div><div id="grip"><i id="gripFill"></i></div>
-<canvas id="windFlag" width="240" height="176"></canvas>
+<canvas id="windLines"></canvas>
 <div id="flash"></div>
 <div id="tired"></div>
 <div id="shotFlash"></div>
@@ -1853,6 +1853,7 @@ function startAt(floor){
   for (const c of chalks){ c.taken = false; c.mesh.visible = true; }
   for (const it of ITEMS){ it.taken = false; it.mesh.visible = true; }
   for (const M of MOMS){ M.love = Math.random() < 0.5; M.npc.pose(M.love); M.said = false; }   // each window: a good day or a bad day
+  SCARF.give = null; SCARF.ball.visible = false; wearScarf(hasScarf());
   S.segPoop = 0; S.segPhotos = 0; for (const q of people) q.snapped = false;
   DRONE = hasDrone(); BOOK = loadBook(); S.newPhotos = []; buddyPos.set(0, 0, 0);
   PO.state = 'idle'; PO.next = 6; flyer.visible = false; poop.visible = false;
@@ -1912,7 +1913,7 @@ function step(dt){
     }
   }
   updateStriker(dt);
-  // wind (from 11F): a warned gust — the flag up top rises 2 s ahead and shows which way, and how hard
+  // wind (from 11F): a warned gust — 2 s ahead the wind lines (and the scarf) start going which way, and how hard
   const onNode = P.mode === 'wall' && P.wall.node;
   if (onNode && !S.windDir) S.windNext = Math.max(S.windNext, S.t + 3);   // no typhoon while you hang off a bamboo node: it comes once you're over
   const gust = P.y > 30 && S.windDir && S.t > S.windAt && S.t < S.windAt + 1.6 && !onNode;
@@ -2056,6 +2057,13 @@ function step(dt){
   for (const M of MOMS){
     if (M.said || Math.abs(P.y - M.y) > 5 || sDist(P.s, M.s) > 7) continue;
     M.said = true; const second = M !== MOMS[0];
+    if (M === MOMS[2] && !hasScarf() && !SCARF.give){   // 🧣 58F: whatever her mood, you get the scarf
+      npcSay(M.npc.g, M.love ? '外面風這麼大，圍巾給我戴好！' : '功課沒寫就算了，圍巾給我戴好！', 3);
+      M.npc.sign.visible = false; for (const a of M.npc.arms){ a.rotation.set(1.5, 0, 0); a.userData.elbow.rotation.set(0.1, 0, 0); }
+      SCARF.give = { t: 0, from: surf(M.s, 0.8, M.y + 1.5) };
+      if (M.love){ hearts(); P.grip = P.gripMax; unlock('momlove'); } else unlock('mom');
+      continue;
+    }
     if (M.love){ npcSay(M.npc.g, second ? '寶貝！媽媽又搭電梯上來了！加油！' : '艾迪加油！媽媽在這裡！', 2.6); setTimeout(() => { say(second ? '媽～我愛你！！' : '我也愛你～❤️', 2.2); hearts(); P.grip = P.gripMax; flash('💖 媽媽的愛：握力補滿！'); unlock('momlove'); }, 1500); }
     else { npcSay(M.npc.g, second ? '你給我下來！電梯我都搭到 ' + (18 + 20 * MOMS.indexOf(M)) + ' 樓了！' : '艾迪！功課寫完了沒？！', 2.6); setTimeout(() => say(second ? '又是妳！！' : '…媽？！你怎麼搭電梯上來了？！', 2.2), 1800); unlock('mom'); }
   }
@@ -2505,7 +2513,7 @@ $('manBox').addEventListener('change', () => { $('contBtn').hidden = $('manBox')
 $('manPick').style.display = manOpen() ? '' : 'none';
 if (!manOpen()){ $('manLock').style.display = ''; $('manLock').textContent = '🔒 ' + TOTAL_FLOORS + ' 層全部通關後解鎖：💪 男子漢模式'; }
 document.querySelectorAll('.homeLink').forEach(a => { if (ON_LIVE) a.href = 'https://cooldragon313.github.io/eddie-world/'; else if (!ON_LOCAL) a.hidden = true; });
-if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, die, ST, get FLAG(){ return FLAG; }, neonOn, OFFICE, burst, SPOT, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, eventPhoto, pooped, get BOOK(){ return BOOK; } };   // local testing only
+if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, die, ST, get WIND(){ return WIND; }, get SCARF(){ return SCARF; }, get wearScarf(){ return wearScarf; }, get hasScarf(){ return hasScarf; }, get SCARF_KEY(){ return SCARF_KEY; }, neonOn, OFFICE, burst, SPOT, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, eventPhoto, pooped, get BOOK(){ return BOOK; } };   // local testing only
 
 // ---------- Eddie's pose ----------
 // both arms up in a big V (Q-version heads are too big to make a heart over them; a big 💖 floats between the two instead)
@@ -2585,24 +2593,90 @@ function burst(){
   }
   if (S.phase === 'run') sfx.pop();
 }
-// the wind flag: hangs limp when it's calm, lifts 2 s before a gust, flies straight out (and turns red) when it's strong
-const FLAG = { f: 0, dir: 1 };
-function drawFlag(dt, now){
+// the wind: white streaks across the screen, thin 2 s ahead of a gust, thick during it
+const WIND = { f: 0, dir: 1, lines: [], drawn: false };
+function drawWind(dt, now){
   const running = S.phase === 'run', warn = running && S.windDir && S.t < S.windAt, blow = running && S.windDir && S.t >= S.windAt;
   const want = warn ? (S.windK || 1) * clamp(1 - (S.windAt - S.t) / 2, 0, 1) : blow ? (S.windK || 1) : P.y > 28 ? 0.12 : 0.05;
-  FLAG.f += (want - FLAG.f) * Math.min(1, dt * 4); if (S.windDir) FLAG.dir = S.windDir;
-  const c = $('windFlag').getContext('2d'), a = clamp(FLAG.f / 1.5, 0, 1), px = 120, top = 16, L = 88, H = 44, ang = (1 - a) * 1.45;   // ang: 0 = straight out, ~90° = hanging down
-  c.clearRect(0, 0, 240, 176);
-  const col = a < 0.42 ? '#5fb85f' : a < 0.72 ? '#f2c230' : '#e0584a', ink = '#3a2a20';
-  c.lineCap = 'round'; c.strokeStyle = ink; c.lineWidth = 7; c.beginPath(); c.moveTo(px, top - 6); c.lineTo(px, 168); c.stroke();
-  c.fillStyle = '#ffd34d'; c.beginPath(); c.arc(px, top - 6, 7, 0, 7); c.fill(); c.lineWidth = 3; c.stroke();
-  const dx = FLAG.dir * Math.cos(ang), dy = Math.sin(ang), edge = [], N = 14;
-  for (let i = 0; i <= N; i++){ const t = i / N, w = Math.sin(t * 7 - now * (3 + 11 * a)) * (1.5 + 8 * a) * t; edge.push([px + dx * L * t - dy * w * FLAG.dir, top + dy * L * t + Math.abs(dx) * w]); }
-  // the second edge of the cloth runs along the pole's side: it's H lower when flying, H to the side when hanging
-  const ox = dy * H * FLAG.dir, oy = Math.abs(dx) * H;
-  c.beginPath(); c.moveTo(edge[0][0], edge[0][1]); for (const e of edge) c.lineTo(e[0], e[1]); for (let i = N; i >= 0; i--) c.lineTo(edge[i][0] - ox * (i ? 1 : 0) * 0 - ox, edge[i][1] + oy); c.closePath();
-  c.fillStyle = col; c.fill(); c.lineWidth = 4; c.strokeStyle = ink; c.lineJoin = 'round'; c.stroke();
-  return Math.max(2, Math.round(FLAG.f * 12));
+  WIND.f += (want - WIND.f) * Math.min(1, dt * 4); if (S.windDir) WIND.dir = S.windDir;
+  const cv = $('windLines'), c = cv.getContext('2d');
+  if (cv.width !== innerWidth || cv.height !== innerHeight){ cv.width = innerWidth; cv.height = innerHeight; }
+  const W = cv.width, H = cv.height, amount = warn ? 0.3 + WIND.f * 0.3 : blow ? WIND.f : 0;
+  if (!amount && !WIND.lines.length){ if (WIND.drawn){ c.clearRect(0, 0, W, H); WIND.drawn = false; } return Math.max(2, Math.round(WIND.f * 12)); }
+  // which way "along the wall" goes on screen right now (it flips and turns with the corners)
+  const a = surf(P.s, 0.8, P.y).project(camera), b = surf(P.s + 1, 0.8, P.y).project(camera), go = (Math.sign(b.x - a.x) || 1) * WIND.dir;
+  if (Math.random() < amount * dt * 26 && WIND.lines.length < 26)
+    WIND.lines.push({ x: go > 0 ? -W * 0.3 : W * 1.3, y: Math.random() * H, len: W * (0.14 + Math.random() * 0.2), v: W * (1.1 + Math.random() * 0.7) * (blow ? 1 : 0.65), ph: Math.random() * 6, go, thick: blow ? 3.4 : 2 });
+  c.clearRect(0, 0, W, H); c.lineCap = 'round';
+  for (const l of WIND.lines){
+    l.x += l.go * l.v * dt;
+    const pts = []; for (let i = 0; i <= 8; i++){ const t = i / 8; pts.push([l.x - l.go * l.len * t, l.y + Math.sin(t * 3 + l.ph + now * 3) * 7]); }
+    for (const [col, w] of [['rgba(50,90,120,.28)', l.thick + 2.5], ['rgba(255,255,255,.92)', l.thick]]){
+      c.strokeStyle = col; c.lineWidth = w; c.beginPath(); pts.forEach((q, i) => i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); c.stroke(); }
+  }
+  WIND.lines = WIND.lines.filter(l => l.go > 0 ? l.x - l.len < W : l.x + l.len > 0); WIND.drawn = true;
+  return Math.max(2, Math.round(WIND.f * 12));
+}
+// 🧣 mom's red scarf (handed out of her 58F window, kept forever): a ribbon that trails behind Eddie and shows the wind
+const SCARF_KEY = () => 'etfm-tower2-scarf-' + who();
+const hasScarf = () => { try { return localStorage.getItem(SCARF_KEY()) === '1'; } catch (e) { return false; } };
+const SCARF = (() => {
+  const N = 9, LEN = 0.21, WIDTH = 0.27, pos = new Float32Array(N * 2 * 3), uv = new Float32Array(N * 2 * 2), idx = [];
+  for (let i = 0; i < N; i++){ const v = i / (N - 1); uv.set([0, v, 1, v], i * 4); if (i < N - 1){ const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx);
+  const tex = canvasTex(32, 128, (x, w, h) => { x.fillStyle = '#e0483a'; x.fillRect(0, 0, w, h); x.fillStyle = '#fff3dc'; x.fillRect(0, 8, w, 7); x.fillRect(0, 24, w, 7);
+    x.fillStyle = '#3a2a20'; x.fillRect(0, 0, 3, h); x.fillRect(w - 3, 0, 3, h); x.fillRect(0, 0, w, 3); });
+  const ribbon = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })); ribbon.frustumCulled = false; ribbon.visible = false; scene.add(ribbon);
+  // the wrap round his neck, a bit under the head
+  const wrap = new THREE.Group();
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.17, 10, 24), LM(0xe0483a)); ring.rotation.x = Math.PI / 2 - 0.25; wrap.add(ring);
+  wrap.position.set(0, 1.56, -0.02); wrap.visible = false; me.eddie.body.add(wrap); sbOutline(wrap, 0.03);
+  const knot = new THREE.Vector3(0, 1.5, 0.5);   // where the ribbon leaves the wrap: the back of his neck
+  // the bundle mom throws
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10), LM(0xe0483a)); ball.visible = false; scene.add(ball);
+  const pts = Array.from({ length: N }, () => new THREE.Vector3()), old = Array.from({ length: N }, () => new THREE.Vector3());
+  return { N, LEN, WIDTH, ribbon, wrap, knot, ball, pts, old, geo, pos, on: false, give: null, ready: false };
+})();
+function wearScarf(on){ SCARF.on = on; SCARF.wrap.visible = on; SCARF.ribbon.visible = on; me.eddie.scarf.visible = !on; SCARF.ready = false; }   // the plush monkey scarf comes off for mom's
+function updateScarf(dt, now){
+  const K = SCARF;
+  if (K.give){   // mom's throw: an arc from her window to Eddie, then he has it on
+    K.give.t += dt; const t = K.give.t - 1.2;
+    if (t >= 0){
+      const to = me.group.position.clone(); to.y += 1.3;
+      K.ball.visible = true; K.ball.position.lerpVectors(K.give.from, to, Math.min(1, t / 0.7)); K.ball.position.y += Math.sin(Math.min(1, t / 0.7) * Math.PI) * 1.2; K.ball.rotation.x += dt * 12;
+    }
+    if (t >= 0.7){
+      K.ball.visible = false; K.give = null;
+      try { localStorage.setItem(SCARF_KEY(), '1'); } catch (e) {}
+      wearScarf(true); sfx.cp(); say('媽……我在爬 101 耶。', 2.6); flash('🧣 媽媽的紅圍巾：風往哪吹，看圍巾就知道！', 3);
+    }
+  }
+  if (!K.on) return;
+  me.group.updateMatrixWorld(true);
+  const a = me.eddie.body.localToWorld(K.knot.clone()), P0 = K.pts, O = K.old, h = Math.min(dt, 0.033);
+  if (!K.ready || P0[0].distanceTo(a) > 3){ for (let i = 0; i < K.N; i++){ P0[i].copy(a); P0[i].y -= i * K.LEN; O[i].copy(P0[i]); } K.ready = true; }
+  // wind along the wall (from the gust), plus always a little flutter so it feels alive
+  const blow = S.phase === 'run' && S.windDir ? (S.t < S.windAt ? clamp(1 - (S.windAt - S.t) / 2, 0.25, 1) * 16 : 34 * (S.windK || 1)) * S.windDir : 0;
+  const tan = surf(P.s + 0.5, 0, P.y).sub(surf(P.s - 0.5, 0, P.y)).normalize(), nor = softNormal(P.s), wall = surf(P.s, 0, P.y);
+  for (let i = 1; i < K.N; i++){
+    const q = P0[i], v = q.clone().sub(O[i]).multiplyScalar(0.94), k = i / K.N; O[i].copy(q);
+    q.add(v); q.y -= (blow ? 5 : 11) * h * h;
+    q.addScaledVector(tan, blow * h * h * (0.6 + k));
+    q.addScaledVector(nor, (Math.sin(now * (blow ? 15 : 4) - i * 0.9) * (blow ? 9 : 1.6) + 1.2) * k * h * h);
+  }
+  for (let n = 0; n < 4; n++){ P0[0].copy(a);
+    for (let i = 1; i < K.N; i++){ const d = P0[i].clone().sub(P0[i - 1]), l = d.length() || 1; d.multiplyScalar((l - K.LEN) / l); if (i > 1) P0[i - 1].addScaledVector(d, 0.5); P0[i].addScaledVector(d, i > 1 ? -0.5 : -1); }
+    for (let i = 1; i < K.N; i++){ const out = P0[i].clone().sub(wall).dot(nor); if (out < 0.25) P0[i].addScaledVector(nor, 0.25 - out); }   // never through the building
+  }
+  // a flat strip whose width faces the camera
+  const seg = new THREE.Vector3(), side = new THREE.Vector3(), view = new THREE.Vector3();
+  for (let i = 0; i < K.N; i++){
+    seg.copy(P0[Math.min(i + 1, K.N - 1)]).sub(P0[Math.max(i - 1, 0)]); view.copy(camera.position).sub(P0[i]);
+    side.crossVectors(seg, view).normalize().multiplyScalar(K.WIDTH / 2);
+    K.pos.set([P0[i].x - side.x, P0[i].y - side.y, P0[i].z - side.z, P0[i].x + side.x, P0[i].y + side.y, P0[i].z + side.z], i * 6);
+  }
+  K.geo.attributes.position.needsUpdate = true;
 }
 function updateNight(dt, now){
   const nk = S.phase === 'menu' ? 0 : clamp((P.y - 110) / 14, 0, 1);
@@ -2642,6 +2716,7 @@ function frame(nowMs, manual){
     if (S.phase === 'menu'){ const a = now * 0.08; camera.position.set(Math.sin(a) * 80, 60, Math.cos(a) * 80); camera.lookAt(0, 50, 0); }
     else updateCamera(dt);
   }
+  updateScarf(dt, now);
   // flags flap, people pose and snap photos
   for (const p of plats) if (p.flagMesh){ p.flagMesh.rotation.z = Math.sin(now * 6) * 0.08 + (S.windDir ? Math.sin(now * 20) * 0.2 : 0); p.flagMesh.scale.x = S.windDir ? 1.25 : 1; }
   for (const q of people){
@@ -2657,7 +2732,7 @@ function frame(nowMs, manual){
   const sec = S.phase === 'run' || S.phase === 'end' || S.phase === 'dead' ? S.t : 0;
   $('tc').textContent = '00:' + String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(Math.floor(sec % 60)).padStart(2, '0');
   $('altM').textContent = Math.round(P.y * METERS);
-  $('windTxt').textContent = '風速 ' + drawFlag(dt, now) + ' m/s';
+  $('windTxt').textContent = '風速 ' + drawWind(dt, now) + ' m/s';
   $('floorTag').textContent = Math.max(1, Math.min(BUILT, floorOf(P.y) || 1)) + 'F';
   $('coinTag').textContent = '🪙 +' + S.coins;
   const gripOn = S.phase === 'run' && (P.mode === 'wall' || P.grip < P.gripMax - 1);
