@@ -260,3 +260,6 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
 - 逃離土星：沒有試玩版，玩正式網址
 - 角色原型（參考用，保留）：艾迪 11zvrShMMHSVBgN43xA17Z、媽媽 6uHQME8BxUenFG77wqMm3i、小屁孩 4KMMx6mQamrWN8R3XiNfsu、空拍機拍立得 VgkxdJXrupR78ipJ5B5cC6
 - 上面文件裡提到的 EkQswp7…、7CVMoMJ…、2V9EGsX…、1GfYgGk…、2r6p379…、MsykofcN…、KQxdw7J…、JzZMRGc… 都已刪除，別再用
+
+## 2026-10-30 下午：101 調難＋💪 男子漢模式（只在 restyle-storybook，正式站未上）
+一般版跳距拉長、窗台變窄（手殘版＝舊手感），拿掉每層叮聲和窗戶亂閃。男子漢模式：沒網子，摔超過 3 層樓摔死回檢查點，過關解鎖。Bernie 要之後各關過關都有類似的男子漢版，其他關還沒做。細節見 docs/PLAN-101-難度表.md。

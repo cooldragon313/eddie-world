@@ -167,6 +167,8 @@
   <button class="btn" id="startBtn" type="button">🎬 開拍！從 1F 開始</button>
   <button class="btn" id="contBtn" type="button" hidden></button>
   <label class="easyPick"><input type="checkbox" id="easyBox"> 🐣 手殘版（握力掉得慢、颱風少、招牌暗得短）</label>
+  <label class="easyPick" id="manPick" style="display:none"><input type="checkbox" id="manBox"> 💪 我是男子漢，我不需要網子！（沒有安全網，摔超過 3 層樓直接摔死，回檢查點重爬）</label>
+  <p class="muted" id="manLock" style="display:none"></p>
   <div><button class="btn ghost" id="albumBtn1" type="button" hidden>📖 101 相簿</button> <button class="btn ghost" id="droneBtn" type="button" hidden>🧪 試玩：直接給空拍機</button></div>
   <div><a class="btn ghost homeLink" href="index.html">🏠 回艾迪的幻想世界</a></div>
   <p class="muted" id="loginLine"></p>
@@ -179,6 +181,7 @@
   <div class="achs" id="endAch"></div>
   <p id="endLine"></p>
   <button class="btn" id="againBtn" type="button">繼續爬</button>
+  <button class="btn" id="manBtn" type="button" hidden>💪 我是男子漢，我不需要網子！</button>
   <button class="btn ghost" id="albumBtn2" type="button" hidden>📖 相簿</button>
   <div><a class="btn ghost homeLink" href="index.html">🏠 回艾迪的幻想世界</a></div>
 </div></div>
@@ -1164,6 +1167,7 @@ const SEGS = [null, ['出發！', 1], ['轉角遇到吊籃', 2], ['冷氣機森�
 const segOf = y => Math.min(10, Math.floor(Math.max(0, y) / (10 * 3)) + 1);
 const TOTAL_FLOORS = 101, TOWER_H = TOTAL_FLOORS * FLOOR_H, METERS = 508 / (TOTAL_FLOORS * FLOOR_H + 30);
 const GRAV = 30, JUMP_V = 13.2, RUN = 6.5, CLIMB = 2.2;
+const FATAL_DROP = 3 * FLOOR_H;   // 💪 男子漢模式: fall further than this (3 floors) without grabbing anything and you're a pancake
 const wrapS = s => ((s % PER) + PER) % PER;
 function surf(s, out, y){
   s = wrapS(s); const f = Math.floor(s / SIDE), u = s - f * SIDE - R, o = R + out;
@@ -1682,6 +1686,7 @@ for (let i = 0; i < 52; i++){
 const me = buildEddieAvatar(DEFAULT_CUSTOM, { bat: false });
 { const b = new THREE.Box3().setFromObject(me.group); me.group.scale.setScalar(1.9 / (b.max.y - b.min.y)); }
 scene.add(me.group);
+const EDDIE_SCALE = me.group.scale.x;
 const P = { s: 9, y: 0, vs: 0, vy: 0, mode: 'ground', on: null, wall: null, face: 1, phase: 0, grip: 100, gripMax: 100, noGrab: 0, climbPh: 0 };
 
 // ---------- sound (synth; on by default, remembered) ----------
@@ -1725,6 +1730,8 @@ const ON_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), ON_LIVE =
 const API = ON_LOCAL ? 'http://localhost:1999/parties/main/global' : ON_LIVE ? 'https://etfm.cooldragon313.workers.dev/parties/main/global' : '';
 const token = () => { try { return localStorage.getItem('etfm-token') || ''; } catch (e) { return ''; } };
 const who = () => { try { return localStorage.getItem('etfm-username') || 'guest'; } catch (e) { return 'guest'; } };
+const MAN_KEY = () => 'etfm-tower2-man-' + who();
+const manOpen = () => { if (!ON_LIVE) return true; try { return localStorage.getItem(MAN_KEY()) === '1'; } catch (e) { return false; } };   // opens when you clear the top without 手殘版 (always open on test copies)
 const CP_KEY = () => 'etfm-tower2-cp-' + who(), SEG_KEY = () => 'etfm-tower2-seg-' + who();
 const savedCp = () => { try { return +localStorage.getItem(CP_KEY()) || 0; } catch (e) { return 0; } };
 const storeCp = n => { try { if (n > savedCp()) localStorage.setItem(CP_KEY(), String(n)); } catch (e) {} };
@@ -1783,7 +1790,10 @@ function startAt(floor){
   PO.state = 'idle'; PO.next = 6; flyer.visible = false; poop.visible = false;
   for (const p of plats) if (p.bird){ p.bird.fly = 0; p.bird.g.visible = true; p.bird.g.position.copy(p.bird.home); p.bird.g.rotation.z = 0; }
   P.peak = null; P.jumped = false;
-  S.easy = !!$('easyBox').checked; S.owl = 0; S.owlSeen = new Set(); S.segNets = 0;
+  S.man = manOpen() && $('manBox').checked; S.deaths = 0; me.group.scale.setScalar(EDDIE_SCALE);
+  for (const p of plats) if (p.net && p.mesh) p.mesh.visible = !S.man;   // no nets. you said so.
+  if (S.man) flash('💪 男子漢模式：沒有網子，摔超過 3 層樓就沒命！', 2.6);
+  S.easy = !S.man && !!$('easyBox').checked; S.owl = 0; S.owlSeen = new Set(); S.segNets = 0;
   $('startCard').hidden = true; $('endCard').hidden = true; $('wind').classList.remove('on');
   const segNo = Math.floor(floor / 10) + 1;
   lowerThird('第 ' + segNo + ' 段・' + SEGS[segNo][0], (floor + 1) + '–' + (floor + 10) + 'F　' + '⭐'.repeat(SEGS[segNo][1]), 3.2);
@@ -1801,6 +1811,21 @@ function neonWarn(p){ const [c, off] = neonCycle(), k = (S.t + p.ph) % c; return
 // the searchlight sweeping up from the street (segment 5): where it points now
 const SPOT = { s: 0, y: 0 };
 const spotLit = q => sDist((q.s0 + q.s1) / 2, SPOT.s) < 4 && Math.abs(q.y - SPOT.y) < 5;
+// 💪 男子漢模式: splat, then back to the last checkpoint you reached
+function die(){
+  S.phase = 'dead'; S.deaths = (S.deaths || 0) + 1; S.shake = 0.6; sfx.bonk(); sfx.splat();
+  me.group.scale.set(EDDIE_SCALE * 1.5, EDDIE_SCALE * 0.22, EDDIE_SCALE * 1.5);
+  flash('💀 摔死了！第 ' + S.deaths + ' 次', 1.6); say(pick(['……（變成煎餅）', '不需要網子個頭啦…', '我的臉……']), 1.5);
+  const run = S; setTimeout(() => { if (S === run && S.phase === 'dead') respawn(); }, 1600);
+}
+function respawn(){
+  const floor = Math.max(S.start, Math.floor(S.best / 10) * 10), on = plats.find(p => p.ring && p.floor === floor) || plats[0], cpI = ROUTE.indexOf(on);
+  me.group.scale.setScalar(EDDIE_SCALE);
+  Object.assign(P, { s: floor && cpI > 0 ? ROUTE[cpI - 1].s1 + 0.6 : 9, y: floor * FLOOR_H, vs: 0, vy: 0, mode: 'ground', on, wall: null, grip: P.gripMax, noGrab: 0, slipped: false, peak: null, jumped: false });
+  for (const c of chalks){ c.taken = false; c.mesh.visible = true; }
+  S.phase = 'run'; S.fallSaid = false; updateCamera(0.016, true);
+  say(pick(['再來！男子漢不認輸！', '剛剛那個不算！', '好，再一次！']));
+}
 function step(dt){
   S.t += dt;
   const kx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0), ky = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
@@ -1866,10 +1891,11 @@ function step(dt){
     const prevY = P.y;
     P.vy -= GRAV * dt; P.y += P.vy * dt; P.s += P.vs * dt;
     if (P.mode === 'air') P.peak = Math.max(P.peak == null ? P.y : P.peak, P.y);
+    if (S.man && P.mode === 'air' && !S.fallSaid && P.peak - P.y > FATAL_DROP - 2.5){ S.fallSaid = true; say(pick(['完了完了完了——', '網子呢？！網子呢！！', '媽——！！']), 1.2); }
     let landed = null;
     if (P.vy <= 0){   // land from above (one-way: you can jump up through anything)
       for (const p of plats){
-        if (p.decor || (p.mountOnly && P.slipped)) continue;   // a slip off the node's upper half falls past the seam
+        if (p.decor || (p.mountOnly && P.slipped) || (p.net && S.man)) continue;   // a slip off the node's upper half falls past the seam
         if (p.type === 'neon' && !neonOn(p)) continue;          // a dark neon sign isn't there
         const top = p.type === 'gondola' ? (p.cur == null ? p.y0 : p.cur) : p.y;
         if (!onSpan(p, P.s, p.ring ? 0 : S.easy ? 0.6 : 0.1)) continue;   // 🐣 手殘版: land a bit off the edge and still make it
@@ -1879,6 +1905,8 @@ function step(dt){
     if (landed){
       const drop = (P.peak == null ? P.y : P.peak) - P.y, speed = -P.vy; P.peak = null;
       if (drop > 5){ S.segFalls = (S.segFalls || 0) + 1; S.dripChain = 0; }
+      S.fallSaid = false;
+      if (S.man && drop > FATAL_DROP){ P.vy = 0; P.vs = 0; P.mode = 'ground'; P.on = landed; die(); return; }
       if (landed.net && segOf(P.y) === 5 && speed > 3) S.segNets = (S.segNets || 0) + 1;   // a real fall into it, not standing on it
       if (landed.net && speed > 9){ P.vy = speed * 0.45; P.mode = 'air'; P.on = null; P.jumped = true; sfx.bounce(); say(pick(['好險有網子！', '彈彈彈～', '嚇死我了…'])); eventPhoto('net'); }
       else {
@@ -1904,7 +1932,7 @@ function step(dt){
     // touch a climbing wall in the air → grab it
     if (P.mode === 'air' && !P.noGrab){
       const z = wallAt(P.s, P.y);
-      if (z){ P.mode = 'wall'; P.wall = z; P.vy = 0; P.vs = 0; P.peak = null; P.jumped = true; z.tired = false; sfx.grab();
+      if (z){ P.mode = 'wall'; P.wall = z; P.vy = 0; P.vs = 0; P.peak = null; P.jumped = true; z.tired = false; S.fallSaid = false; sfx.grab();
         if (z.hint && !z.hinted){ z.hinted = true; flash('🧗 抓住了！搖桿往上爬，握力用完會手滑', 2.6); }
         if (z.node && !z.node.warned){ z.node.warned = true; flash('🎋 竹節往外斜：越上面越斜、握力掉越快！中間接縫可以喘口氣', 3.0); say('哇…底下是空的！'); }
         else if (z.over && !z.warned){ z.warned = true; flash('🧱 小凸牆：握力掉比較快，一口氣爬上去！', 2.6); } }
@@ -1977,6 +2005,8 @@ const ACH = [
   { id: 'owl',      name: '🔦 夜貓子',       desc: '探照燈沒照到的落腳點也跳上去 5 次（第 5 段）' },
   { id: 'fireworks',name: '🎆 半程煙火',     desc: '第 5 段一次都沒掉到網子，到 50F 看煙火' },
   { id: 'boba',     name: '🧋 加班珍奶',     desc: '走進亮燈的辦公室，喝到桌上的珍奶（第 5 段）' },
+  { id: 'man',      name: '💪 我是男子漢',   desc: '男子漢模式爬完目前開放的所有樓層' },
+  { id: 'manzero',  name: '🦾 真男人不摔',   desc: '男子漢模式從 1F 一路到頂，一次都沒摔死' },
 ];
 const ACH_KEY = () => 'etfm-tower2-ach-' + who(), COIN_KEY = () => 'etfm-tower2-coins-' + who();
 const haveAch = () => { try { return JSON.parse(localStorage.getItem(ACH_KEY()) || '[]'); } catch (e) { return []; } };
@@ -2186,7 +2216,11 @@ function arriveCheckpoint(f){
   if (f < BUILT) setTimeout(() => lowerThird('第 ' + (segNo + 1) + ' 段・' + SEGS[segNo + 1][0], (f + 1) + '–' + (f + 10) + 'F　' + '⭐'.repeat(SEGS[segNo + 1][1]), 3.2), 2600);
   S.shot = 'top'; S.shotT = S.t;             // cut to an overhead shot for a moment
   claim();
-  if (f >= BUILT) setTimeout(() => endCard(true), 2600);
+  if (f >= BUILT){
+    if (!S.easy) try { localStorage.setItem(MAN_KEY(), '1'); } catch (e) {}
+    if (S.man){ unlock('man'); if (S.start === 0 && !S.deaths) unlock('manzero'); }
+    setTimeout(() => endCard(true), 2600);
+  }
 }
 
 // ---------- speech bubbles (Eddie + whoever's talking) ----------
@@ -2333,7 +2367,7 @@ async function endCard(done){
   S.phase = 'end';
   const res = await claim();
   $('endTitle').textContent = done ? '🎬 卡！' + BUILT + 'F 收工' : '卡！收工';
-  $('endSub').textContent = (S.easy ? '🐣 手殘版・' : '') + '從 ' + S.start + 'F 爬到 ' + S.best + 'F（' + Math.round(S.best * FLOOR_H * METERS) + ' 公尺）・拿到 $' + S.coins;
+  $('endSub').textContent = (S.easy ? '🐣 手殘版・' : '') + (S.man ? '💪 男子漢・摔死 ' + (S.deaths || 0) + ' 次・' : '') + '從 ' + S.start + 'F 爬到 ' + S.best + 'F（' + Math.round(S.best * FLOOR_H * METERS) + ' 公尺）・拿到 $' + S.coins;
   const best = segBest();
   const have = haveAch(), fresh = S.newAch || [];
   $('endAch').innerHTML = '<b>🏆 成就 ' + have.length + ' / ' + ACH.length + '</b><br>' + ACH.map(a => '<span class="' + (fresh.includes(a.id) ? 'new' : have.includes(a.id) ? '' : 'off') + '">' +
@@ -2348,8 +2382,10 @@ async function endCard(done){
   $('endLine').textContent = line; $('albumBtn2').hidden = !DRONE;
   const cp = Math.min(savedCp(), BUILT - 10);
   $('againBtn').textContent = cp ? '從 ' + cp + 'F 繼續' : '再爬一次';
+  $('manBtn').hidden = !manOpen() || S.man;
   $('endCard').hidden = false;
 }
+$('manBtn').onclick = () => { $('manBox').checked = true; $('easyBox').checked = false; startAt(0); updateCamera(0.016, true); };
 $('quitBtn').onclick = () => { if (S.phase === 'run') endCard(false); };
 $('startBtn').onclick = () => { let seen = false; try { seen = !!localStorage.getItem('etfm-tower2-intro'); } catch (e) {} if (seen){ startAt(0); updateCamera(0.016, true); } else playIntro(); };
 $('contBtn').onclick = () => { startAt(Math.min(savedCp(), BUILT - 10)); updateCamera(0.016, true); };
@@ -2358,9 +2394,12 @@ $('againBtn').onclick = () => { startAt(Math.min(savedCp(), BUILT - 10)); update
   $('contBtn').hidden = !cp; $('contBtn').textContent = '從 ' + cp + 'F 繼續';
   $('loginLine').textContent = (!API ? '試玩版：金幣不會存進帳號。' : token() ? '金幣會存進你的帳號。' : '還沒登入：先到「逃離土星」登入，金幣才會存。') + '　目前開放到 ' + BUILT + 'F。'; }
 try { $('easyBox').checked = localStorage.getItem('etfm-tower2-easy') === '1'; } catch (e) {}
-$('easyBox').addEventListener('change', () => { try { localStorage.setItem('etfm-tower2-easy', $('easyBox').checked ? '1' : '0'); } catch (e) {} });
+$('easyBox').addEventListener('change', () => { if ($('easyBox').checked) $('manBox').checked = false; try { localStorage.setItem('etfm-tower2-easy', $('easyBox').checked ? '1' : '0'); } catch (e) {} });
+$('manBox').addEventListener('change', () => { if ($('manBox').checked && $('easyBox').checked){ $('easyBox').checked = false; try { localStorage.setItem('etfm-tower2-easy', '0'); } catch (e) {} } });
+$('manPick').style.display = manOpen() ? '' : 'none';
+if (!manOpen()){ $('manLock').style.display = ''; $('manLock').textContent = '🔒 爬完 ' + BUILT + 'F 解鎖：💪 男子漢模式'; }
 document.querySelectorAll('.homeLink').forEach(a => { if (ON_LIVE) a.href = 'https://cooldragon313.github.io/eddie-world/'; else if (!ON_LOCAL) a.hidden = true; });
-if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, neonOn, OFFICE, burst, SPOT, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, eventPhoto, pooped, get BOOK(){ return BOOK; } };   // local testing only
+if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, die, respawn, neonOn, OFFICE, burst, SPOT, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, eventPhoto, pooped, get BOOK(){ return BOOK; } };   // local testing only
 
 // ---------- Eddie's pose ----------
 // both arms up in a big V (Q-version heads are too big to make a heart over them; a big 💖 floats between the two instead)
@@ -2490,7 +2529,7 @@ function frame(nowMs, manual){
   for (const p of plats) if (p.drops) for (const d of p.drops){ const k = (now * 0.9 + d.userData.k * 0.33) % 1; d.position.copy(d.userData.home); d.position.y -= k * 3; d.material.opacity = 1 - k; }
   for (const it of ITEMS) if ((it.kind === 'toy' || it.kind === 'gripup') && it.mesh.visible) it.mesh.rotation.y += dt * (it.kind === 'toy' ? 6 : 2);
   // HUD: timecode, altimeter, grip
-  const sec = S.phase === 'run' || S.phase === 'end' ? S.t : 0;
+  const sec = S.phase === 'run' || S.phase === 'end' || S.phase === 'dead' ? S.t : 0;
   $('tc').textContent = '00:' + String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(Math.floor(sec % 60)).padStart(2, '0');
   $('altM').textContent = Math.round(P.y * METERS);
   $('windTxt').textContent = '風速 ' + (S.windDir && S.t > S.windAt ? 18 : P.y > 30 ? 6 : 2) + ' m/s';
