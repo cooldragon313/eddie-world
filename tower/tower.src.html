@@ -166,7 +166,7 @@
   <button class="btn" id="startBtn" type="button">🎬 開拍！從 1F 開始</button>
   <button class="btn" id="contBtn" type="button" hidden></button>
   <label class="easyPick"><input type="checkbox" id="easyBox"> 🐣 手殘版（握力掉得慢、颱風少、招牌暗得短）</label>
-  <label class="easyPick" id="manPick" style="display:none"><input type="checkbox" id="manBox"> 💪 我是男子漢，我不需要網子！（沒有安全網，摔超過 3 層樓直接摔死，回檢查點重爬）</label>
+  <label class="easyPick" id="manPick" style="display:none"><input type="checkbox" id="manBox"> 💪 我是男子漢，我不需要網子！（沒有安全網、一條命，從 1F 一次爬到頂；摔超過 3 層樓就結束）</label>
   <p class="muted" id="manLock" style="display:none"></p>
   <div><button class="btn ghost" id="albumBtn1" type="button" hidden>📖 101 相簿</button> <button class="btn ghost" id="droneBtn" type="button" hidden>🧪 試玩：直接給空拍機</button></div>
   <div><a class="btn ghost homeLink" href="index.html">🏠 回艾迪的幻想世界</a></div>
@@ -780,8 +780,8 @@ const ON_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), ON_LIVE =
 const API = ON_LOCAL ? 'http://localhost:1999/parties/main/global' : ON_LIVE ? 'https://etfm.cooldragon313.workers.dev/parties/main/global' : '';
 const token = () => { try { return localStorage.getItem('etfm-token') || ''; } catch (e) { return ''; } };
 const who = () => { try { return localStorage.getItem('etfm-username') || 'guest'; } catch (e) { return 'guest'; } };
-const MAN_KEY = () => 'etfm-tower2-man-' + who();
-const manOpen = () => { if (!ON_LIVE) return true; try { return localStorage.getItem(MAN_KEY()) === '1'; } catch (e) { return false; } };   // opens when you clear the top without 手殘版 (always open on test copies)
+const MAN_KEY = () => 'etfm-tower2-man-' + who(), MANBEST_KEY = () => 'etfm-tower2-manbest-' + who();
+const manOpen = () => { if (!ON_LIVE) return true; try { return localStorage.getItem(MAN_KEY()) === '1'; } catch (e) { return false; } };   // opens when the whole tower is cleared without 手殘版 (always open on test copies)
 const CP_KEY = () => 'etfm-tower2-cp-' + who(), SEG_KEY = () => 'etfm-tower2-seg-' + who();
 const savedCp = () => { try { return +localStorage.getItem(CP_KEY()) || 0; } catch (e) { return 0; } };
 const storeCp = n => { try { if (n > savedCp()) localStorage.setItem(CP_KEY(), String(n)); } catch (e) {} };
@@ -824,6 +824,7 @@ $('tJ').addEventListener('pointerup', upJ); $('tJ').addEventListener('pointercan
 let S = { phase: 'menu', t: 0, best: 0, start: 0, coins: 0, jumpHeld: false, segT0: 0, seg: {}, windNext: 0, windDir: 0, windAt: 0, shot: null, shotT: 0, cine: 0 };
 const floorOf = y => Math.floor((y + 0.3) / FLOOR_H);
 function startAt(floor){
+  if (manOpen() && $('manBox').checked) floor = 0;   // 💪 男子漢模式 is one go, from the bottom
   const y = floor * FLOOR_H;
   S = { phase: 'run', t: 0, best: floor, start: floor, coins: 0, jumpHeld: true, segT0: 0, seg: {}, windNext: 6, windDir: 0, windAt: 0, shot: null, shotT: 0, cine: 0 };
   claimFrom = floor; claimAt = performance.now();
@@ -840,9 +841,9 @@ function startAt(floor){
   PO.state = 'idle'; PO.next = 6; flyer.visible = false; poop.visible = false;
   for (const p of plats) if (p.bird){ p.bird.fly = 0; p.bird.g.visible = true; p.bird.g.position.copy(p.bird.home); p.bird.g.rotation.z = 0; }
   P.peak = null; P.jumped = false;
-  S.man = manOpen() && $('manBox').checked; S.deaths = 0; me.group.scale.setScalar(EDDIE_SCALE);
+  S.man = manOpen() && $('manBox').checked; me.group.scale.setScalar(EDDIE_SCALE);
   for (const p of plats) if (p.net && p.mesh) p.mesh.visible = !S.man;   // no nets. you said so.
-  if (S.man) flash('💪 男子漢模式：沒有網子，摔超過 3 層樓就沒命！', 2.6);
+  if (S.man) flash('💪 男子漢模式：沒有網子、一條命，摔超過 3 層樓就結束！', 2.6);
   S.easy = !S.man && !!$('easyBox').checked; S.owl = 0; S.owlSeen = new Set(); S.segNets = 0;
   $('startCard').hidden = true; $('endCard').hidden = true; $('wind').classList.remove('on');
   const segNo = Math.floor(floor / 10) + 1;
@@ -861,20 +862,12 @@ function neonWarn(p){ const [c, off] = neonCycle(), k = (S.t + p.ph) % c; return
 // the searchlight sweeping up from the street (segment 5): where it points now
 const SPOT = { s: 0, y: 0 };
 const spotLit = q => sDist((q.s0 + q.s1) / 2, SPOT.s) < 4 && Math.abs(q.y - SPOT.y) < 5;
-// 💪 男子漢模式: splat, then back to the last checkpoint you reached
+// 💪 男子漢模式: one life. Splat, and the run is over
 function die(){
-  S.phase = 'dead'; S.deaths = (S.deaths || 0) + 1; S.shake = 0.6; sfx.bonk(); sfx.splat();
+  S.phase = 'dead'; S.dead = true; S.shake = 0.6; sfx.bonk(); sfx.splat();
   me.group.scale.set(EDDIE_SCALE * 1.5, EDDIE_SCALE * 0.22, EDDIE_SCALE * 1.5);
-  flash('💀 摔死了！第 ' + S.deaths + ' 次', 1.6); say(pick(['……（變成煎餅）', '不需要網子個頭啦…', '我的臉……']), 1.5);
-  const run = S; setTimeout(() => { if (S === run && S.phase === 'dead') respawn(); }, 1600);
-}
-function respawn(){
-  const floor = Math.max(S.start, Math.floor(S.best / 10) * 10), on = plats.find(p => p.ring && p.floor === floor) || plats[0], cpI = ROUTE.indexOf(on);
-  me.group.scale.setScalar(EDDIE_SCALE);
-  Object.assign(P, { s: floor && cpI > 0 ? ROUTE[cpI - 1].s1 + 0.6 : 9, y: floor * FLOOR_H, vs: 0, vy: 0, mode: 'ground', on, wall: null, grip: P.gripMax, noGrab: 0, slipped: false, peak: null, jumped: false });
-  for (const c of chalks){ c.taken = false; c.mesh.visible = true; }
-  S.phase = 'run'; S.fallSaid = false; updateCamera(0.016, true);
-  say(pick(['再來！男子漢不認輸！', '剛剛那個不算！', '好，再一次！']));
+  flash('💀 摔死了！', 1.6); say(pick(['……（變成煎餅）', '不需要網子個頭啦…', '我的臉……']), 1.5);
+  const run = S; setTimeout(() => { if (S === run && S.phase === 'dead') endCard(false); }, 1600);
 }
 function step(dt){
   S.t += dt;
@@ -1055,8 +1048,7 @@ const ACH = [
   { id: 'owl',      name: '🔦 夜貓子',       desc: '探照燈沒照到的落腳點也跳上去 5 次（第 5 段）' },
   { id: 'fireworks',name: '🎆 半程煙火',     desc: '第 5 段一次都沒掉到網子，到 50F 看煙火' },
   { id: 'boba',     name: '🧋 加班珍奶',     desc: '走進亮燈的辦公室，喝到桌上的珍奶（第 5 段）' },
-  { id: 'man',      name: '💪 我是男子漢',   desc: '男子漢模式爬完目前開放的所有樓層' },
-  { id: 'manzero',  name: '🦾 真男人不摔',   desc: '男子漢模式從 1F 一路到頂，一次都沒摔死' },
+  { id: 'man',      name: '💪 我是男子漢',   desc: '全破後不靠網子、一條命，從 1F 一次爬到頂' },
 ];
 const ACH_KEY = () => 'etfm-tower2-ach-' + who(), COIN_KEY = () => 'etfm-tower2-coins-' + who();
 const haveAch = () => { try { return JSON.parse(localStorage.getItem(ACH_KEY()) || '[]'); } catch (e) { return []; } };
@@ -1267,8 +1259,8 @@ function arriveCheckpoint(f){
   S.shot = 'top'; S.shotT = S.t;             // cut to an overhead shot for a moment
   claim();
   if (f >= BUILT){
-    if (!S.easy) try { localStorage.setItem(MAN_KEY(), '1'); } catch (e) {}
-    if (S.man){ unlock('man'); if (S.start === 0 && !S.deaths) unlock('manzero'); }
+    if (!S.easy && BUILT >= TOTAL_FLOORS - 1) try { localStorage.setItem(MAN_KEY(), '1'); } catch (e) {}   // only the whole tower counts (100F is the last checkpoint)
+    if (S.man) unlock('man');
     setTimeout(() => endCard(true), 2600);
   }
 }
@@ -1416,8 +1408,8 @@ async function endCard(done){
   if (S.phase === 'end') return;
   S.phase = 'end';
   const res = await claim();
-  $('endTitle').textContent = done ? '🎬 卡！' + BUILT + 'F 收工' : '卡！收工';
-  $('endSub').textContent = (S.easy ? '🐣 手殘版・' : '') + (S.man ? '💪 男子漢・摔死 ' + (S.deaths || 0) + ' 次・' : '') + '從 ' + S.start + 'F 爬到 ' + S.best + 'F（' + Math.round(S.best * FLOOR_H * METERS) + ' 公尺）・拿到 $' + S.coins;
+  $('endTitle').textContent = S.dead ? '💀 摔死在 ' + S.best + 'F' : done ? '🎬 卡！' + BUILT + 'F 收工' : '卡！收工';
+  $('endSub').textContent = (S.easy ? '🐣 手殘版・' : '') + (S.man ? '💪 男子漢・' : '') + '從 ' + S.start + 'F 爬到 ' + S.best + 'F（' + Math.round(S.best * FLOOR_H * METERS) + ' 公尺）・拿到 $' + S.coins;
   const best = segBest();
   const have = haveAch(), fresh = S.newAch || [];
   $('endAch').innerHTML = '<b>🏆 成就 ' + have.length + ' / ' + ACH.length + '</b><br>' + ACH.map(a => '<span class="' + (fresh.includes(a.id) ? 'new' : have.includes(a.id) ? '' : 'off') + '">' +
@@ -1429,9 +1421,10 @@ async function endCard(done){
   else if (res && res.money != null) line = '金幣已存入帳號（現在 $' + res.money + '）';
   if (done) line += '　' + (BUILT + 1) + 'F 以上還在施工，下一段「' + SEGS[BUILT / 10 + 1][0] + '」快來了！';
   if (S.newPhotos && S.newPhotos.length) line += '　📷 新照片 ' + S.newPhotos.length + ' 張，收進相簿了！';
+  if (S.man){ let rec = 0; try { rec = +localStorage.getItem(MANBEST_KEY()) || 0; if (S.best > rec) localStorage.setItem(MANBEST_KEY(), String(S.best)); } catch (e) {} line = '💪 男子漢最高紀錄 ' + Math.max(rec, S.best) + 'F' + (S.best > rec ? '（新紀錄！）' : '') + '　' + line; }
   $('endLine').textContent = line; $('albumBtn2').hidden = !DRONE;
   const cp = Math.min(savedCp(), BUILT - 10);
-  $('againBtn').textContent = cp ? '從 ' + cp + 'F 繼續' : '再爬一次';
+  $('againBtn').textContent = S.man ? '💪 再來一次（從 1F）' : cp ? '從 ' + cp + 'F 繼續' : '再爬一次';
   $('manBtn').hidden = !manOpen() || S.man;
   $('endCard').hidden = false;
 }
@@ -1445,11 +1438,11 @@ $('againBtn').onclick = () => { startAt(Math.min(savedCp(), BUILT - 10)); update
   $('loginLine').textContent = (!API ? '試玩版：金幣不會存進帳號。' : token() ? '金幣會存進你的帳號。' : '還沒登入：先到「逃離土星」登入，金幣才會存。') + '　目前開放到 ' + BUILT + 'F。'; }
 try { $('easyBox').checked = localStorage.getItem('etfm-tower2-easy') === '1'; } catch (e) {}
 $('easyBox').addEventListener('change', () => { if ($('easyBox').checked) $('manBox').checked = false; try { localStorage.setItem('etfm-tower2-easy', $('easyBox').checked ? '1' : '0'); } catch (e) {} });
-$('manBox').addEventListener('change', () => { if ($('manBox').checked && $('easyBox').checked){ $('easyBox').checked = false; try { localStorage.setItem('etfm-tower2-easy', '0'); } catch (e) {} } });
+$('manBox').addEventListener('change', () => { $('contBtn').hidden = $('manBox').checked || !Math.min(savedCp(), BUILT - 10); if ($('manBox').checked && $('easyBox').checked){ $('easyBox').checked = false; try { localStorage.setItem('etfm-tower2-easy', '0'); } catch (e) {} } });
 $('manPick').style.display = manOpen() ? '' : 'none';
-if (!manOpen()){ $('manLock').style.display = ''; $('manLock').textContent = '🔒 爬完 ' + BUILT + 'F 解鎖：💪 男子漢模式'; }
+if (!manOpen()){ $('manLock').style.display = ''; $('manLock').textContent = '🔒 ' + TOTAL_FLOORS + ' 層全部通關後解鎖：💪 男子漢模式'; }
 document.querySelectorAll('.homeLink').forEach(a => { if (ON_LIVE) a.href = 'https://cooldragon313.github.io/eddie-world/'; else if (!ON_LOCAL) a.hidden = true; });
-if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, die, respawn, neonOn, OFFICE, burst, SPOT, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, eventPhoto, pooped, get BOOK(){ return BOOK; } };   // local testing only
+if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, die, neonOn, OFFICE, burst, SPOT, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, eventPhoto, pooped, get BOOK(){ return BOOK; } };   // local testing only
 
 // ---------- Eddie's pose ----------
 // both arms up in a big V (Q-version heads are too big to make a heart over them; a big 💖 floats between the two instead)

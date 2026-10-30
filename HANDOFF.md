@@ -262,4 +262,4 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
 - 上面文件裡提到的 EkQswp7…、7CVMoMJ…、2V9EGsX…、1GfYgGk…、2r6p379…、MsykofcN…、KQxdw7J…、JzZMRGc… 都已刪除，別再用
 
 ## 2026-10-30 下午：101 調難＋💪 男子漢模式（只在 restyle-storybook，正式站未上）
-一般版跳距拉長、窗台變窄（手殘版＝舊手感），拿掉每層叮聲和窗戶亂閃。男子漢模式：沒網子，摔超過 3 層樓摔死回檢查點，過關解鎖。Bernie 要之後各關過關都有類似的男子漢版，其他關還沒做。細節見 docs/PLAN-101-難度表.md。
+一般版跳距拉長、窗台變窄（手殘版＝舊手感），拿掉每層叮聲和窗戶亂閃。男子漢模式：101 層全破才解鎖，一次從 1F 爬到頂，沒網子、一條命，摔超過 3 層樓結束。Bernie 要之後各關過關都有類似的男子漢版，其他關還沒做。細節見 docs/PLAN-101-難度表.md。
