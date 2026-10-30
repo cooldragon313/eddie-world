@@ -252,3 +252,11 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
 - 試玩連結（家裡 PC 發的新連結，101）：見下一行
 - 下一步：Bernie 實玩第 5 段 → 回饋調數字；下階段＝家裡相簿＋照片存伺服器（R2）；之後的窗戶房間：風阻尼器（87–92F）最推
 - 101 試玩連結（第 5 段版）：https://claude.ai/artifact/LCkqyB3M38ig1bkX7JWaWz — 更新：`python tools/build_family.py --only tower --preview <scratchpad>/tower-preview.html` 後發布到同一個 artifact（家裡 PC 的 session）
+
+## 🔗 目前有效的試玩連結（2026-10-30 整理；更早的試玩連結都已刪除）
+- 101 跑酷：https://claude.ai/artifact/LCkqyB3M38ig1bkX7JWaWz
+- 艾迪的幻想世界大廳：https://claude.ai/artifact/TgHYAgVNVqzEnmumwuamNU
+- 恐怖考前複習夜：https://claude.ai/artifact/22KEpAkE6hMkbmHdEin8Bs
+- 逃離土星：沒有試玩版，玩正式網址
+- 角色原型（參考用，保留）：艾迪 11zvrShMMHSVBgN43xA17Z、媽媽 6uHQME8BxUenFG77wqMm3i、小屁孩 4KMMx6mQamrWN8R3XiNfsu、空拍機拍立得 VgkxdJXrupR78ipJ5B5cC6
+- 上面文件裡提到的 EkQswp7…、7CVMoMJ…、2V9EGsX…、1GfYgGk…、2r6p379…、MsykofcN…、KQxdw7J…、JzZMRGc… 都已刪除，別再用
