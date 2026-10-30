@@ -153,6 +153,7 @@
 <div id="cards"><p id="cardTxt"></p></div>
 <button id="skip" type="button" hidden>跳過 ▶▶</button>
 
+<style>.easyPick{display:block;margin:8px auto 2px;font-weight:700;font-size:15px;cursor:pointer}.easyPick input{width:18px;height:18px;vertical-align:-3px;margin-right:4px}</style>
 <div class="card" id="startCard"><div>
   <h1>101 跑酷</h1>
   <div class="sub">徒手攀登台北 101 · 艾迪的提案</div>
@@ -164,6 +165,7 @@
   </ul>
   <button class="btn" id="startBtn" type="button">🎬 開拍！從 1F 開始</button>
   <button class="btn" id="contBtn" type="button" hidden></button>
+  <label class="easyPick"><input type="checkbox" id="easyBox"> 🐣 手殘版（握力掉得慢、颱風少、招牌暗得短）</label>
   <div><button class="btn ghost" id="albumBtn1" type="button" hidden>📖 101 相簿</button> <button class="btn ghost" id="droneBtn" type="button" hidden>🧪 試玩：直接給空拍機</button></div>
   <div><a class="btn ghost homeLink" href="index.html">🏠 回艾迪的幻想世界</a></div>
   <p class="muted" id="loginLine"></p>
@@ -206,7 +208,7 @@ function lowerThird(b, s, secs){ $('lowerB').textContent = b; $('lowerS').textCo
 //   s = distance around the tower (0 … 4·SIDE), y = height.
 //   +s = to the right as seen from outside. Faces: 0 front(+z) 1 right(+x) 2 back 3 left.
 // ============================================================
-const SIDE = 18, R = SIDE / 2, PER = SIDE * 4, FLOOR_H = 3, BUILT = 40;   // floors built so far
+const SIDE = 18, R = SIDE / 2, PER = SIDE * 4, FLOOR_H = 3, BUILT = 50;   // floors built so far
 // the ten segments (docs/PLAN-101-難度表.md): name + stars
 const SEGS = [null, ['出發！', 1], ['轉角遇到吊籃', 2], ['冷氣機森林', 2], ['竹節初登場', 3], ['夜幕降臨', 3], ['天空工地', 3], ['颱風前夕', 4], ['雨中攀登', 4], ['觀景台明星', 5], ['雲端之上', 5]];
 const segOf = y => Math.min(10, Math.floor(Math.max(0, y) / (10 * 3)) + 1);
@@ -236,7 +238,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd0f0);
 scene.fog = new THREE.Fog(0xb8dcf2, 120, 420);
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 900);
-scene.add(new THREE.HemisphereLight(0xfff2dc, 0x8aa0b8, 0.85));
+const hemi = new THREE.HemisphereLight(0xfff2dc, 0x8aa0b8, 0.85); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffeccc, 0.6); sun.position.set(40, 80, 60); scene.add(sun);
 function fit(){ const w = innerWidth, h = innerHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.fov = w < h ? 68 : 52; camera.updateProjectionMatrix(); }
 addEventListener('resize', fit); fit();
@@ -296,6 +298,9 @@ const TYPES = {
   lip:     { col: 0x2f6e68, depth: 2.2, h: 0.5 },           // the bamboo section's lip sticking out over a traverse (decoration)
   seam:    { col: 0xffcf5a, depth: 2.0, h: 0.35 },          // the seam between the two halves of a bamboo node: a gold ledge you can rest on (only up to 60%)
   node:    { col: 0x2f6e68, depth: 3.4, h: 0.6 },           // the top of a bamboo node (you mantle onto it)
+  neon:    { col: 0xff4fa3, depth: 1.5, h: 0.35 },          // a neon sign: lit 2 s / dark 1 s — dark = you fall through (segment 5)
+  room:    { col: 0xcfc2ad, depth: 2.8, h: 0.3 },           // the floor of a room you walk into through a big open window
+  desk:    { col: 0x8a96a3, depth: 1.2, h: 1.1 },           // a filing cabinet inside the office (a step up to the way out)
 };
 const ROUTE = [];   // footholds + walls in climbing order (for the "next step" marker)
 const PHOTOS = [];  // the drone's hidden photo spots, 3 a segment (docs/PLAN-101跑酷.md): stand on the foothold to take it
@@ -400,10 +405,37 @@ if (Math.floor((cs + 1.2) / SIDE) === Math.floor((cs + 5.2) / SIDE)) console.war
 branch(foot('balcony', 1.2, 2.0, 4.0, { line: '轉角了！繞過去看看' }), -1, [['sill', 1.8, 2.2, 1.6], ['ac', 2.0, 2.1, 1.4, { item: 'gripup', id: 'g2' }]]);   // a balcony round the corner (so you see where to go); 💪 #2 up to the left
 climb(1.0, 4.0, 2.0, { chalk: true, momWall: true });          // mom's 39F window next to its top
 checkpoint(40);                                              // y 120
+// ---- segment 5: 41–50F 夜幕降臨 — night falls: a searchlight sweeps the wall, neon signs blink
+// (lit 2 s / dark 1 s, dark = you drop through), lit windows are the safe spots, an office you
+// walk into through its window, then a long wall with one ledge to breathe on.
+cs += 1.5;
+foot('sill', 1.0, 2.2, 3.0, { lit: true });                  // breather: lit windows
+const neonFrom = foot('sill', 1.2, 2.2, 2.6, { lit: true, pigeon: true, sleepy: true });
+foot('neon', 1.4, 2.1, 1.4, { first: true, ph: 0, sign: 0 });   // (narrow: it has to stop short of the corner)
+foot('sill', 1.3, 2.1, 2.0, { lit: true });
+photo('neon', '霓虹燈下', '閃閃發亮的招牌上…', foot('neon', 1.4, 2.0, 2.0, { ph: 1.1, sign: 1 }), { pose: 'v', cam: { side: 1.6, out: 4.5, up: 0.4, look: 0.8 } });
+foot('neon', 1.5, 2.0, 1.8, { ph: 2.0, sign: 2 });
+foot('balcony', 1.2, 0.5, 6.0, { lit: true, line: '那邊的窗戶開著，還亮著燈…' });   // a long ledge round to the next face, so the office sits on one face
+// the office (about 45F): a big open window — walk in, a cold 珍奶 on a desk, someone working late
+const OFFICE = foot('room', 1.3, 2.0, 9.0, { room: true, standOut: 1.5, lit: true, line: '哇…有人在加班' });
+if (Math.floor(OFFICE.s0 / SIDE) !== Math.floor((OFFICE.s1 - 0.01) / SIDE)) console.warn('route: the office straddles a corner');
+for (const q of plats) if ((q.type === 'neon' || q.room) && Math.floor(q.s0 / SIDE) !== Math.floor((q.s1 - 0.01) / SIDE)) console.warn('route: a neon sign / room straddles a corner at s ' + q.s0.toFixed(1));
+ITEMS.push({ kind: 'boba', s: OFFICE.s0 + 3.2, y: OFFICE.y + 0.9, id: 'boba', taken: false });
+photo('office', '加班的夜晚', '亮著燈的辦公室裡，有人睡著了…', OFFICE, { s: OFFICE.s0 + 5.9, r: 1.0, pose: 'shock', cam: { side: -1.2, out: 3.6, up: 0.6, look: 0.6 } });
+foot('desk', -1.6, 1.1, 1.4, { standOut: 1.5 });             // the filing cabinet at the far end: a step up
+foot('sill', 1.3, 2.0, 2.2, { lit: true });                  // out the side window and back onto the wall
+climb(1.0, 6.0, 2.2);                                        // the long wall, part 1 (6 m)
+const guardSill = ROUTE[ROUTE.length - 1]; guardSill.lit = true; guardSill.guard = true;   // the one ledge to breathe on: a guard with a torch in the window
+climb(1.0, 5.5, 2.2, { chalk: true });                       // part 2
+checkpoint(50);                                              // y 150
+photo('fireworks', '半程煙火', '50 樓的夜空有人在慶祝…', plats.find(p => p.cp && p.floor === 50), { s: cs + 2.5, r: 1.2, pose: 'heart', cam: { side: 1.0, out: 6.5, up: -0.6, look: 3.5, fov: 64 } });
+// side paths: a dark neon run to a 雞排 (left of the sleeping pigeon)
+branch(neonFrom, -1, [['neon', 1.6, 2.1, 1.6, { ph: 0.5, sign: 3 }], ['neon', 1.8, 2.0, 1.4, { ph: 1.5, sign: 4 }], ['sill', 1.8, 2.1, 1.8, { item: 'chicken', lit: true }]]);
 // safety nets halfway up each segment: a fall costs at most 5 floors
 plat('net', 0, PER, 5 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 15 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 25 * FLOOR_H - 0.4, { ring: true, net: true });
+plat('net', 0, PER, 44 * FLOOR_H - 0.4, { ring: true, net: true });   // segment 5's net sits under the office
 // mom at an 18F window (a cameo from 恐怖考前複習夜)
 // (she rides the lift up to chase him — she shows up at a window every 20 floors: 18, 38, 58 … only 18F is built so far)
 const MOM_SPOTS = walls.filter(z => z.momWall).map(z => {   // next to the top of those walls
@@ -428,6 +460,71 @@ function meshAlong(s0, s1, y, depth, h, mat, out){
   }
   return g;
 }
+// an outdoor AC unit: white box, a big round fan grille (it spins), a side vent, brackets, a copper pipe into the wall
+const ventTex = canvasTex(64, 64, (x, w, h) => { x.fillStyle = '#e8ecef'; x.fillRect(0, 0, w, h); x.fillStyle = '#9aa4ac'; for (let i = 6; i < h; i += 8) x.fillRect(6, i, w - 12, 3); });
+function acUnit(p, g, T){
+  const fa = faceAngle(p.s0), w = p.s1 - p.s0, mid = (p.s0 + p.s1) / 2, fanS = p.s0 + Math.min(w * 0.4, 0.75), cy = p.y - T.h / 2;
+  const front = (s, dy, dz) => surf(s, T.depth + (dz || 0.02), cy + (dy || 0));
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.44, 28), BM(0x5a6168)); ring.position.copy(front(fanS)); ring.rotation.y = fa; g.add(ring);
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(0.34, 28), BM(0x2a2f34)); hole.position.copy(front(fanS, 0, 0.015)); hole.rotation.y = fa; g.add(hole);
+  const blades = new THREE.Group(); blades.position.copy(front(fanS, 0, 0.03)); blades.rotation.y = fa; g.add(blades);
+  for (let k = 0; k < 3; k++){ const b = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.3, 0.01), BM(0x8a9299)); b.position.y = 0.15; const arm = new THREE.Group(); arm.rotation.z = k * Math.PI * 2 / 3; arm.add(b); blades.add(arm); }
+  for (let k = -1; k <= 1; k++){ const bar = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.025, 0.01), BM(0x5a6168)); bar.position.copy(front(fanS, k * 0.2, 0.045)); bar.rotation.y = fa; g.add(bar); }
+  p.fan = blades;
+  if (w > 1.2){ const v = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(0.55, w - 1.15), 0.6), new THREE.MeshBasicMaterial({ map: ventTex })); v.position.copy(front(p.s1 - Math.min(0.35, (w - 1.15) / 2) - 0.1)); v.rotation.y = fa; g.add(v); }
+  for (const e of [p.s0 + 0.2, p.s1 - 0.2]) g.add(meshAlong(e - 0.04, e + 0.04, p.y - T.h, T.depth * 0.9, 0.08, LM(0x9aa4ac), 0));   // brackets under it
+  const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.9, 8), LM(0xc8823a)); pipe.rotation.order = 'YXZ'; pipe.rotation.set(Math.PI / 2, fa, 0);
+  pipe.position.copy(surf(p.s0 + 0.15, 0.45, p.y - 0.2)); g.add(pipe);                                                                  // the copper pipe into the wall
+}
+// a neon shop sign sticking out: blinks; dark = you drop through
+const NEON_COL = [0xff4fa3, 0x4fd8ff, 0xffe04f, 0x7dff6a, 0xff9a3c], NEON_TXT = ['拉麵', '珍奶', 'KTV', '24H', '夾娃娃'];
+function neonSign(p, g, T){
+  const k = p.sign || 0, col = NEON_COL[k % NEON_COL.length], fa = faceAngle(p.s0), mid = (p.s0 + p.s1) / 2;
+  const tex = canvasTex(256, 96, (x, w, h) => { x.fillStyle = '#1a1424'; x.fillRect(0, 0, w, h); x.strokeStyle = '#' + col.toString(16).padStart(6, '0'); x.lineWidth = 8; x.strokeRect(6, 6, w - 12, h - 12);
+    x.fillStyle = x.strokeStyle; x.shadowColor = x.strokeStyle; x.shadowBlur = 14; x.font = '900 54px "Noto Sans TC", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(NEON_TXT[k % NEON_TXT.length], w / 2, h / 2 + 3); });
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(p.s1 - p.s0, 0.8), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  face.position.copy(surf(mid, T.depth + 0.03, p.y - 0.55)); face.rotation.y = fa; g.add(face);
+  const board = g.children[0];   // the platform box itself (meshAlong group): repaint it as the glowing tube on top
+  const glow = new THREE.MeshBasicMaterial({ color: col }); board.traverse(o => { if (o.isMesh) o.material = glow; });
+  p.neon = { face, glow, col: new THREE.Color(col), dark: new THREE.Color(0x2a2636) };
+}
+// the office you walk into: back wall of cubicles, ceiling lights, desks with glowing monitors, a man asleep at his desk
+function buildOffice(p){
+  const g = new THREE.Group(), fa = faceAngle(p.s0), W = p.s1 - p.s0, H = 4.2, D = TYPES.room.depth, mid = (p.s0 + p.s1) / 2;
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({ map: canvasTex(512, 240, (x, w, h) => {
+    x.fillStyle = '#d6e6ee'; x.fillRect(0, 0, w, h); x.fillStyle = '#b9ccd6'; x.fillRect(0, h * 0.78, w, h);
+    for (let i = 0; i < 6; i++){ const cx = i * w / 6; x.fillStyle = '#93a9b6'; x.fillRect(cx + 8, h * 0.5, w / 6 - 16, h * 0.3); x.fillStyle = '#2a3a48'; x.fillRect(cx + 28, h * 0.36, 34, 24); x.fillStyle = '#8fe0ff'; x.fillRect(cx + 31, h * 0.38, 28, 18); }
+    x.fillStyle = '#5b3a29'; x.font = '900 26px "Noto Sans TC", sans-serif'; x.fillText('業績目標 ↗', 24, 44); x.fillStyle = '#e0584a'; x.fillRect(220, 18, 120, 40); x.fillStyle = '#fff'; x.fillText('加班中', 236, 48); }) }));
+  back.position.copy(surf(mid, 0.06, p.y + H / 2)); back.rotation.y = fa; g.add(back);
+  g.add(meshAlong(p.s0, p.s1, p.y + H + 0.3, D, 0.3, LM(0xe9e2d4), 0));                                   // ceiling
+  for (const e of [p.s0, p.s1 - 0.25]) g.add(meshAlong(e, e + 0.25, p.y + H, D, H, LM(0xe9e2d4), 0));     // side walls
+  g.add(meshAlong(p.s0 - 0.2, p.s1 + 0.2, p.y + H + 0.5, 0.3, 0.3, LM(0xf4efe6), D));                      // the open window's frame
+  for (let ls = p.s0 + 1.3; ls < p.s1 - 0.8; ls += 2.4){ const l = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.08, 0.35), BM(0xfff8d8)); l.position.copy(surf(ls, D * 0.5, p.y + H - 0.06)); l.rotation.y = fa; g.add(l); }
+  for (let ds = p.s0 + 1.4; ds < p.s1 - 1.6; ds += 2.7){
+    g.add(meshAlong(ds - 0.75, ds + 0.75, p.y + 0.9, 0.85, 0.08, LM(0xc98a4a), 0.35));
+    for (const e of [ds - 0.65, ds + 0.65]) g.add(meshAlong(e - 0.04, e + 0.04, p.y + 0.82, 0.7, 0.82, LM(0x7a5236), 0.45));
+    const mon = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.48, 0.05), BM(0x8fe0ff)); mon.position.copy(surf(ds, 0.6, p.y + 1.25)); mon.rotation.y = fa; g.add(mon);
+  }
+  const zz = canvasTex(128, 128, (x) => {   // a man asleep on his desk, Zzz
+    x.fillStyle = '#3a4a8a'; x.beginPath(); x.ellipse(64, 104, 40, 30, 0, Math.PI, 0); x.fill();
+    x.fillStyle = '#f2cfae'; x.beginPath(); x.ellipse(60, 80, 20, 16, 0.3, 0, Math.PI * 2); x.fill(); x.fillStyle = '#2a1a12'; x.beginPath(); x.ellipse(56, 72, 20, 10, 0.3, Math.PI, 0); x.fill();
+    x.fillStyle = '#ffffff'; x.font = '900 22px sans-serif'; x.fillText('Z', 86, 40); x.font = '900 16px sans-serif'; x.fillText('z', 104, 24); x.fillText('z', 112, 12); });
+  const man = new THREE.Sprite(new THREE.SpriteMaterial({ map: zz, transparent: true })); man.scale.set(1.5, 1.5, 1); man.position.copy(surf(p.s0 + 6.1, 0.9, p.y + 1.45)); g.add(man);
+  sbOutline(g, 0.03); scene.add(g);
+  p.worker = { sp: man, s: p.s0 + 6.1, said: false };
+}
+// the guard in the window by the long wall's ledge, torch beam pointing out
+function addGuard(p, g){
+  const t = canvasTex(128, 128, (x) => {
+    x.fillStyle = '#2a3a5a'; x.beginPath(); x.ellipse(52, 112, 30, 40, 0, Math.PI, 0); x.fill();
+    x.fillStyle = '#f2cfae'; x.beginPath(); x.arc(52, 56, 20, 0, Math.PI * 2); x.fill(); x.fillStyle = '#1c2a44'; x.fillRect(30, 30, 44, 16); x.fillRect(26, 42, 52, 6);
+    x.fillStyle = '#2a1a12'; x.fillRect(44, 56, 4, 4); x.fillRect(56, 56, 4, 4); x.fillStyle = '#333'; x.fillRect(80, 70, 30, 12); x.fillStyle = '#fff39a'; x.fillRect(106, 68, 10, 16); });
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true })); sp.scale.set(1.2, 1.5, 1); sp.position.copy(surf((p.s0 + p.s1) / 2 + 0.4, 0.06, p.y + 1.1)); g.add(sp);
+  const beam = new THREE.Mesh(new THREE.ConeGeometry(0.9, 3.2, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff39a, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide }));
+  beam.position.copy(surf((p.s0 + p.s1) / 2 + 0.9, 1.5, p.y + 1.15)); beam.rotation.order = 'YXZ'; beam.rotation.set(-Math.PI / 2, faceAngle(p.s0), 0); g.add(beam);
+  p.guardMan = { sp, said: false };
+}
+const litWinTex = canvasTex(64, 48, (x, w, h) => { x.fillStyle = '#ffe9a0'; x.fillRect(0, 0, w, h); x.fillStyle = '#f2c46d'; x.fillRect(w / 2 - 1, 0, 3, h); x.fillRect(0, h / 2 - 1, w, 3); x.strokeStyle = '#c99a4a'; x.lineWidth = 4; x.strokeRect(2, 2, w - 4, h - 4); });
 for (const p of plats){
   const T = TYPES[p.type], g = new THREE.Group();
   if (p.type === 'flag'){
@@ -449,14 +546,20 @@ for (const p of plats){
   } else {
     const mat = p.type === 'cp' ? new THREE.MeshLambertMaterial({ map: woodTex, color: 0xffe08a }) : LM(T.col);
     g.add(meshAlong(p.s0, p.s1, p.y, p.depth || T.depth, T.h, mat, 0));
+    if (p.type === 'ac' || p.type === 'drip') acUnit(p, g, T);
     if (p.type === 'drip'){
-      const fan = new THREE.Mesh(new THREE.CircleGeometry(0.32, 16), BM(0x666666)); fan.position.copy(surf((p.s0 + p.s1) / 2, T.depth + 0.02, p.y - 0.5)); fan.rotation.y = faceAngle(p.s0); g.add(fan);
       g.add(meshAlong(p.s0 + 0.1, p.s1 - 0.1, p.y + 0.03, T.depth - 0.2, 0.04, new THREE.MeshBasicMaterial({ color: 0x8fd3ff, transparent: true, opacity: 0.7 }), 0.1));   // wet top
       p.drops = [0, 1, 2].map(k => { const d = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), BM(0x6fb3e0)); d.scale.y = 1.6; d.userData.k = k; d.userData.home = surf(p.s0 + 0.4 + k * (p.s1 - p.s0 - 0.8) / 2, T.depth - 0.1, p.y - T.h); g.add(d); return d; });
       const arrow = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.35), new THREE.MeshBasicMaterial({ map: canvasTex(64, 28, (x) => { x.fillStyle = '#2a6fb0'; x.font = '900 24px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(p.slide > 0 ? '➜' : '⬅', 32, 15); }), transparent: true }));
       arrow.position.copy(surf((p.s0 + p.s1) / 2, T.depth + 0.03, p.y - 0.2)); arrow.rotation.y = faceAngle(p.s0); g.add(arrow);
     }
-    if (p.type === 'ac'){ const fan = new THREE.Mesh(new THREE.CircleGeometry(0.32, 16), BM(0x666666)); fan.position.copy(surf((p.s0 + p.s1) / 2, T.depth + 0.02, p.y - 0.5)); fan.rotation.y = faceAngle(p.s0); g.add(fan); }
+    if (p.type === 'neon') neonSign(p, g, T);
+    if (p.room) buildOffice(p);
+    if (p.lit && !p.room){   // a lit window above the sill: easy to see at night
+      const w = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(2.2, p.s1 - p.s0), 1.4), new THREE.MeshBasicMaterial({ map: litWinTex }));
+      w.position.copy(surf((p.s0 + p.s1) / 2, 0.03, p.y + 1.0)); w.rotation.y = faceAngle(p.s0); g.add(w);
+    }
+    if (p.guard) addGuard(p, g);
     if (p.cp){ // scaffold rail + a banner with the floor number on each face
       g.add(meshAlong(p.s0, p.s1, p.y + 1.0, 0.1, 0.1, LM(0xffa83a), T.depth));
       for (let k = 0; k < 4; k++){
@@ -497,6 +600,14 @@ for (const it of ITEMS){
     const d = makeDrone(); d.rotation.set(0.2, 0.6, 0.55); d.scale.setScalar(1.3); g.add(d);
     const glow = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.76, 24), new THREE.MeshBasicMaterial({ color: 0xfff3a0, transparent: true, opacity: 0.8, side: THREE.DoubleSide })); g.add(glow);
     for (let i = 0; i < 3; i++){ const puff = new THREE.Mesh(new THREE.SphereGeometry(0.14 + i * 0.05, 8, 6), new THREE.MeshBasicMaterial({ color: 0xbfbfbf, transparent: true, opacity: 0.6 })); puff.position.set(0.2 + i * 0.08, 0.3 + i * 0.25, 0); g.add(puff); }
+  } else if (it.kind === 'boba'){   // 🧋 a big cup of bubble tea with a fat straw
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.2, 0.6, 16), new THREE.MeshLambertMaterial({ color: 0xd8b48a, transparent: true, opacity: 0.85 })); g.add(cup);
+    for (let i = 0; i < 6; i++){ const b = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), LM(0x2a1a12)); b.position.set(Math.cos(i) * 0.12, -0.22, Math.sin(i) * 0.12); g.add(b); }
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.05, 16), LM(0xffffff)); lid.position.y = 0.32; g.add(lid);
+    const straw = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.6, 8), LM(0xe0584a)); straw.position.set(0.06, 0.55, 0); straw.rotation.z = 0.15; g.add(straw);
+  } else if (it.kind === 'chicken'){   // 🍗 雞排 in a paper bag
+    const bag = new THREE.Mesh(sbRoundBox(0.6, 0.55, 0.22, 0.04), LM(0xf4efe6)); g.add(bag);
+    const cut = new THREE.Mesh(sbRoundBox(0.66, 0.42, 0.12, 0.08), LM(0xd8902a)); cut.position.set(0, 0.36, 0); cut.rotation.z = 0.15; g.add(cut);
   } else if (it.kind === 'bento'){
     g.add(new THREE.Mesh(sbRoundBox(0.8, 0.3, 0.55, 0.06), LM(0xe0584a)));
     const lid = new THREE.Mesh(sbRoundBox(0.84, 0.08, 0.6, 0.03), LM(0xfff8ec)); lid.position.y = 0.19; g.add(lid);
@@ -714,6 +825,7 @@ function startAt(floor){
   PO.state = 'idle'; PO.next = 6; flyer.visible = false; poop.visible = false;
   for (const p of plats) if (p.bird){ p.bird.fly = 0; p.bird.g.visible = true; p.bird.g.position.copy(p.bird.home); p.bird.g.rotation.z = 0; }
   P.peak = null; P.jumped = false;
+  S.easy = !!$('easyBox').checked; S.owl = 0; S.owlSeen = new Set(); S.segNets = 0;
   $('startCard').hidden = true; $('endCard').hidden = true; $('wind').classList.remove('on');
   const segNo = Math.floor(floor / 10) + 1;
   lowerThird('第 ' + segNo + ' 段・' + SEGS[segNo][0], (floor + 1) + '–' + (floor + 10) + 'F　' + '⭐'.repeat(SEGS[segNo][1]), 3.2);
@@ -724,6 +836,13 @@ function startAt(floor){
 function onSpan(p, s, pad){ if (p.ring) return true; return wrapS(s - (p.s0 - pad)) <= p.s1 - p.s0 + 2 * pad; }
 const sDist = (a, b) => { const d = wrapS(a - b); return Math.min(d, PER - d); };   // shortest distance round the tower
 function wallAt(s, y){ for (const z of walls) if (onSpan(z, s, 0.1) && y + 0.9 >= z.y0 && y + 0.3 <= z.y1) return z; return null; }
+// neon: on for (cycle − off), dark for 'off' seconds; the last 0.4 s before dark it flickers
+const neonCycle = () => S.easy ? [2.5, 0.5] : [3, 1];
+function neonOn(p){ const [c, off] = neonCycle(); return ((S.t + p.ph) % c) < c - off; }
+function neonWarn(p){ const [c, off] = neonCycle(), k = (S.t + p.ph) % c; return k > c - off - 0.4 && k < c - off; }
+// the searchlight sweeping up from the street (segment 5): where it points now
+const SPOT = { s: 0, y: 0 };
+const spotLit = q => sDist((q.s0 + q.s1) / 2, SPOT.s) < 4 && Math.abs(q.y - SPOT.y) < 5;
 function step(dt){
   S.t += dt;
   const kx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0), ky = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
@@ -739,7 +858,7 @@ function step(dt){
   const gust = P.y > 30 && S.windDir && S.t > S.windAt && S.t < S.windAt + 1.6 && !onNode;
   if (P.y > 28){
     if (!S.windDir && S.t > S.windNext - 2){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; const w = $('wind'); w.textContent = S.windDir > 0 ? '🌬️ ➡️➡️' : '⬅️⬅️ 🌬️'; w.style.setProperty('--wx', S.windDir * 24 + 'px'); w.classList.add('on'); sfx.wind(); say(P.mode === 'wall' ? '抓緊抓緊！' : '哇！風好大！'); }
-    if (S.windDir && S.t > S.windAt + 1.6){ S.windDir = 0; S.windNext = S.t + (segOf(P.y) >= 3 ? 8 : 9) + Math.random() * 3; $('wind').classList.remove('on'); }
+    if (S.windDir && S.t > S.windAt + 1.6){ S.windDir = 0; S.windNext = S.t + (segOf(P.y) >= 3 ? 8 : 9) + Math.random() * 3 + (S.easy ? 5 : 0); $('wind').classList.remove('on'); }
   }
   if (P.mode === 'wall'){
     const z = P.wall;
@@ -747,7 +866,7 @@ function step(dt){
     P.s += ix * CLIMB * climbK * dt; P.y += iy * CLIMB * climbK * dt;
     P.climbPh += (Math.abs(ix) + Math.abs(iy)) * dt * 6;
     const drain = z.node ? 22 + 14 * nodeK(z.node, P.y) : z.over ? 22 : segOf(P.y) >= 4 ? 15 : 13;   // the further the node leans out, the faster it eats your grip
-    P.grip -= dt * drain * (gust ? 1.8 : 1) * (ix || iy ? 1 : 0.7);
+    P.grip -= dt * drain * (gust ? 1.8 : 1) * (ix || iy ? 1 : 0.7) * (S.easy ? 0.65 : 1);   // 🐣 手殘版: grip lasts longer
     if (P.grip < 30 && S.t > (S.beatAt || 0)){ S.beatAt = S.t + 0.55; sfx.beat(); }
     for (const c of chalks) if (!c.taken && sDist(P.s, c.s) < 0.8 && Math.abs(P.y + 0.9 - c.y) < 1.0){ c.taken = true; c.mesh.visible = false; P.grip = P.gripMax; S.usedChalk = true; sfx.chalk(); flash('🧂 抹粉！握力補滿'); say('抹粉～滑溜溜！'); }
     { // hand over to a neighbouring wall when you climb onto it (up out of a traverse, or sideways)
@@ -773,6 +892,9 @@ function step(dt){
     P.vs += (ix * RUN * (S.t < (P.boostUntil || 0) ? 1.3 : 1) - P.vs) * Math.min(1, dt * (P.mode === 'ground' ? (wet ? 0.9 : 14) : 4));
     if (wet) P.vs += P.on.slide * 8 * dt;   // the water carries you toward the edge
     if (gust) P.vs += S.windDir * 9 * (wet ? 2 : 1) * dt;   // wind on a wet AC = whoosh
+    if (P.mode === 'ground' && P.on && P.on.type === 'neon' && !neonOn(P.on)){   // the sign went dark under you
+      P.mode = 'air'; P.on = null; P.vy = 0; P.jumped = true; say(pick(['燈…燈黑了！', '哇啊——腳下不見了！', '招牌關燈了啦！']));
+    }
     if (P.mode === 'ground'){
       const rest = P.on && P.on.type === 'seam' ? P.gripMax * 0.6 : P.gripMax;   // the seam is cramped: you only get back to 60%
       if (!(P.on && P.on.type === 'drip')) P.grip = Math.max(P.grip, Math.min(rest, P.grip + dt * 22));   // resting takes a few seconds (not on a wet AC)
@@ -790,6 +912,7 @@ function step(dt){
     if (P.vy <= 0){   // land from above (one-way: you can jump up through anything)
       for (const p of plats){
         if (p.decor || (p.mountOnly && P.slipped)) continue;   // a slip off the node's upper half falls past the seam
+        if (p.type === 'neon' && !neonOn(p)) continue;          // a dark neon sign isn't there
         const top = p.type === 'gondola' ? (p.cur == null ? p.y0 : p.cur) : p.y;
         if (!onSpan(p, P.s, 0.25)) continue;
         if (prevY >= top - 0.06 - Math.max(0, p.dy || 0) && P.y <= top){ landed = p; P.y = top; break; }
@@ -798,11 +921,14 @@ function step(dt){
     if (landed){
       const drop = (P.peak == null ? P.y : P.peak) - P.y, speed = -P.vy; P.peak = null;
       if (drop > 5){ S.segFalls = (S.segFalls || 0) + 1; S.dripChain = 0; }
+      if (landed.net && segOf(P.y) === 5 && speed > 3) S.segNets = (S.segNets || 0) + 1;   // a real fall into it, not standing on it
       if (landed.net && speed > 9){ P.vy = speed * 0.45; P.mode = 'air'; P.on = null; P.jumped = true; sfx.bounce(); say(pick(['好險有網子！', '彈彈彈～', '嚇死我了…'])); eventPhoto('net'); }
       else {
         P.vy = 0; P.mode = 'ground'; P.on = landed; P.jumped = false; P.slipped = false;
         if (drop > 5){ sfx.bonk(); say(pick(['唉呦好痛！', '我的屁股…', '痛痛痛…', '摔得好慘…'])); S.shake = 0.35; }
         if (landed.line && !landed.said){ landed.said = true; say(landed.line); }
+        if (landed.type === 'neon' && landed.first && !S.neonHint){ S.neonHint = true; flash('💡 霓虹招牌：亮的時候站得住，燈一黑就會掉下去！看準節奏再跳', 3.0); }
+        if (segOf(P.y) === 5 && !landed.lit && !landed.ring && !spotLit(landed) && !(S.owlSeen || (S.owlSeen = new Set())).has(landed)){ S.owlSeen.add(landed); S.owl = (S.owl || 0) + 1; if (S.owl >= 5) unlock('owl'); }   // 5 different dark footholds
         if (landed.type === 'seam' && !S.seamHint){ S.seamHint = true; flash('😮‍💨 竹節接縫：喘口氣，握力最多回到 6 成', 2.4); say('好窄…先喘一下'); }
         if (landed.type === 'drip'){
           sfx.splash();
@@ -810,7 +936,8 @@ function step(dt){
           S.dripChain = landed.chain ? (S.dripChain || 0) + 1 : 0;
           if (S.dripChain >= 3) unlock('dripking');
         } else if (landed.type !== 'gondola') S.dripChain = 0;
-        if (landed.bird && !landed.bird.fly && !(DRONE && landed.photoId && !BOOK[landed.photoId])){   // (they stay for a drone photo) landed.bird.fly = 0.001; npcSay(landed.bird.g, '咕咕！'); sfx.coo();
+        if (landed.bird && !landed.bird.fly && !(DRONE && landed.photoId && !BOOK[landed.photoId])){   // (they stay for a drone photo)
+          landed.bird.fly = 0.001; npcSay(landed.bird.g, landed.sleepy ? '咕咕？！（被吵醒）' : '咕咕！'); sfx.coo();
           if (plats.every(q => !q.bird || q.bird.fly)) unlock('pigeons'); }
       }
     }
@@ -832,6 +959,8 @@ function step(dt){
     else if (it.kind === 'toy'){ it.mesh.visible = false; sfx.cp(); gotToy(it.id); }
     else if (it.kind === 'gripup'){ it.mesh.visible = false; sfx.cp(); gotGripUp(it.id); }
     else if (it.kind === 'drone'){ it.mesh.visible = false; sfx.cp(); gotDrone(); }
+    else if (it.kind === 'boba'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🧋 加班珍奶！握力補滿，6 秒內跑得快、爬得快'); say('冰冰涼涼～珍珠好Q！'); unlock('boba'); }
+    else if (it.kind === 'chicken'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍗 夜市雞排！握力補滿，6 秒內跑得快、爬得快'); say('卡滋卡滋！'); }
     else if (it.kind === 'bento'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍱 吃便當！握力補滿，6 秒內跑得快、爬得快'); say('好好吃！力氣來了！'); unlock('bento'); }
     else { npcSay(it.sprite, '看這邊！笑一個！'); news('12 歲男孩徒手攀爬台北 101！目前高度 ' + Math.round(P.y * METERS) + ' 公尺，現場群眾驚呼連連……'); say('我上電視了！'); unlock('news'); }
   }
@@ -847,6 +976,9 @@ function step(dt){
       if (S.segPhotos >= 3) unlock('photo3'); else flash('📸 被拍了 ' + S.segPhotos + ' 張（這段拍滿 3 張有成就）', 1.6); }
   }
   for (const q of people){ if (S.t < (q.saidAt || 0)) continue; if (Math.abs(q.base - P.y - 1) < 2 && q.sp.position.distanceTo(surf(P.s, 0, q.base)) < 2.5){ q.saidAt = S.t + 12; npcSay(q.sp, pick(q.photo ? ['拍一張！', '笑一個～', '要上新聞了！'] : ['你在幹嘛？！', '快下來啦！', '要不要喝飲料？', '小心喔！'])); } }
+  // the office worker and the guard notice you
+  if (OFFICE.worker && !OFFICE.worker.said && P.on === OFFICE && sDist(P.s, OFFICE.worker.s) < 2){ OFFICE.worker.said = true; npcSay(OFFICE.worker.sp, '嗯…？誰…？……喔是小朋友啊…（繼續睡）', 3); setTimeout(() => say('叔叔加班辛苦了…'), 1600); }
+  if (guardSill.guardMan && !guardSill.guardMan.said && Math.abs(P.y - guardSill.y) < 3.5 && sDist(P.s, guardSill.s0) < 5){ guardSill.guardMan.said = true; npcSay(guardSill.guardMan.sp, '誰在外面？！……蛤？小朋友？！快進來啦！', 3); setTimeout(() => say('謝啦！照得好清楚！'), 1700); }
   // the window cleaner, and mom
   if (!S.cleanerSaid && Math.abs(P.y - (cradle.cur || cradle.y0)) < 4 && sDist(P.s, cradle.s0) < 5){ S.cleanerSaid = true; npcSay(cradle.cleaner, '小朋友不能在這裡玩喔～'); }
   if (S.cleanerSaid === true && P.on === cradle){ S.cleanerSaid = 2; npcSay(cradle.cleaner, '要搭便車喔？好啦～'); }
@@ -883,6 +1015,9 @@ const ACH = [
   { id: 'cradle',  name: '🚡 搭便車',       desc: '搭擦窗吊籃升到最上面' },
   { id: 'bamboo',   name: '🎋 竹節征服者', desc: '第 4 段一次都沒手滑' },
   { id: 'dripking', name: '🧊 冷氣機溜冰王', desc: '連續踩過 3 台滴水冷氣機沒摔（第 3 段）' },
+  { id: 'owl',      name: '🔦 夜貓子',       desc: '探照燈沒照到的落腳點也跳上去 5 次（第 5 段）' },
+  { id: 'fireworks',name: '🎆 半程煙火',     desc: '第 5 段一次都沒掉到網子，到 50F 看煙火' },
+  { id: 'boba',     name: '🧋 加班珍奶',     desc: '走進亮燈的辦公室，喝到桌上的珍奶（第 5 段）' },
 ];
 const ACH_KEY = () => 'etfm-tower2-ach-' + who(), COIN_KEY = () => 'etfm-tower2-coins-' + who();
 const haveAch = () => { try { return JSON.parse(localStorage.getItem(ACH_KEY()) || '[]'); } catch (e) { return []; } };
@@ -1076,16 +1211,17 @@ function gotCoin(id){
 }
 let newsT = 0;
 function news(txt){ $('newsTxt').textContent = txt + '　　　'; $('news').classList.add('on'); clearTimeout(newsT); newsT = setTimeout(() => $('news').classList.remove('on'), 7500); }
-const MILESTONE = { 3: '好…好高喔', 5: '地上的人變好小', 8: '不要往下看…不要往下看…', 12: '我好像看到我家了！', 17: '腿在抖…', 20: '媽我在這裡！' };
+const MILESTONE = { 3: '好…好高喔', 5: '地上的人變好小', 8: '不要往下看…不要往下看…', 12: '我好像看到我家了！', 17: '腿在抖…', 20: '媽我在這裡！', 42: '天黑了…好暗', 47: '台北的夜景好漂亮…', 50: '一半了！！！' };
 function arriveCheckpoint(f){
   storeCp(f); sfx.cp();
   const segNo = f / 10, t = S.t - S.segT0, best = segBest(), prev = best[segNo];
   S.seg[segNo] = t; S.segT0 = S.t;
   if (!S.segFalls) unlock('steady');
   if (segNo === 4 && !S.segSlips) unlock('bamboo');
+  if (segNo === 5){ if (!S.segNets) unlock('fireworks'); for (let i = 0; i < 6; i++) setTimeout(() => burst(), i * 260); }
   if (t < 40) unlock('fast');
   if (f >= 20 && !S.usedChalk) unlock('nochalk');
-  S.segFalls = 0; S.segPoop = 0; S.segPhotos = 0; S.segSlips = 0;
+  S.segFalls = 0; S.segPoop = 0; S.segPhotos = 0; S.segSlips = 0; S.segNets = 0;
   if (!prev || t < prev){ best[segNo] = t; try { localStorage.setItem(SEG_KEY(), JSON.stringify(best)); } catch (e) {} }
   flash('🚩 ' + f + 'F 檢查點！第 ' + segNo + ' 段 ' + t.toFixed(1) + ' 秒' + (!prev || t < prev ? '（新紀錄！）' : ''), 2.4);
   if (f < BUILT) setTimeout(() => lowerThird('第 ' + (segNo + 1) + ' 段・' + SEGS[segNo + 1][0], (f + 1) + '–' + (f + 10) + 'F　' + '⭐'.repeat(SEGS[segNo + 1][1]), 3.2), 2600);
@@ -1238,7 +1374,7 @@ async function endCard(done){
   S.phase = 'end';
   const res = await claim();
   $('endTitle').textContent = done ? '🎬 卡！' + BUILT + 'F 收工' : '卡！收工';
-  $('endSub').textContent = '從 ' + S.start + 'F 爬到 ' + S.best + 'F（' + Math.round(S.best * FLOOR_H * METERS) + ' 公尺）・拿到 $' + S.coins;
+  $('endSub').textContent = (S.easy ? '🐣 手殘版・' : '') + '從 ' + S.start + 'F 爬到 ' + S.best + 'F（' + Math.round(S.best * FLOOR_H * METERS) + ' 公尺）・拿到 $' + S.coins;
   const best = segBest();
   const have = haveAch(), fresh = S.newAch || [];
   $('endAch').innerHTML = '<b>🏆 成就 ' + have.length + ' / ' + ACH.length + '</b><br>' + ACH.map(a => '<span class="' + (fresh.includes(a.id) ? 'new' : have.includes(a.id) ? '' : 'off') + '">' +
@@ -1262,8 +1398,10 @@ $('againBtn').onclick = () => { startAt(Math.min(savedCp(), BUILT - 10)); update
 { const cp = Math.min(savedCp(), BUILT - 10);
   $('contBtn').hidden = !cp; $('contBtn').textContent = '從 ' + cp + 'F 繼續';
   $('loginLine').textContent = (!API ? '試玩版：金幣不會存進帳號。' : token() ? '金幣會存進你的帳號。' : '還沒登入：先到「逃離土星」登入，金幣才會存。') + '　目前開放到 ' + BUILT + 'F。'; }
+try { $('easyBox').checked = localStorage.getItem('etfm-tower2-easy') === '1'; } catch (e) {}
+$('easyBox').addEventListener('change', () => { try { localStorage.setItem('etfm-tower2-easy', $('easyBox').checked ? '1' : '0'); } catch (e) {} });
 document.querySelectorAll('.homeLink').forEach(a => { if (ON_LIVE) a.href = 'https://cooldragon313.github.io/eddie-world/'; else if (!ON_LOCAL) a.hidden = true; });
-if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, eventPhoto, pooped, get BOOK(){ return BOOK; } };   // local testing only
+if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, neonOn, OFFICE, burst, SPOT, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, eventPhoto, pooped, get BOOK(){ return BOOK; } };   // local testing only
 
 // ---------- Eddie's pose ----------
 // both arms up in a big V (Q-version heads are too big to make a heart over them; a big 💖 floats between the two instead)
@@ -1328,6 +1466,37 @@ function poseEddie(dt, now){
   if (S.t < (S.ptooUntil || 0)){ e.head.rotation.z = Math.sin(now * 32) * 0.45; e.face.set('sad'); }    // 呸呸呸: shake it off
 }
 
+// ---------- night (segment 5): the sky goes dark from ~37F, a searchlight sweeps, fireworks at 50F ----------
+const DAY_SKY = new THREE.Color(0x9fd0f0), NIGHT_SKY = new THREE.Color(0x1b2546), DAY_FOG = new THREE.Color(0xb8dcf2), NIGHT_FOG = new THREE.Color(0x24305a);
+const spot = new THREE.SpotLight(0xfff6d0, 0, 140, 0.13, 0.5, 1); scene.add(spot); scene.add(spot.target);
+const beamGeo = new THREE.CylinderGeometry(0.3, 3.4, 1, 20, 1, true); beamGeo.rotateX(Math.PI / 2);
+const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color: 0xfff6d0, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); scene.add(beam);
+const fw = [], fwGeo = new THREE.SphereGeometry(0.22, 6, 4); let fwNext = 0;
+function burst(){
+  const c = new THREE.Color().setHSL(Math.random(), 0.9, 0.62), at = surf(P.s + (Math.random() - 0.5) * 24, 34 + Math.random() * 12, 158 + Math.random() * 22);
+  for (let i = 0; i < 28; i++){
+    const m = new THREE.Mesh(fwGeo, new THREE.MeshBasicMaterial({ color: c, transparent: true })); m.position.copy(at);
+    const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(7 + Math.random() * 3);
+    scene.add(m); fw.push({ m, v, life: 1.7 });
+  }
+  if (S.phase === 'run') sfx.pop();
+}
+function updateNight(dt, now){
+  const nk = S.phase === 'menu' ? 0 : clamp((P.y - 110) / 14, 0, 1);
+  scene.background.copy(DAY_SKY).lerp(NIGHT_SKY, nk); scene.fog.color.copy(DAY_FOG).lerp(NIGHT_FOG, nk);
+  hemi.intensity = 0.85 - 0.5 * nk; sun.intensity = 0.6 - 0.45 * nk;
+  SPOT.s = P.s + Math.sin(now * 0.35) * 9; SPOT.y = P.y + 2 + Math.sin(now * 0.23) * 5;
+  spot.position.copy(surf(SPOT.s, 46, 0)); spot.target.position.copy(surf(SPOT.s, 0, SPOT.y)); spot.intensity = 3.2 * nk;
+  const L = spot.position.distanceTo(spot.target.position);
+  beam.position.copy(spot.position).lerp(spot.target.position, 0.5); beam.scale.set(1, 1, L); beam.lookAt(spot.target.position); beam.material.opacity = 0.16 * nk;
+  for (const p of plats) if (p.neon){
+    const on = neonOn(p), warn = on && neonWarn(p) && Math.sin(now * 60) > 0;
+    p.neon.glow.color.copy(on && !warn ? p.neon.col : p.neon.dark); p.neon.face.material.opacity = on && !warn ? 1 : 0.25;
+  }
+  if (nk > 0.7 && P.y > 136 && now > fwNext){ fwNext = now + 1.3 + Math.random(); burst(); }
+  for (let i = fw.length - 1; i >= 0; i--){ const f = fw[i]; f.life -= dt; f.v.y -= 4 * dt; f.m.position.addScaledVector(f.v, dt); f.m.material.opacity = Math.min(1, f.life); if (f.life <= 0){ scene.remove(f.m); f.m.material.dispose(); fw.splice(i, 1); } }
+}
+
 // ---------- loop ----------
 let last = 0;
 function frame(nowMs, manual){
@@ -1358,6 +1527,8 @@ function frame(nowMs, manual){
     q.fl.material.opacity = Math.max(0, q.fl.material.opacity - dt * 4);
   }
   for (const c of chalks) if (c.mesh.visible) c.mesh.children[1].rotation.z += dt * 2;
+  for (const p of plats) if (p.fan) p.fan.rotation.z += dt * 9;   // AC fans spin
+  updateNight(dt, now);
   for (const p of plats) if (p.drops) for (const d of p.drops){ const k = (now * 0.9 + d.userData.k * 0.33) % 1; d.position.copy(d.userData.home); d.position.y -= k * 3; d.material.opacity = 1 - k; }
   for (const it of ITEMS) if ((it.kind === 'toy' || it.kind === 'gripup') && it.mesh.visible) it.mesh.rotation.y += dt * (it.kind === 'toy' ? 6 : 2);
   // HUD: timecode, altimeter, grip
