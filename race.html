@@ -178,6 +178,10 @@
   .board li.me{font-weight:700;color:#c27a00}
   .board .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .board .ms{color:var(--sb-muted);font-size:12px}
+  .myrank{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:0 8px;margin-top:5px;padding:3px 10px;background:#fff6d8;border:2px solid #e8a317;border-radius:12px;font-size:14px;font-weight:700;color:var(--sb-ink);font-variant-numeric:tabular-nums}
+  .myrank b{font-size:18px;color:#c27a00}
+  .myrank span{font-size:12px;font-weight:600;color:var(--sb-muted)}
+  .myrank.off{background:#fff;border-color:var(--sb-line);color:var(--sb-muted);font-size:13px}
   .ach{font-size:14px;margin:6px auto;max-width:340px;text-align:left}
   .ach .achNew{color:#c27a00;font-size:17px}
   .ach small{color:var(--sb-muted);font-weight:500}
@@ -2349,6 +2353,13 @@ const missesOf = () => S.caught + S.pits + S.shot + S.hits + S.speared + S.rocke
 const DEVICE = isTouchDevice() ? 'phone' : 'pc';
 function isTouchDevice(){ return ('ontouchstart' in window) || navigator.maxTouchPoints > 0; }
 const boards = {};   // level id -> rows from the server
+const myRanks = {};  // level id -> { me, total, boardMax } from the server (needs a login)
+function myRankHtml(info){
+  if (!info || !info.me) return '';
+  const { me, total, boardMax } = info;
+  if (me.rank) return `<div class="myrank">📍 你現在第 <b>${me.rank}</b> 名<span>共 ${total >= boardMax ? boardMax + '+' : total} 人 · 最佳 ${me.time.toFixed(1)} 秒</span></div>`;
+  return `<div class="myrank off">${total >= boardMax ? `📍 你還在前 ${boardMax} 名外，衝一下！` : '📍 你還沒有成績，跑完就有名次'}</div>`;
+}
 const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 function boardHtml(rows, meName){
   if (!API) return '<div class="board empty">排行榜在正式網址才看得到</div>';
@@ -2374,14 +2385,18 @@ function renderLevelButtons(){
       e.innerHTML = '🐣 手殘版<small>慢一點、少一點，不上排行榜</small>'; e.onclick = () => playWithIntro(lv, true);
       card.appendChild(e);
     }
-    card.insertAdjacentHTML('beforeend', boardHtml(boards[lv.id], myName));
+    card.insertAdjacentHTML('beforeend', boardHtml(boards[lv.id], myName) + myRankHtml(myRanks[lv.id]));
     wrap.appendChild(card);
   }
 }
 async function loadBoards(){
   if (!API) return;
   await Promise.all(LEVELS.map(async lv => {
-    try { const r = await fetch(API + '/race_board?level=' + lv.id); const j = await r.json(); boards[lv.id] = Array.isArray(j.rows) ? j.rows : []; }
+    try {
+      const r = await fetch(API + '/race_board?level=' + lv.id, authToken ? { headers: { Authorization: 'Bearer ' + authToken } } : undefined);
+      const j = await r.json(); boards[lv.id] = Array.isArray(j.rows) ? j.rows : [];
+      myRanks[lv.id] = j.me ? { me: j.me, total: j.total, boardMax: j.boardMax } : null;
+    }
     catch(e){ boards[lv.id] = []; }
   }));
   if (S.phase === 'menu') renderLevelButtons();
@@ -2513,7 +2528,9 @@ async function claimReward(coins, time, misses){
     if (r.ok){
       el.textContent = `獎金 +$${j.coins} 已存入帳號（現在 $${j.money}）`;
       if (j.rank) $('rRank').textContent = j.improved ? `🏁 排行榜第 ${j.rank} 名！` : `排行榜：你的最佳還是第 ${j.rank} 名`;
+      else if (j.me) $('rRank').textContent = `這次還沒擠進前 ${j.boardMax} 名，再跑快一點！`;
       if (Array.isArray(j.board)) boards[L.id] = j.board;
+      if (j.me) myRanks[L.id] = { me: j.me, total: j.total, boardMax: j.boardMax };
     }
     else el.textContent = j.message || '獎金沒存到，等一下再跑一次';
   } catch(e){ el.textContent = '連不上伺服器，這次的獎金沒存到'; }
@@ -2548,12 +2565,12 @@ $('authBox').addEventListener('submit', async e => {
     authToken = j.token;
     try { localStorage.setItem('etfm-token', j.token); localStorage.setItem('etfm-username', j.username); localStorage.setItem('etfm-display', j.displayName || j.username); } catch(_){}
     $('aPass').value = ''; $('authBox').hidden = true;
-    await loadMe();
+    await loadMe(); loadBoards();
   } catch(err){ authMsg('連不上伺服器，等一下再試', true); }
   finally { $('aGo').disabled = false; }
 });
 function logout(){
-  authToken = ''; myName = '';
+  authToken = ''; myName = ''; for (const k in myRanks) delete myRanks[k];
   try { for (const k of ['etfm-token', 'etfm-username', 'etfm-display']) localStorage.removeItem(k); } catch(_){}
   setAvatar({ ...DEFAULT_CUSTOM }); setAuthMode('login'); showAuth();
 }

@@ -428,7 +428,7 @@ export default class WorldServer {
       // leaderboard (only plausible runs on a known level)
       const level = Math.floor(Number(body.level) || 0);
       const misses = Math.max(0, Math.min(999, Math.floor(Number(body.misses) || 0)));
-      let rank = null, improved = false, board = null;
+      let rank = null, improved = false, board = null, total = 0, me = null;
       const crown = level === 1 ? mergeAch(user, 'race1', body.ach) : false;
       if (level === 1) await this.room.storage.put('user:' + userId, user);
       if (RACE_LEVEL_MIN_TIME[level] && Number.isFinite(time) && time >= RACE_LEVEL_MIN_TIME[level] && time < 3600){
@@ -445,6 +445,8 @@ export default class WorldServer {
         if (dirty) await this.room.storage.put(key, board);
         const mine = board.findIndex(r => r.userId === userId);
         rank = mine >= 0 ? mine + 1 : null;
+        total = board.length;
+        me = mine >= 0 ? { rank, time: board[mine].time, misses: board[mine].misses } : { rank: null };
         board = board.slice(0, 10).map(({ userId: _u, ...r }) => r);
       }
       // Tell an open island session (same account) so its next save keeps the coins
@@ -453,7 +455,7 @@ export default class WorldServer {
         const conns = this.room.getConnections ? Array.from(this.room.getConnections()) : [];
         for (const c of conns) if (c.id === cid){ try { c.send(JSON.stringify({ type: 'race_reward', coins, money: progress.money })); } catch(e){} }
       }
-      return jsonResponse({ ok: true, coins, money: progress.money, raceBest: progress.raceBest || null, rank, improved, board });
+      return jsonResponse({ ok: true, coins, money: progress.money, raceBest: progress.raceBest || null, rank, improved, board, total, me, boardMax: RACE_BOARD_SIZE });
     }
 
     // POST /race_start — a run began (counted for the admin page)
@@ -594,12 +596,20 @@ export default class WorldServer {
       return jsonResponse({ ok: true, rows: board.slice(0, 10).map(({ userId: _u, ...r }) => r) });
     }
 
-    // GET /race_board?level=N — top 10 (no user ids exposed)
+    // GET /race_board?level=N — top 10 (no user ids exposed); with a login token
+    // also `me`: this player's own rank, even when they're outside the top 10
     if (last === 'race_board' && req.method === 'GET'){
       const level = Math.floor(Number(url.searchParams.get('level')) || 0);
       if (!RACE_LEVEL_MIN_TIME[level]) return jsonResponse({ error: 'bad_level' }, 400);
       const board = (await this.room.storage.get('race_board_' + level)) || [];
-      return jsonResponse({ ok: true, level, rows: board.slice(0, 10).map(({ userId: _u, ...r }) => r) });
+      const auth = req.headers.get('authorization') || '';
+      const viewer = auth.startsWith('Bearer ') ? await verifyToken(auth.slice(7), secret) : null;
+      let me = null;
+      if (viewer){
+        const i = board.findIndex(r => r.userId === viewer);
+        me = i >= 0 ? { rank: i + 1, time: board[i].time, misses: board[i].misses } : { rank: null };
+      }
+      return jsonResponse({ ok: true, level, total: board.length, boardMax: RACE_BOARD_SIZE, me, rows: board.slice(0, 10).map(({ userId: _u, ...r }) => r) });
     }
 
     // ============================================================
