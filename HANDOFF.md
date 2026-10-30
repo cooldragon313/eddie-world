@@ -186,7 +186,7 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
 - ⚠️ wrangler deploy 之後，Cloudflare 大約要 5 分鐘才換成新版，先確認新路由有回應再上網頁
 
 ## 2026-10-30 — 101 跑酷 21–40F（分支 `restyle-storybook` 74e0d43＋之後的 docs，**還沒上架**）
-- 試玩連結（101）：https://claude.ai/artifact/EkQswp7qfPUCGuFULc2zk9 — 更新：`python tools/build_family.py --only tower --preview <scratchpad>/tower-preview.html` 後發布到同一個 artifact
+- 試玩連結（101）：舊連結 EkQswp7… 已被刪，下次重新發布一個新的 — 更新：`python tools/build_family.py --only tower --preview <scratchpad>/tower-preview.html` 後發布到同一個 artifact
 - 做完：
   - 第 3 段（21–30F）「冷氣機森林」加難：滴水冷氣更窄更滑、風吹在濕冷氣上 ×2；側路藏 🌀 爆破貝利亞（玩具）
   - 第 4 段（31–40F）「竹節初登場」：橫移牆 → 竹節外凸牆 → 38F 第二個媽媽窗戶；35F 安全網；成就 🎋 竹節征服者（不手滑）
