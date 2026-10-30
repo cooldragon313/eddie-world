@@ -36,8 +36,8 @@ def main():
     out.write_text(banner + src, encoding='utf-8', newline='\n')
     print('wrote', out, len(src), 'chars')
     # home.html used to be the hub's address: keep it working
-    (ROOT / 'home.html').write_text('<!doctype html><meta charset="utf-8"><title>土星之家</title>'
-                                    '<meta http-equiv="refresh" content="0; url=index.html"><a href="index.html">土星之家</a>\n', encoding='utf-8', newline='\n')
+    (ROOT / 'home.html').write_text('<!doctype html><meta charset="utf-8"><title>艾迪的幻想世界</title>'
+                                    '<meta http-equiv="refresh" content="0; url=index.html"><a href="index.html">艾迪的幻想世界</a>\n', encoding='utf-8', newline='\n')
 
     if args.preview:
         head = src.split('<head>', 1)[1].split('</head>', 1)[0]
