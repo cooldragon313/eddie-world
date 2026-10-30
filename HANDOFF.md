@@ -251,3 +251,4 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
 - 修 bug：鴿子被踩到不會飛走（一行註解把程式吃掉了）
 - 試玩連結（家裡 PC 發的新連結，101）：見下一行
 - 下一步：Bernie 實玩第 5 段 → 回饋調數字；下階段＝家裡相簿＋照片存伺服器（R2）；之後的窗戶房間：風阻尼器（87–92F）最推
+- 101 試玩連結（第 5 段版）：https://claude.ai/artifact/LCkqyB3M38ig1bkX7JWaWz — 更新：`python tools/build_family.py --only tower --preview <scratchpad>/tower-preview.html` 後發布到同一個 artifact（家裡 PC 的 session）
