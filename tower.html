@@ -1274,7 +1274,10 @@ const JUMPY = { sill: 1, ac: 1, flag: 1, drip: 1, neon: 1 };
 const SEG_W = [2.0, 1.7, 1.5, 1.3, 1.2, 1.1], SEG_LONG = [0.72, 0.76, 0.8, 0.83, 0.85, 0.86];
 const reachOf = (r, v) => v * (JUMP_V + Math.sqrt(Math.max(0, JUMP_V * JUMP_V - 2 * GRAV * r))) / GRAV;
 const runUp = x => { let v = 0, d = 0; for (let i = 0; i < 120 && d < x; i++){ v += (RUN - v) * 7 / 60; d += v / 60; } return v; };   // speed after a run-up of x m (ground grip below)
-let rhythm = 0, lastW = 99, lastType = '';
+let rhythm = 0, lastW = 99, lastType = '', lastSlide = 0, zigN = 0, lastDir = 1;
+// the route used to only ever go right, so "hold right, tap jump" beat it. Now it switches back:
+// segment 1 two and two, from segment 2 on every jump, so you have to stop on the foothold and turn round.
+const ZIG = [[1, 1, -1, -1], [1, -1]];
 function hardStep(type, gap, rise, w, y, beat){
   const k = Math.min(5, Math.floor(Math.max(y, 0) / 30)), W = SEG_W[k];
   if (type === 'plank') return [gap, W];
@@ -1289,15 +1292,24 @@ function hardStep(type, gap, rise, w, y, beat){
 // these can't bend round a corner: if one would, a small balcony round the corner goes in first
 const NOCORNER = { neon: 1, plank: 1, crane: 1, room: 1 };
 const foot = (type, gap, rise, w, o) => {
+  let dir = 1, sprint = false;
   if (o && o.hop) w = 3.0;                                   // the first hop off a checkpoint: an easy one
-  else { const beat = JUMPY[type] && gap > 0 ? rhythm++ % 4 : 0; [gap, w] = hardStep(type, gap, rise, w, cy, beat); }
-  const amp = (o && o.amp) || 0, a = cs + gap - amp, b = cs + gap + w + amp - 0.01;
-  if (NOCORNER[type] && Math.floor(a / SIDE) !== Math.floor(b / SIDE)){
-    const corner = Math.floor(b / SIDE) * SIDE, q = plat('balcony', corner - 2, 4, cy + 0.4, { lit: cy >= 120 });
-    ROUTE.push(q); cs = q.s1; cy = q.y; gap = 1.2 + amp;
+  else {
+    const jumpy = JUMPY[type] && gap > 0, k = Math.min(5, Math.floor(Math.max(cy, 0) / 30)), prev = ROUTE[ROUTE.length - 1];
+    if ((jumpy || type === 'plank') && lastType !== 'gondola' && lastType !== 'crane' && !prev.ring){ const z = ZIG[Math.min(1, k)]; dir = o && o.dir ? o.dir : lastType === 'drip' ? lastSlide || 1 : z[zigN++ % z.length]; }
+    if (jumpy && rhythm % 8 === 5 && k > 0 && type !== 'drip'){   // every so often a long ledge and a gap only a flat-out sprint clears
+      const q = plat('balcony', dir > 0 ? cs + 1.0 : prev.s0 - 1.0 - 4.5, 4.5, cy + 0.3, { lit: cy >= 120 }); ROUTE.push(q); cs = q.s1; cy = q.y; lastW = 4.5; lastType = 'balcony'; sprint = true;
+    }
+    const beat = jumpy ? rhythm++ % 4 : 0; [gap, w] = hardStep(type, gap, rise, w, cy, beat);
+    if (sprint) gap = reachOf(rise, RUN) * 0.93;
   }
-  const p = plat(type, cs + gap, w, cy + rise, o); cs = p.s1; cy = p.y; lastW = w; lastType = type; ROUTE.push(p); return p; };
-const climb = (gap, height, w, o) => { const z = wall(cs + gap, w, cy - 0.2, cy + height, o); const p = plat('sill', z.s0 - 0.2, w + 0.4, cy + height + 0.1); ROUTE.push(z, p); cs = p.s1; cy = p.y; lastW = w + 0.4; lastType = 'sill'; return z; };
+  const at = () => dir > 0 ? cs + gap : ROUTE[ROUTE.length - 1].s0 - gap - w, amp = (o && o.amp) || 0;
+  if (NOCORNER[type] && Math.floor((at() - amp) / SIDE) !== Math.floor((at() + w + amp - 0.01) / SIDE)){
+    const corner = Math.floor((at() + w + amp) / SIDE) * SIDE, q = plat('balcony', corner - 2, 4, cy + 0.4, { lit: cy >= 120 });
+    ROUTE.push(q); cs = q.s1; cy = q.y; gap = 1.2 + amp; lastW = 4;
+  }
+  const p = plat(type, at(), w, cy + rise, o); cs = p.s1; cy = p.y; lastW = w; lastType = type; lastSlide = (o && o.slide) || 0; lastDir = dir; ROUTE.push(p); return p; };
+const climb = (gap, height, w, o) => { const z = wall(lastDir < 0 ? ROUTE[ROUTE.length - 1].s0 - gap - w : cs + gap, w, cy - 0.2, cy + height, o); const p = plat('sill', z.s0 - 0.2, w + 0.4, cy + height + 0.1); ROUTE.push(z, p); cs = p.s1; cy = p.y; lastW = w + 0.4; lastType = 'sill'; return z; };
 // side paths: footholds off the main route (no ▼), usually harder, with something at the end
 const ITEMS = [];
 function branch(from, dir, list){
@@ -1313,7 +1325,7 @@ function branch(from, dir, list){
 }
 const checkpoint = floor => {
   if (floor * FLOOR_H - cy > 2.6) console.warn('route: ' + floor + 'F checkpoint is ' + (floor * FLOOR_H - cy).toFixed(1) + ' above the last foothold');
-  const p = plat('cp', 0, PER, floor * FLOOR_H, { ring: true, floor, cp: true }); ROUTE.push(p); cy = floor * FLOOR_H; lastW = 99; lastType = ''; };
+  const p = plat('cp', 0, PER, floor * FLOOR_H, { ring: true, floor, cp: true }); ROUTE.push(p); cy = floor * FLOOR_H; lastW = 99; lastType = ''; lastDir = 1; };
 // ---- segment 1: 1–10F — learn to jump, then the first climbing wall
 foot('sill', 1.0, 2.0, 3.0, { hop: true });
 foot('sill', 1.4, 2.1, 2.8, { pigeon: true });
@@ -1365,13 +1377,13 @@ photo('bey', '爆破貝利亞！', '最愛的玩具在高處閃閃發亮', branc
 cs += 1.5;
 foot('sill', 1.0, 2.2, 2.6, { hop: true });                  // breather
 foot('ac',   1.3, 2.2, 2.0);
-foot('sill', 1.5, 2.2, 1.8, { pigeon: true });
+foot('sill', 1.5, 2.2, 1.8, { pigeon: true, dir: 1 });
 { // the traverse: a wide, low wall under a lip — climb sideways to its end, then up onto the sill there
   const tz = wall(cs + 1.0, 5.0, cy - 0.2, cy + 2.4, { traverse: true }); ROUTE.push(tz);
   plat('lip', tz.s0 - 0.3, 3.6, cy + 3.3, { decor: true });  // the lip over your head (you can't stand on it)
   const top = plat('sill', tz.s1 - 1.9, 2.0, cy + 2.5); ROUTE.push(top); cs = top.s1; cy = top.y;
 }
-foot('sill', 1.4, 2.2, 2.4);                                 // the foot of the node: rest up here
+foot('sill', 1.4, 2.2, 2.4, { dir: 1 });                     // the foot of the node: rest up here
 const NODE_W = 3.5, NODE_WR = 1.5;   // how far the node's glass and top reach left / right of the climbing walls (less on the right: the tower's corner is close)
 const NODE = { y0: cy - 0.2, y1: cy + 8.8, out0: 0.3, out1: 3.2 };
 plat('net', 0, PER, cy - 0.6, { ring: true, net: true });    // a slip anywhere on the node lands you back here
@@ -1387,9 +1399,7 @@ plat('net', 0, PER, cy - 0.6, { ring: true, net: true });    // a slip anywhere 
   ROUTE.push(lo, seam, hi, cap); cs = cap.s1; cy = cap.y; Object.assign(NODE, { s0: lo.s0, s1: hi.s1, seamY: seam.y });
 }
 foot('drip', 1.4, 2.1, 1.6, { slide: 1 });
-// the balcony has to wrap the corner: if the corner is behind it, slide it back so it starts just before that corner (over the drip)
-const balGap = Math.floor((cs + 1.2) / SIDE) === Math.floor((cs + 5.2) / SIDE) ? Math.floor((cs + 1.2) / SIDE) * SIDE - 1.6 - cs : 1.2;
-branch(foot('balcony', balGap, 2.0, 4.0, { line: '轉角了！繞過去看看' }), -1, [['sill', 1.8, 2.2, 1.6], ['ac', 2.0, 2.1, 1.4, { item: 'gripup', id: 'g2' }]]);   // a balcony round the corner (so you see where to go); 💪 #2 up to the left
+branch(foot('balcony', 1.2, 2.0, 4.0, { line: '快到 40 樓了！' }), -1, [['sill', 1.8, 2.2, 1.6], ['ac', 2.0, 2.1, 1.4, { item: 'gripup', id: 'g2' }]]);   // a balcony round the corner (so you see where to go); 💪 #2 up to the left
 climb(1.0, 4.0, 2.0, { chalk: true, momWall: true });          // mom's 39F window next to its top
 checkpoint(40);                                              // y 120
 // ---- segment 5: 41–50F 夜幕降臨 — night falls: a searchlight sweeps the wall, neon signs blink
@@ -1408,7 +1418,7 @@ const OFFICE = foot('room', 1.3, 2.0, 9.0, { room: true, standOut: 1.5, lit: tru
 ITEMS.push({ kind: 'boba', s: OFFICE.s0 + 3.2, y: OFFICE.y + 0.9, id: 'boba', taken: false });
 photo('office', '加班的夜晚', '亮著燈的辦公室裡，有人睡著了…', OFFICE, { s: OFFICE.s0 + 5.9, r: 1.0, pose: 'shock', cam: { side: -1.2, out: 3.6, up: 0.6, look: 0.6 } });
 foot('desk', -1.6, 1.1, 1.4, { standOut: 1.5 });             // the filing cabinet at the far end: a step up
-foot('sill', 1.3, 2.0, 2.2, { lit: true });                  // out the side window and back onto the wall
+foot('sill', 1.3, 2.0, 2.2, { lit: true, dir: 1 });          // out the side window and back onto the wall
 climb(1.0, 6.0, 2.2);                                        // the long wall, part 1 (6 m)
 const guardSill = ROUTE[ROUTE.length - 1]; guardSill.lit = true; guardSill.guard = true;   // the one ledge to breathe on: a guard with a torch in the window
 climb(1.0, 5.5, 2.2, { chalk: true });                       // part 2
