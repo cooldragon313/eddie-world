@@ -267,3 +267,4 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
 ## 2026-10-30 下午：逃離土星排行榜顯示「你現在第幾名」（✅ 已上架：main `a93918f`，伺服器 Cloudflare 版本 `51e6f85a`）
 開始畫面的排行榜下面多一行：`📍 你現在第 N 名 · 共 M 人 · 最佳 X 秒`（沒成績／前 50 名外各有文字）；跑完沒進前 50 也會提示。伺服器 `GET /race_board` 帶登入 token 會多回 `me`、`total`、`boardMax`，`/race_reward` 也一樣；舊客戶端不受影響。
 只挑這個改動上 main，101 調難／男子漢模式仍留分支。⚠️ wrangler deploy 後舊的 Durable Object 約 5 分鐘才換掉，先確認伺服器回新格式再推前端。正式站已確認沒登入、亂傳 token 都正常；登入後的名次要真人帳號看。
+第 6 段 51–60F 天空工地已在分支（BUILT=60）：鷹架板、吊臂、58F 媽媽，另修檢查點第一跳；一樣待 Bernie 點頭才上架。

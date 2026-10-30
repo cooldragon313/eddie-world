@@ -211,7 +211,7 @@ function lowerThird(b, s, secs){ $('lowerB').textContent = b; $('lowerS').textCo
 //   s = distance around the tower (0 … 4·SIDE), y = height.
 //   +s = to the right as seen from outside. Faces: 0 front(+z) 1 right(+x) 2 back 3 left.
 // ============================================================
-const SIDE = 18, R = SIDE / 2, PER = SIDE * 4, FLOOR_H = 3, BUILT = 50;   // floors built so far
+const SIDE = 18, R = SIDE / 2, PER = SIDE * 4, FLOOR_H = 3, BUILT = 60;   // floors built so far
 // the ten segments (docs/PLAN-101-難度表.md): name + stars
 const SEGS = [null, ['出發！', 1], ['轉角遇到吊籃', 2], ['冷氣機森林', 2], ['竹節初登場', 3], ['夜幕降臨', 3], ['天空工地', 3], ['颱風前夕', 4], ['雨中攀登', 4], ['觀景台明星', 5], ['雲端之上', 5]];
 const segOf = y => Math.min(10, Math.floor(Math.max(0, y) / (10 * 3)) + 1);
@@ -304,6 +304,8 @@ const TYPES = {
   node:    { col: 0x2f6e68, depth: 3.4, h: 0.6 },           // the top of a bamboo node (you mantle onto it)
   neon:    { col: 0xff4fa3, depth: 1.5, h: 0.35 },          // a neon sign: lit 2 s / dark 1 s — dark = you fall through (segment 5)
   room:    { col: 0xcfc2ad, depth: 2.8, h: 0.3 },           // the floor of a room you walk into through a big open window
+  crane:   { col: 0xf2c230, depth: 1.8, h: 0.35 },          // a construction crane's beam: swings along the wall and carries you (segment 6)
+  plank:   { col: 0xe0a050, depth: 1.5, h: 0.14 },          // a scaffold plank: step on it and it drops a moment later, back after a few seconds (segment 6)
   desk:    { col: 0x8a96a3, depth: 1.2, h: 1.1 },           // a filing cabinet inside the office (a step up to the way out)
 };
 const ROUTE = [];   // footholds + walls in climbing order (for the "next step" marker)
@@ -320,7 +322,10 @@ let cs = 7, cy = 0;
 const JUMPY = { sill: 1, ac: 1, flag: 1, drip: 1, neon: 1 };
 const hardGap = (type, gap) => JUMPY[type] && gap > 0 ? Math.min(4.0, gap * 1.75 + 0.35) : gap;   // (4 m: still makes it with a full run-up)
 const hardW = (type, w) => JUMPY[type] ? Math.max(type === 'flag' ? 0.8 : 1.1, w * 0.68) : w;
-const foot = (type, gap, rise, w, o) => { gap = hardGap(type, gap); w = hardW(type, w); const p = plat(type, cs + gap, w, cy + rise, o); cs = p.s1; cy = p.y; ROUTE.push(p); return p; };
+const foot = (type, gap, rise, w, o) => {
+  if (o && o.hop){ const end = hardGap(type, gap) + hardW(type, w); w = end - gap; }   // the first hop off a checkpoint: an easy one (reaches further back, the right edge stays put so the route doesn't move)
+  else { gap = hardGap(type, gap); w = hardW(type, w); }
+  const p = plat(type, cs + gap, w, cy + rise, o); cs = p.s1; cy = p.y; ROUTE.push(p); return p; };
 const climb = (gap, height, w, o) => { const z = wall(cs + gap, w, cy - 0.2, cy + height, o); const p = plat('sill', z.s0 - 0.2, w + 0.4, cy + height + 0.1); ROUTE.push(z, p); cs = p.s1; cy = p.y; return z; };
 // side paths: footholds off the main route (no ▼), usually harder, with something at the end
 const ITEMS = [];
@@ -339,7 +344,7 @@ const checkpoint = floor => {
   if (floor * FLOOR_H - cy > 2.6) console.warn('route: ' + floor + 'F checkpoint is ' + (floor * FLOOR_H - cy).toFixed(1) + ' above the last foothold');
   const p = plat('cp', 0, PER, floor * FLOOR_H, { ring: true, floor, cp: true }); ROUTE.push(p); cy = floor * FLOOR_H; };
 // ---- segment 1: 1–10F — learn to jump, then the first climbing wall
-foot('sill', 1.0, 2.0, 3.0);
+foot('sill', 1.0, 2.0, 3.0, { hop: true });
 foot('sill', 1.4, 2.1, 2.8, { pigeon: true });
 foot('ac',   1.2, 2.2, 2.2);
 foot('sill', 1.6, 2.2, 2.6);
@@ -355,7 +360,7 @@ foot('sill', 1.3, 2.2, 2.4);
 checkpoint(10);                                              // y 30
 // ---- segment 2: 11–20F — round the corner, a flagpole, a cradle, a bulging wall
 cs += 1.5;
-foot('sill', 1.0, 2.2, 2.6);
+foot('sill', 1.0, 2.2, 2.6, { hop: true });
 photo('flag', '細細的旗桿', '很細很細的地方', foot('flag', 1.8, 2.0, 1.6, { line: '這根旗桿好細…' }), { pose: 'balance' });       // a flagpole: tiny landing
 foot('sill', 1.4, 2.3, 2.4);
 const cradle = foot('gondola', 1.5, 1.8, 2.6, { range: 5.0, speed: 0.4 }); // rides up 5 → reach the next sill from the top
@@ -370,7 +375,7 @@ foot('sill', 1.2, 2.2, 2.4, { pigeon: true });
 checkpoint(20);                                              // y 60
 // ---- segment 3: 21–30F 冷氣機森林 — dripping ACs you slide off, two short walls back to back
 cs += 1.5;
-foot('sill', 1.0, 2.2, 3.0);                                 // a breather first
+foot('sill', 1.0, 2.2, 3.0, { hop: true });                  // a breather first
 photo('pigeons', '鴿子大合照', '咕咕咕～', foot('sill', 1.2, 2.2, 2.8, { pigeon: true, flock: 3 }), { pose: 'squat', at: 0.6, cam: { side: 0.8, out: 4.0, up: 1.2 } });
 foot('ac',   1.4, 2.2, 2.2);
 foot('drip', 1.5, 2.2, 1.9, { slide: 1, first: true });      // first wet one: it carries you right
@@ -387,7 +392,7 @@ photo('bey', '爆破貝利亞！', '最愛的玩具在高處閃閃發亮', branc
 // ---- segment 4: 31–40F 竹節初登場 — traverse under a lip, then the bamboo node: two walls leaning
 // out over the street (steeper = more grip), a seam to catch your breath in, and a mantle over the top
 cs += 1.5;
-foot('sill', 1.0, 2.2, 2.6);                                 // breather
+foot('sill', 1.0, 2.2, 2.6, { hop: true });                  // breather
 foot('ac',   1.3, 2.2, 2.0);
 foot('sill', 1.5, 2.2, 1.8, { pigeon: true });
 { // the traverse: a wide, low wall under a lip — climb sideways to its end, then up onto the sill there
@@ -420,7 +425,7 @@ checkpoint(40);                                              // y 120
 // (lit 2 s / dark 1 s, dark = you drop through), lit windows are the safe spots, an office you
 // walk into through its window, then a long wall with one ledge to breathe on.
 cs += 1.5;
-foot('sill', 1.0, 2.2, 3.0, { lit: true });                  // breather: lit windows
+foot('sill', 1.0, 2.2, 3.0, { lit: true, hop: true });       // breather: lit windows
 const neonFrom = foot('sill', 1.2, 2.2, 2.6, { lit: true, pigeon: true, sleepy: true });
 foot('neon', 1.4, 2.1, 1.4, { first: true, ph: 0, sign: 0 });   // (narrow: it has to stop short of the corner)
 foot('sill', 1.3, 2.1, 2.0, { lit: true });
@@ -440,12 +445,39 @@ const guardSill = ROUTE[ROUTE.length - 1]; guardSill.lit = true; guardSill.guard
 climb(1.0, 5.5, 2.2, { chalk: true });                       // part 2
 checkpoint(50);                                              // y 150
 photo('fireworks', '半程煙火', '50 樓的夜空有人在慶祝…', plats.find(p => p.cp && p.floor === 50), { s: cs + 2.5, r: 1.2, pose: 'heart', cam: { side: 1.0, out: 6.5, up: -0.6, look: 3.5, fov: 64 } });
+// ---- segment 6: 51–60F 天空工地 — still night, work lights. Scaffold planks that drop out from under you,
+// crane beams swinging along the wall that carry you (docs/PLAN-101-難度表.md)
+cs += 1.5;
+foot('sill', 1.0, 2.2, 3.0, { lit: true, hop: true });       // breather
+const siteFrom = foot('sill', 1.0, 2.1, 2.4, { lit: true });
+foot('balcony', 1.2, 0.5, 5.0, { lit: true, line: '前面在施工…' });   // round the corner, so the first plank is in plain sight
+foot('plank', 2.6, 2.0, 1.7, { first: true });
+foot('plank', 2.8, 1.9, 1.6);
+const plankSill = foot('sill', 1.2, 2.0, 2.2, { lit: true });
+const craneDeck = foot('balcony', 1.2, 0.4, 4.5, { lit: true, line: '哇…那個吊臂在動…' });   // round the next corner
+foot('crane', 1.7, 1.9, 2.6, { first: true, amp: 2.2, speed: 0.9 });
+cs += 2.2;                                                   // the next foothold is reached from the far end of the swing
+const site55 = foot('sill', 0.8, 2.0, 2.2, { lit: true });
+foot('plank', 2.6, 2.0, 1.6);
+foot('plank', 2.7, 2.0, 1.6);
+climb(1.0, 5.0, 2.0, { chalk: true, momWall: true });        // mom's 58F window next to its top
+foot('crane', 1.7, 1.9, 2.6, { amp: 2.0, speed: 1.1 });      // the second one swings faster
+cs += 2.0;
+const craneEnd = foot('sill', 0.6, 2.0, 2.2, { lit: true });
+checkpoint(60);                                              // y 180
+for (const q of plats) if ((q.type === 'crane' || q.type === 'plank') && Math.floor((q.s0 - (q.amp || 0)) / SIDE) !== Math.floor((q.s1 + (q.amp || 0) - 0.01) / SIDE)) console.warn('route: a crane / plank straddles a corner at s ' + q.s0.toFixed(1));
+photo('plank', '鷹架上的平衡', '工地裡有個好站的地方…', plankSill, { pose: 'balance' });
+photo('site', '工地夜景', '吊臂前面，風景最好', craneDeck, { s: craneDeck.s1 - 1.2, r: 1.0, pose: 'v', cam: { side: 1.6, out: 4.5, up: 0.4, look: 0.8 } });
+photo('crane', '吊臂終點站', '搭完第二支吊臂，揮揮手', craneEnd, { pose: 'wave' });
+branch(siteFrom, -1, [['ac', 1.8, 2.2, 1.6], ['flag', 2.0, 2.1, 1.2], ['sill', 2.0, 2.1, 1.6, { item: 'gripup', id: 'g3', lit: true }]]);   // 💪 #3
+branch(site55, -1, [['flag', 2.2, 2.1, 1.1], ['ac', 2.0, 2.1, 1.4], ['sill', 2.0, 2.0, 1.5, { item: 'chicken', lit: true }]]);   // 🍗 up and to the left, over the crane
 // side paths: a dark neon run to a 雞排 (left of the sleeping pigeon)
 branch(neonFrom, -1, [['neon', 1.6, 2.1, 1.6, { ph: 0.5, sign: 3 }], ['neon', 1.8, 2.0, 1.4, { ph: 1.5, sign: 4 }], ['sill', 1.8, 2.1, 1.8, { item: 'chicken', lit: true }]]);
 // safety nets halfway up each segment: a fall costs at most 5 floors
 plat('net', 0, PER, 5 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 15 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 25 * FLOOR_H - 0.4, { ring: true, net: true });
+plat('net', 0, PER, 52 * FLOOR_H - 0.4, { ring: true, net: true });   // segment 6: catches a fall from the planks and cranes
 plat('net', 0, PER, 42 * FLOOR_H - 0.4, { ring: true, net: true });   // segment 5's net sits just under the neon signs (a dark sign drops you here, not all the way to 40F)
 // mom at an 18F window (a cameo from 恐怖考前複習夜)
 // (she rides the lift up to chase him — she shows up at a window every 20 floors: 18, 38, 58 … only 18F is built so far)
@@ -550,6 +582,13 @@ for (const p of plats){
       m.position.copy(surf(f * SIDE + R, T.depth / 2, p.y)); m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2, f * Math.PI / 2, 0); g.add(m); }
     g.add(meshAlong(0, PER, p.y + 0.5, 0.08, 0.08, LM(0xe0584a), T.depth));
     p.mesh = g; scene.add(g); continue;
+  } else if (p.type === 'crane'){
+    g.add(meshAlong(p.s0, p.s1, p.y, T.depth, T.h, BM(T.col), 0.3));                 // (lit up: it's night)
+    for (let k = 0; k < 4; k++) g.add(meshAlong(p.s0 + 0.1 + k * (p.s1 - p.s0) / 4, p.s0 + 0.35 + k * (p.s1 - p.s0) / 4, p.y + 0.01, T.depth + 0.02, T.h + 0.02, BM(0x222222), 0.3));   // hazard stripes
+    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 40, 5), BM(0x444444)); r.position.copy(surf((p.s0 + p.s1) / 2, 1.2, p.y + 20)); g.add(r);
+  } else if (p.type === 'plank'){
+    g.add(meshAlong(p.s0, p.s1, p.y, T.depth, T.h, BM(T.col), 0.25));
+    for (const e of [p.s0 + 0.15, p.s1 - 0.25]) g.add(meshAlong(e, e + 0.1, p.y - 0.12, T.depth + 0.1, 0.2, BM(0x777777), 0.2));   // the clamps
   } else if (p.type === 'gondola'){
     g.add(meshAlong(p.s0, p.s1, p.y, T.depth, T.h, LM(T.col), 0.1));
     g.add(meshAlong(p.s0, p.s1, p.y + 1.0, 0.1, 0.12, LM(0x888888), T.depth));
@@ -841,6 +880,7 @@ function startAt(floor){
   PO.state = 'idle'; PO.next = 6; flyer.visible = false; poop.visible = false;
   for (const p of plats) if (p.bird){ p.bird.fly = 0; p.bird.g.visible = true; p.bird.g.position.copy(p.bird.home); p.bird.g.rotation.z = 0; }
   P.peak = null; P.jumped = false;
+  for (const p of plats) if (p.type === 'plank'){ p.gone = false; p.fallAt = 0; p.mesh.position.set(0, 0, 0); }
   S.man = manOpen() && $('manBox').checked; me.group.scale.setScalar(EDDIE_SCALE);
   for (const p of plats) if (p.net && p.mesh) p.mesh.visible = !S.man;   // no nets. you said so.
   if (S.man) flash('💪 男子漢模式：沒有網子、一條命，摔超過 3 層樓就結束！', 2.6);
@@ -878,6 +918,20 @@ function step(dt){
   P.noGrab = Math.max(0, P.noGrab - dt);
   // cradles ride up and down
   for (const p of plats) if (p.type === 'gondola'){ const ny = p.y0 + (Math.sin(S.t * p.speed - Math.PI / 2) * 0.5 + 0.5) * p.range; p.dy = ny - (p.cur == null ? p.y0 : p.cur); p.cur = ny; p.mesh.position.y = ny - p.y0; }
+  for (const p of plats){
+    if (p.type === 'crane'){
+      const off = Math.sin(S.t * p.speed * (S.easy ? 0.7 : 1)) * p.amp, base = p.base == null ? (p.base = p.s0) : p.base, w = p.s1 - p.s0;
+      p.ds = base + off - p.s0; p.s0 = base + off; p.s1 = p.s0 + w;
+      const a = surf(base + w / 2, 0, 0), b = surf(p.s0 + w / 2, 0, 0); p.mesh.position.set(b.x - a.x, 0, b.z - a.z);
+    } else if (p.type === 'plank' && p.fallAt){
+      if (!p.gone && S.t > p.fallAt){
+        p.gone = true; p.backAt = S.t + 3.5; sfx.bonk();
+        if (P.on === p){ P.mode = 'air'; P.on = null; P.vy = 0; P.jumped = true; say(pick(['板子掉了啦！', '哇啊啊——', '這什麼爛工程！'])); }
+      }
+      if (p.gone){ p.mesh.position.y -= dt * (6 + (S.t - p.fallAt) * 25); if (S.t > p.backAt){ p.gone = false; p.fallAt = 0; p.mesh.position.set(0, 0, 0); } }
+      else p.mesh.position.x = Math.sin(S.t * 50) * 0.03;   // about to go
+    }
+  }
   // wind (from 11F): a warned gust — the big arrow shows which way it will push
   const onNode = P.mode === 'wall' && P.wall.node;
   if (onNode && !S.windDir) S.windNext = Math.max(S.windNext, S.t + 3);   // no typhoon while you hang off a bamboo node: it comes once you're over
@@ -925,6 +979,7 @@ function step(dt){
       const rest = P.on && P.on.type === 'seam' ? P.gripMax * 0.6 : P.gripMax;   // the seam is cramped: you only get back to 60%
       if (!(P.on && P.on.type === 'drip')) P.grip = Math.max(P.grip, Math.min(rest, P.grip + dt * 22));   // resting takes a few seconds (not on a wet AC)
       if (P.on && P.on.type === 'gondola') P.y += P.on.dy;
+      if (P.on && P.on.type === 'crane') P.s += P.on.ds || 0;
       P.lastGround = S.t; P.jumped = false;
     }
     // jump: a press just before landing still counts, and so does one just after walking off an edge
@@ -938,7 +993,7 @@ function step(dt){
     let landed = null;
     if (P.vy <= 0){   // land from above (one-way: you can jump up through anything)
       for (const p of plats){
-        if (p.decor || (p.mountOnly && P.slipped) || (p.net && S.man)) continue;   // a slip off the node's upper half falls past the seam
+        if (p.decor || p.gone || (p.mountOnly && P.slipped) || (p.net && S.man)) continue;   // a slip off the node's upper half falls past the seam
         if (p.type === 'neon' && !neonOn(p)) continue;          // a dark neon sign isn't there
         const top = p.type === 'gondola' ? (p.cur == null ? p.y0 : p.cur) : p.y;
         if (!onSpan(p, P.s, p.ring ? 0 : S.easy ? 0.6 : 0.1)) continue;   // 🐣 手殘版: land a bit off the edge and still make it
@@ -947,7 +1002,7 @@ function step(dt){
     }
     if (landed){
       const drop = (P.peak == null ? P.y : P.peak) - P.y, speed = -P.vy; P.peak = null;
-      if (drop > 5){ S.segFalls = (S.segFalls || 0) + 1; S.dripChain = 0; }
+      if (drop > 5){ S.segFalls = (S.segFalls || 0) + 1; S.dripChain = 0; S.planks = null; }
       S.fallSaid = false;
       if (S.man && drop > FATAL_DROP){ P.vy = 0; P.vs = 0; P.mode = 'ground'; P.on = landed; die(); return; }
       if (landed.net && segOf(P.y) === 5 && speed > 3) S.segNets = (S.segNets || 0) + 1;   // a real fall into it, not standing on it
@@ -957,6 +1012,12 @@ function step(dt){
         if (drop > 0.4 && drop <= 5 && !landed.ring) sfx.land(drop / 3);
         if (drop > 5){ sfx.bonk(); say(pick(['唉呦好痛！', '我的屁股…', '痛痛痛…', '摔得好慘…'])); S.shake = 0.35; }
         if (landed.line && !landed.said){ landed.said = true; say(landed.line); }
+        if (landed.type === 'plank'){
+          if (!landed.fallAt) landed.fallAt = S.t + (S.easy ? 1.4 : 0.8);
+          if (landed.first && !S.plankHint){ S.plankHint = true; flash('🪵 鷹架板踩了就會掉！別站太久，快跳下一塊', 2.8); say('它在抖！！'); }
+          (S.planks = S.planks || new Set()).add(landed); if (S.planks.size >= 4) unlock('hardhat');
+        }
+        if (landed.type === 'crane' && landed.first && !S.craneHint){ S.craneHint = true; flash('🏗️ 施工吊臂會左右擺，站上去會載著你走：等它擺到底再跳！', 3.0); say('哇～在動在動！'); }
         if (landed.type === 'neon' && landed.first && !S.neonHint){ S.neonHint = true; flash('💡 霓虹招牌：亮的時候站得住，燈一黑就會掉下去！看準節奏再跳', 3.0); }
         if (segOf(P.y) === 5 && !landed.lit && !landed.ring && !spotLit(landed) && !(S.owlSeen || (S.owlSeen = new Set())).has(landed)){ S.owlSeen.add(landed); S.owl = (S.owl || 0) + 1; if (S.owl >= 5) unlock('owl'); }   // 5 different dark footholds
         if (landed.type === 'seam' && !S.seamHint){ S.seamHint = true; flash('😮‍💨 竹節接縫：喘口氣，握力最多回到 6 成', 2.4); say('好窄…先喘一下'); }
@@ -1016,7 +1077,7 @@ function step(dt){
     if (M.said || Math.abs(P.y - M.y) > 5 || sDist(P.s, M.s) > 7) continue;
     M.said = true; const second = M !== MOMS[0];
     if (M.love){ npcSay(M.npc.g, second ? '寶貝！媽媽又搭電梯上來了！加油！' : '艾迪加油！媽媽在這裡！', 2.6); setTimeout(() => { say(second ? '媽～我愛你！！' : '我也愛你～❤️', 2.2); hearts(); P.grip = P.gripMax; flash('💖 媽媽的愛：握力補滿！'); unlock('momlove'); }, 1500); }
-    else { npcSay(M.npc.g, second ? '你給我下來！電梯我都搭到 38 樓了！' : '艾迪！功課寫完了沒？！', 2.6); setTimeout(() => say(second ? '又是妳！！' : '…媽？！你怎麼搭電梯上來了？！', 2.2), 1800); unlock('mom'); }
+    else { npcSay(M.npc.g, second ? '你給我下來！電梯我都搭到 ' + (18 + 20 * MOMS.indexOf(M)) + ' 樓了！' : '艾迪！功課寫完了沒？！', 2.6); setTimeout(() => say(second ? '又是妳！！' : '…媽？！你怎麼搭電梯上來了？！', 2.2), 1800); unlock('mom'); }
   }
   if (P.on === cradle && cradle.cur > cradle.y0 + cradle.range - 0.3) unlock('cradle');
   // a new floor counts when you're standing on something
@@ -1048,6 +1109,7 @@ const ACH = [
   { id: 'owl',      name: '🔦 夜貓子',       desc: '探照燈沒照到的落腳點也跳上去 5 次（第 5 段）' },
   { id: 'fireworks',name: '🎆 半程煙火',     desc: '第 5 段一次都沒掉到網子，到 50F 看煙火' },
   { id: 'boba',     name: '🧋 加班珍奶',     desc: '走進亮燈的辦公室，喝到桌上的珍奶（第 5 段）' },
+  { id: 'hardhat',  name: '🏗️ 工地安全帽',   desc: '4 塊會掉的鷹架板都踩過，中間沒摔下去（第 6 段）' },
   { id: 'man',      name: '💪 我是男子漢',   desc: '全破後不靠網子、一條命，從 1F 一次爬到頂' },
 ];
 const ACH_KEY = () => 'etfm-tower2-ach-' + who(), COIN_KEY = () => 'etfm-tower2-coins-' + who();
@@ -1242,7 +1304,7 @@ function gotCoin(id){
 }
 let newsT = 0;
 function news(txt){ $('newsTxt').textContent = txt + '　　　'; $('news').classList.add('on'); clearTimeout(newsT); newsT = setTimeout(() => $('news').classList.remove('on'), 7500); }
-const MILESTONE = { 3: '好…好高喔', 5: '地上的人變好小', 8: '不要往下看…不要往下看…', 12: '我好像看到我家了！', 17: '腿在抖…', 20: '媽我在這裡！', 42: '天黑了…好暗', 47: '台北的夜景好漂亮…', 50: '一半了！！！' };
+const MILESTONE = { 3: '好…好高喔', 5: '地上的人變好小', 8: '不要往下看…不要往下看…', 12: '我好像看到我家了！', 17: '腿在抖…', 20: '媽我在這裡！', 42: '天黑了…好暗', 47: '台北的夜景好漂亮…', 50: '一半了！！！', 52: '這裡怎麼在施工…', 57: '工人叔叔都下班了嗎…', 60: '工地畢業！' };
 function arriveCheckpoint(f){
   storeCp(f); sfx.cp();
   const segNo = f / 10, t = S.t - S.segT0, best = segBest(), prev = best[segNo];
