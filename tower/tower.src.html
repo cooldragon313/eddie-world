@@ -210,7 +210,7 @@ function lowerThird(b, s, secs){ $('lowerB').textContent = b; $('lowerS').textCo
 //   s = distance around the tower (0 … 4·SIDE), y = height.
 //   +s = to the right as seen from outside. Faces: 0 front(+z) 1 right(+x) 2 back 3 left.
 // ============================================================
-const SIDE = 18, R = SIDE / 2, PER = SIDE * 4, FLOOR_H = 3, BUILT = 70;   // floors built so far
+const SIDE = 18, R = SIDE / 2, PER = SIDE * 4, FLOOR_H = 3, BUILT = 80;   // floors built so far
 // the ten segments (docs/PLAN-101-難度表.md): name + stars
 const SEGS = [null, ['出發！', 1], ['轉角遇到吊籃', 2], ['冷氣機森林', 2], ['竹節初登場', 3], ['夜幕降臨', 3], ['天空工地', 3], ['颱風前夕', 4], ['雨中攀登', 4], ['觀景台明星', 5], ['雲端之上', 5]];
 const segOf = y => Math.min(10, Math.floor(Math.max(0, y) / (10 * 3)) + 1);
@@ -322,7 +322,7 @@ let cs = 7, cy = 0;
 // medium / long (near the limit) / short + narrow (a full-speed jump overshoots it) / medium.
 // Long jumps are capped by how much speed you can build on the foothold you're leaving, so all of them are possible.
 const JUMPY = { sill: 1, ac: 1, flag: 1, drip: 1, neon: 1 };
-const SEG_W = [2.0, 1.7, 1.5, 1.3, 1.2, 1.1, 1.1], SEG_LONG = [0.72, 0.76, 0.8, 0.83, 0.85, 0.86, 0.78];   // (segment 7: a bit shorter, a headwind eats into every jump)
+const SEG_W = [2.0, 1.7, 1.5, 1.3, 1.2, 1.1, 1.1, 1.3], SEG_LONG = [0.72, 0.76, 0.8, 0.83, 0.85, 0.86, 0.78, 0.78];   // (segment 7: a bit shorter, a headwind eats into every jump)
 const reachOf = (r, v) => v * (JUMP_V + Math.sqrt(Math.max(0, JUMP_V * JUMP_V - 2 * GRAV * r))) / GRAV;
 const runUp = x => { let v = 0, d = 0; for (let i = 0; i < 120 && d < x; i++){ v += (RUN - v) * 7 / 60; d += v / 60; } return v; };   // speed after a run-up of x m (ground grip below)
 let rhythm = 0, lastW = 99, lastType = '', lastSlide = 0, zigN = 0, lastDir = 1;
@@ -330,7 +330,7 @@ let rhythm = 0, lastW = 99, lastType = '', lastSlide = 0, zigN = 0, lastDir = 1;
 // segment 1 two and two, from segment 2 on every jump, so you have to stop on the foothold and turn round.
 const ZIG = [[1, 1, -1, -1], [1, -1]];
 function hardStep(type, gap, rise, w, y, beat){
-  const k = Math.min(6, Math.floor(Math.max(y, 0) / 30)), W = SEG_W[k];
+  const k = Math.min(7, Math.floor(Math.max(y, 0) / 30)), W = SEG_W[k];
   if (type === 'plank') return [gap, W];
   if (!JUMPY[type] || gap <= 0) return [gap, w];
   const full = reachOf(rise, RUN), most = reachOf(rise, runUp(lastW - 0.1)) * 0.93;
@@ -346,7 +346,7 @@ const foot = (type, gap, rise, w, o) => {
   let dir = 1, sprint = false;
   if (o && o.hop) w = 3.0;                                   // the first hop off a checkpoint: an easy one
   else {
-    const jumpy = JUMPY[type] && gap > 0, k = Math.min(6, Math.floor(Math.max(cy, 0) / 30)), prev = ROUTE[ROUTE.length - 1];
+    const jumpy = JUMPY[type] && gap > 0, k = Math.min(7, Math.floor(Math.max(cy, 0) / 30)), prev = ROUTE[ROUTE.length - 1];
     if ((jumpy || type === 'plank') && lastType !== 'gondola' && lastType !== 'crane' && !prev.ring){ const z = ZIG[Math.min(1, k)]; dir = o && o.dir ? o.dir : lastType === 'drip' ? lastSlide || 1 : z[zigN++ % z.length]; }
     if (jumpy && rhythm % 8 === 5 && k > 0 && type !== 'drip'){   // every so often a long ledge and a gap only a flat-out sprint clears
       const q = plat('balcony', dir > 0 ? cs + 1.0 : prev.s0 - 1.0 - 4.5, 4.5, cy + 0.3, { lit: cy >= 120 }); ROUTE.push(q); cs = q.s1; cy = q.y; lastW = 4.5; lastType = 'balcony'; sprint = true;
@@ -521,6 +521,37 @@ branch(stormSill, -1, [['flag', 2.0, 2.1, 1.1], ['sill', 2.0, 2.0, 1.5, { item: 
 photo('awning', '遮雨棚彈跳', '那塊布看起來很有彈性…', awning1, { pose: 'shock' });
 photo('scarf', '媽媽的圍巾', '被風吹走的東西，要自己拿回來', SCARF_SPOT, { pose: 'heart' });
 photo('storm', '颱風前夕', '70 樓，風大到站不穩', stormEnd, { pose: 'balance' });
+// ---- segment 8: 71–80F 雨中攀登 — rain: wet walls eat your grip faster, and broken gutters pour water down in bursts
+// (the steady wind stops here, so it's about as hard as segment 7) (docs/PLAN-101-難度表.md)
+const FALLS = [];   // 🚿 s = middle, w = how wide; on for a bit every 3 s, ph = where in that cycle it starts
+const waterFall = (s0, s1, y0, y1, ph, o) => { const f = Object.assign({ s: (s0 + s1) / 2, w: s1 - s0, y0, y1, ph }, o || {}); FALLS.push(f); return f; };
+const gapFall = (a, b, ph) => { const l = a.s0 < b.s0 ? a : b, r = l === a ? b : a, m = (l.s1 + r.s0) / 2, w = clamp((r.s0 - l.s1) * 0.6, 0.8, 1.4);   // over the jump from a to b
+  return waterFall(m - w / 2, m + w / 2, Math.min(a.y, b.y) - 1.5, Math.max(a.y, b.y) + 3.5, ph); };
+cs += 1.5;
+foot('sill', 1.0, 2.2, 3.0, { lit: true, hop: true });       // breather
+const rainDeck = foot('balcony', 1.2, 0.5, 6.0, { lit: true, line: '下雨了…好冰！' });
+waterFall(rainDeck.s0 + 2.3, rainDeck.s0 + 3.7, rainDeck.y - 0.5, rainDeck.y + 5, 0);   // the first one falls on a wide ledge: it can't hurt you, you just see what it does
+foot('ac', 1.7, 2.0, 1.6);
+const birdDeck = foot('balcony', 1.2, 2.0, 3.2, { lit: true, pigeon: true, flock: 3, soggy: true });   // the pigeons hiding from the rain (so no pigeon bombs in this segment)
+const fallSill = foot('balcony', 2.6, 2.1, 2.2, { lit: true });
+gapFall(birdDeck, fallSill, 1.0);
+const dodgeWall = climb(1.0, 4.5, 3.6, { chalk: true, dodge: true });   // a wide wall, two gutters taking turns: climb on the dry side
+waterFall(dodgeWall.s0, dodgeWall.s0 + 1.8, dodgeWall.y0 + 1.8, dodgeWall.y1 + 2, 0.4);
+waterFall(dodgeWall.s0 + 1.8, dodgeWall.s1, dodgeWall.y0 + 1.8, dodgeWall.y1 + 2, 1.9);
+const dodgeTop = ROUTE[ROUTE.length - 1];
+const soakA = foot('sill', 1.6, 2.0, 2.0, { lit: true });
+const soakB = foot('ac', 1.6, 2.0, 1.6);
+gapFall(soakA, soakB, 2.0);
+foot('balcony', 1.2, 2.0, 4.0, { lit: true, line: '那邊又有一扇窗…' });
+climb(1.0, 4.5, 2.0, { momWall: true });                     // mom's 78F window next to its top
+foot('drip', 1.4, 2.0, 1.7, { slide: -1, dir: -1 });   // to the left: her window is on the right here (the left would bend round a corner)
+const rainEnd = foot('sill', 1.2, 2.0, 2.2, { lit: true });
+checkpoint(80);                                              // y 240
+branch(rainDeck, 1, [['ac', 1.8, 2.2, 1.6], ['sill', 2.0, 2.1, 1.6, { item: 'noodle', lit: true }]]);   // 🍜 up and to the right
+branch(soakB, -1, [['ac', 2.0, 2.1, 1.4], ['sill', 2.0, 2.0, 1.5, { item: 'gripup', id: 'g5', lit: true }]]);   // 💪 #5
+photo('soggy', '躲雨的鴿子', '牠們也不想淋雨…', birdDeck, { pose: 'shock' });
+photo('soaked', '落湯雞', '剛被水瀑沖過的地方', fallSill, { pose: 'ptoo' });
+photo('rain80', '雨中的 80 樓', '再撐一下就到了', rainEnd, { pose: 'wave' });
 // side paths: a dark neon run to a 雞排 (left of the sleeping pigeon)
 branch(neonFrom, -1, [['neon', 1.6, 2.1, 1.6, { ph: 0.5, sign: 3 }], ['neon', 1.8, 2.0, 1.4, { ph: 1.5, sign: 4 }], ['sill', 1.8, 2.1, 1.8, { item: 'chicken', lit: true }]]);
 // safety nets halfway up each segment: a fall costs at most 5 floors
@@ -529,7 +560,8 @@ plat('net', 0, PER, 15 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 25 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, siteFrom.y - 0.3, { ring: true, net: true });   // segment 6: just under the second sill, catches a fall from the planks and cranes
 plat('net', 0, PER, 42 * FLOOR_H - 0.4, { ring: true, net: true });
-plat('net', 0, PER, 64 * FLOOR_H - 0.4, { ring: true, net: true });   // segment 5's net sits just under the neon signs (a dark sign drops you here, not all the way to 40F)
+plat('net', 0, PER, 64 * FLOOR_H - 0.4, { ring: true, net: true });
+plat('net', 0, PER, dodgeTop.y - 0.3, { ring: true, net: true });   // segment 8: just under the top of the wide wall   // segment 5's net sits just under the neon signs (a dark sign drops you here, not all the way to 40F)
 // mom at an 18F window (a cameo from 恐怖考前複習夜)
 // (she rides the lift up to chase him — she shows up at a window every 20 floors: 18, 38, 58 … only 18F is built so far)
 const MOM_SPOTS = walls.filter(z => z.momWall).map(z => {   // next to the top of those walls
@@ -713,6 +745,11 @@ for (const it of ITEMS){
   } else if (it.kind === 'chicken'){   // 🍗 雞排 in a paper bag
     const bag = new THREE.Mesh(sbRoundBox(0.6, 0.55, 0.22, 0.04), LM(0xf4efe6)); g.add(bag);
     const cut = new THREE.Mesh(sbRoundBox(0.66, 0.42, 0.12, 0.08), LM(0xd8902a)); cut.position.set(0, 0.36, 0); cut.rotation.z = 0.15; g.add(cut);
+  } else if (it.kind === 'noodle'){   // 🍜 a hot cup of noodles, steaming in the rain
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.22, 0.5, 16), LM(0xfff8ec)));
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.285, 0.25, 0.16, 16), LM(0xe0483a)); band.position.y = 0.04; g.add(band);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.03, 16), LM(0xf2c230)); lid.position.y = 0.27; g.add(lid);
+    for (let i = 0; i < 3; i++){ const puff = new THREE.Mesh(new THREE.SphereGeometry(0.1 + i * 0.04, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 })); puff.position.set(Math.sin(i * 2) * 0.08, 0.42 + i * 0.2, 0); g.add(puff); }
   } else if (it.kind === 'bento'){
     g.add(new THREE.Mesh(sbRoundBox(0.8, 0.3, 0.55, 0.06), LM(0xe0584a)));
     const lid = new THREE.Mesh(sbRoundBox(0.84, 0.08, 0.6, 0.03), LM(0xfff8ec)); lid.position.y = 0.19; g.add(lid);
@@ -785,7 +822,7 @@ function slab(s0, s1, y0, y1, out0, out1, thick, mat){
 for (const z of walls){
   const g = new THREE.Group(), out = wallOut(z, z.y0);
   if (z.node) g.add(slab(z.s0, z.s1, z.y0, z.y1, wallOut(z, z.y0), wallOut(z, z.y1), 0.16, LM(0x2f6e68)));
-  else g.add(meshAlong(z.s0, z.s1, z.y1, 0.12, z.y1 - z.y0, LM(z.over ? 0x2f6e68 : 0xd9c3a0), out - 0.12));   // a sandy climbing board, easy to tell from the glass
+  else g.add(meshAlong(z.s0, z.s1, z.y1, 0.12, z.y1 - z.y0, LM(z.over ? 0x2f6e68 : z.y0 >= 210 ? 0xa9926f : 0xd9c3a0), out - 0.12));   // a sandy climbing board, easy to tell from the glass
   for (let s = z.s0 + 0.35; s < z.s1; s += 0.7) for (let y = z.y0 + 0.4; y < z.y1; y += 0.75){
     const h = new THREE.Mesh(new THREE.DodecahedronGeometry(z.node ? 0.2 : 0.17), LM(holdCols[(Math.floor(s * 3) + Math.floor(y * 2)) % 5]));   // chunky climbing rocks
     h.position.copy(surf(s + Math.sin(y * 7) * 0.15, wallOut(z, y) + 0.05, y)); h.scale.set(1, 0.8, 0.7); h.rotation.set(y * 3, s * 2, 0); g.add(h);
@@ -795,6 +832,16 @@ for (const z of walls){
     const glow = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.55, 20), new THREE.MeshBasicMaterial({ color: 0xfff3a0, transparent: true, opacity: 0.8, side: THREE.DoubleSide })); m.add(glow);
     m.position.copy(surf(c.s, out + 0.35, c.y)); m.rotation.y = faceAngle(c.s); c.mesh = m; scene.add(m); chalks.push(c); }
   sbOutline(g, 0.03); scene.add(g); z.mesh = g;
+}
+// 🚿 the gutters: a see-through box you stand inside, its streaks scrolling down, and the broken pipe it comes out of
+const fallTex = canvasTex(64, 128, (x, w, h) => { x.fillStyle = '#d8efff'; x.fillRect(0, 0, w, h); for (let i = 0; i < 26; i++){ x.fillStyle = i % 2 ? 'rgba(255,255,255,.9)' : 'rgba(90,160,215,.7)'; const a = Math.random() * w, b = Math.random() * h; x.fillRect(a, b, 2 + Math.random() * 3, 24 + Math.random() * 40); x.fillRect(a, b - h, 2, 40); } });
+fallTex.wrapS = fallTex.wrapT = THREE.RepeatWrapping; fallTex.repeat.set(1, 2);
+for (const f of FALLS){
+  const h = f.y1 - f.y0, a = surf(f.s, 0.8, f.y0 + h / 2);
+  if (Math.floor((f.s - f.w / 2) / SIDE) !== Math.floor((f.s + f.w / 2 - 0.01) / SIDE)) console.warn('route: a gutter bends round a corner at ' + f.s.toFixed(1));
+  f.mat = new THREE.MeshBasicMaterial({ map: fallTex, transparent: true, opacity: 0.2, depthWrite: false });
+  f.mesh = new THREE.Mesh(new THREE.BoxGeometry(f.w, h, 1.2), f.mat); f.mesh.position.copy(a); f.mesh.rotation.y = faceAngle(f.s); f.mesh.scale.x = 0.12; scene.add(f.mesh);
+  const pipe = new THREE.Mesh(sbRoundBox(f.w + 0.3, 0.26, 1.5, 0.06), LM(0x69737d)); pipe.position.copy(surf(f.s, 0.75, f.y1)); pipe.rotation.y = faceAngle(f.s); sbOutline(pipe, 0.03); scene.add(pipe);
 }
 { // the bamboo node itself: a big glass skirt leaning out round the two climbing walls, a dark seam band (the top is the 'node' platform)
   const g = new THREE.Group(), w = NODE_W, glass = new THREE.CanvasTexture(glassCanvas);
@@ -835,7 +882,7 @@ const P = { s: 9, y: 0, vs: 0, vy: 0, mode: 'ground', on: null, wall: null, face
 
 // ---------- sound (synth; on by default, remembered) ----------
 const sfx = (() => {
-  let ac = null, on = true; try { on = localStorage.getItem('race.sound') !== 'off'; } catch (e) {}
+  let ac = null, on = true, rainG = null, rainK = 0; try { on = localStorage.getItem('race.sound') !== 'off'; } catch (e) {}
   const ctx = () => { if (!ac){ try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; };
   addEventListener('pointerdown', () => { if (on) ctx(); }, true); addEventListener('keydown', () => { if (on) ctx(); }, true);
   function tone(type, f0, f1, dur, vol, delay){ if (!on || !ctx()) return; const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
@@ -861,6 +908,12 @@ const sfx = (() => {
     pop: () => [784, 988, 1319].forEach((f, i) => tone('triangle', f, 0, 0.18, 0.08, i * 0.07)),
     mantle: () => { hiss(0.2, 0.15, 600, 1800); tone('triangle', 392, 784, 0.25, 0.1, 0.12); },
     splash: () => { hiss(0.15, 0.12, 2500, 900); },
+    rain(k){   // a soft endless hiss, as loud as it's raining
+      if (!rainG && (!k || !on || !ctx())) return;
+      if (!rainG){ const b = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        const n = ac.createBufferSource(); n.buffer = b; n.loop = true; const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1800; rainG = ac.createGain(); rainG.gain.value = 0; n.connect(f); f.connect(rainG); rainG.connect(ac.destination); n.start(); }
+      const want = on ? k * 0.05 : 0; if (want !== rainK){ rainK = want; rainG.gain.setTargetAtTime(want, ac.currentTime, 0.4); }
+    },
     splat: () => { hiss(0.18, 0.3, 700, 200); tone('sine', 300, 120, 0.15, 0.12); },
     beat: () => { tone('sine', 70, 50, 0.12, 0.35); tone('sine', 65, 45, 0.12, 0.28, 0.16); },
     coo: () => { tone('sine', 520, 420, 0.12, 0.07); tone('sine', 480, 380, 0.14, 0.07, 0.15); },
@@ -933,6 +986,8 @@ function startAt(floor){
   if (floor >= 60 && !hasScarf()) try { localStorage.setItem(SCARF_KEY(), '1'); } catch (e) {}   // a save from before she handed it out
   SCARF.give = null; SCARF.lost = null; SCARF.ball.visible = false; wearScarf(hasScarf());
   for (const z of walls) z.gusted = false;
+  for (const f of FALLS) f.hitAt = 0;
+  for (const p of plats) p.said2 = false;
   S.segPoop = 0; S.segPhotos = 0; for (const q of people) q.snapped = false;
   DRONE = hasDrone(); BOOK = loadBook(); S.newPhotos = []; buddyPos.set(0, 0, 0);
   PO.state = 'idle'; PO.next = 6; flyer.visible = false; poop.visible = false;
@@ -958,6 +1013,10 @@ function wallAt(s, y){ for (const z of walls) if (onSpan(z, s, 0.1) && y + 0.9 >
 const neonCycle = () => S.easy ? [2.5, 0.5] : [3, 1];
 function neonOn(p){ const [c, off] = neonCycle(); return ((S.t + p.ph) % c) < c - off; }
 function neonWarn(p){ const [c, off] = neonCycle(), k = (S.t + p.ph) % c; return k > c - off - 0.4 && k < c - off; }
+// 🌧️ segment 8: how hard it's raining at height y; 🚿 a gutter pours for a bit (a thin trickle just before) every 3 s
+const rainAt = y => clamp((y - 209) / 3, 0, 1) * (1 - clamp((y - 241) / 6, 0, 1));
+const fallOn = f => (S.t + f.ph) % 3 < (S.easy ? 0.8 : 1.3);
+const fallWarn = f => (S.t + f.ph) % 3 > 2.5;
 // the searchlight sweeping up from the street (segment 5): where it points now
 const SPOT = { s: 0, y: 0 };
 const spotLit = q => sDist((q.s0 + q.s1) / 2, SPOT.s) < 4 && Math.abs(q.y - SPOT.y) < 5;
@@ -996,7 +1055,15 @@ function step(dt){
   const onNode = P.mode === 'wall' && P.wall.node;
   if (onNode && !S.windDir) S.windNext = Math.max(S.windNext, S.t + 3);   // no typhoon while you hang off a bamboo node: it comes once you're over
   const gust = P.y > 30 && S.windDir && S.t > S.windAt && S.t < S.windAt + 1.6 && !onNode;
-  S.breeze = segOf(P.y) >= 7 && P.y > 183 && !S.windDir ? S.breezeDir || 1 : 0;   // 🌪️ from segment 7 it never stops: it keeps blowing the way the last gust did
+  S.breeze = segOf(P.y) === 7 && P.y > 183 && !S.windDir ? S.breezeDir || 1 : 0;   // 🌪️ all through segment 7 it never stops: it keeps blowing the way the last gust did
+  S.rain = rainAt(P.y) > 0.5;
+  // 🚿 under a gutter: on a wall it washes you down and eats your grip, in the air it knocks you out of your jump, on a ledge it only slows you
+  const soak = S.rain && FALLS.find(f => fallOn(f) && sDist(P.s, f.s) < f.w / 2 && P.y + 1 > f.y0 && P.y + 0.5 < f.y1);
+  if (soak && S.t > (soak.hitAt || 0)){
+    soak.hitAt = S.t + 1.2; sfx.splash(); drops(); say(pick(['噗噗噗——', '好冰！！', '免費洗澡喔！', '水！水！水！']), 1.2);
+    S.showers = (S.showers || 0) + 1; if (S.showers >= 3) unlock('shower');
+  }
+  if (S.rain && !S.fallHint && FALLS.some(f => sDist(P.s, f.s) < 6 && Math.abs(P.y - f.y0) < 4)){ S.fallHint = true; flash('🚿 破掉的排水管：水下來會把你往下沖！等水停了再過', 3.0); }
   if (gust && P.mode === 'wall') P.wall.gusted = true;
   if (P.y > 28){
     if (!S.windDir && S.t > S.windNext - 2){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; S.windK = (0.7 + Math.random() * (0.5 + segOf(P.y) * 0.12)) * (S.easy ? 0.7 : 1); sfx.wind(); say(P.mode === 'wall' ? '抓緊抓緊！' : '哇！風好大！'); if (segOf(P.y) >= 7) S.boltAt = S.t + 1.5; }
@@ -1008,9 +1075,10 @@ function step(dt){
     P.s += ix * CLIMB * climbK * dt; P.y += iy * CLIMB * climbK * dt;
     P.climbPh += (Math.abs(ix) + Math.abs(iy)) * dt * 6;
     const drain = z.node ? 22 + 14 * nodeK(z.node, P.y) : z.over ? 22 : segOf(P.y) >= 4 ? 15 : 13;   // the further the node leans out, the faster it eats your grip
-    P.grip -= dt * drain * (gust ? 1.8 : 1) * (ix || iy ? 1 : 0.7) * (S.easy ? 0.65 : z.node ? 1 : 1.5);   // 🐣 手殘版: grip lasts longer (the bamboo node is already hard enough)
+    if (soak){ P.y -= 2.6 * dt; P.grip -= 8 * dt; }
+    P.grip -= dt * drain * (gust ? 1.8 : 1) * (S.rain ? (S.easy ? 1.1 : 1.2) : 1) * (ix || iy ? 1 : 0.7) * (S.easy ? 0.65 : z.node ? 1 : 1.5);   // 🐣 手殘版: grip lasts longer (the bamboo node is already hard enough)
     if (P.grip < 30 && S.t > (S.beatAt || 0)){ S.beatAt = S.t + 0.55; sfx.beat(); }
-    for (const c of chalks) if (!c.taken && sDist(P.s, c.s) < 0.8 && Math.abs(P.y + 0.9 - c.y) < 1.0){ c.taken = true; c.mesh.visible = false; P.grip = P.gripMax; S.usedChalk = true; sfx.chalk(); flash('🧂 抹粉！握力補滿'); say('抹粉～滑溜溜！'); }
+    for (const c of chalks) if (!c.taken && sDist(P.s, c.s) < 0.8 && Math.abs(P.y + 0.9 - c.y) < 1.0){ c.taken = true; c.mesh.visible = false; P.grip = P.gripMax; S.usedChalk = true; S.segChalk = true; sfx.chalk(); flash('🧂 抹粉！握力補滿'); say('抹粉～滑溜溜！'); }
     { // hand over to a neighbouring wall when you climb onto it (up out of a traverse, or sideways)
       const z2 = walls.find(w => w !== z && !(w.node && z.node) && onSpan(w, P.s, 0.1) && P.y + 0.9 >= w.y0 && P.y + 0.3 <= w.y1 && ((iy > 0 && w.y1 > z.y1) || (ix && (P.s < z.s0 + 0.3 || P.s > z.s1 - 0.3))));
       if (z2){ P.wall = z2; if (z2.bamboo && !z2.warned){ z2.warned = true; flash('🎋 竹節外凸：從橫移牆接上去，一口氣爬！', 2.4); } } }
@@ -1036,6 +1104,7 @@ function step(dt){
     if (wet) P.vs += P.on.slide * 8 * dt;   // the water carries you toward the edge
     if (gust) P.vs += S.windDir * 9 * (S.windK || 1) * (wet ? 2 : 1) * dt;   // wind on a wet AC = whoosh
     if (S.breeze && P.mode === 'air') P.vs += S.breeze * (S.easy ? 1.2 : 2) * dt;   // the steady wind only moves you in the air: you can always stop and rest
+    if (soak){ if (P.mode === 'air') P.vy = Math.max(P.vy - 60 * dt, Math.min(P.vy, -16)); else P.vs *= 1 - Math.min(1, dt * 4); }
     if (P.mode === 'ground' && P.on && P.on.type === 'neon' && !neonOn(P.on)){   // the sign went dark under you
       P.mode = 'air'; P.on = null; P.vy = 0; P.jumped = true; say(pick(['燈…燈黑了！', '哇啊——腳下不見了！', '招牌關燈了啦！']));
     }
@@ -1074,6 +1143,7 @@ function step(dt){
       else {
         P.vy = 0; P.mode = 'ground'; P.on = landed; P.jumped = false; P.slipped = false;
         if (drop > 0.4 && drop <= 5 && !landed.ring) sfx.land(drop / 3);
+        if (S.rain && drop > 0.4){ drops(); sfx.splash(); }
         if (drop > 5){ sfx.bonk(); say(pick(['唉呦好痛！', '我的屁股…', '痛痛痛…', '摔得好慘…'])); S.shake = 0.35; }
         if (landed.line && !landed.said){ landed.said = true; say(landed.line); }
         if (landed.scarfBlow) blowScarf();
@@ -1097,9 +1167,10 @@ function step(dt){
           S.dripChain = landed.chain ? (S.dripChain || 0) + 1 : 0;
           if (S.dripChain >= 3) unlock('dripking');
         } else if (landed.type !== 'gondola') S.dripChain = 0;
-        if (landed.bird && !landed.bird.fly && !(DRONE && landed.photoId && !BOOK[landed.photoId])){   // (they stay for a drone photo)
+        if (landed.soggy && !landed.said2){ landed.said2 = true; npcSay(landed.bird.g, '咕…（才不要飛，外面在下雨）', 2.4); sfx.coo(); }
+        if (landed.bird && !landed.soggy && !landed.bird.fly && !(DRONE && landed.photoId && !BOOK[landed.photoId])){   // (they stay for a drone photo)
           landed.bird.fly = 0.001; npcSay(landed.bird.g, landed.sleepy ? '咕咕？！（被吵醒）' : '咕咕！'); sfx.coo();
-          if (plats.every(q => !q.bird || q.bird.fly)) unlock('pigeons'); }
+          if (plats.every(q => !q.bird || q.soggy || q.bird.fly)) unlock('pigeons'); }
       }
     }
     else { if (P.mode === 'ground') P.mode = 'air'; P.on = null; }
@@ -1108,6 +1179,8 @@ function step(dt){
       const z = wallAt(P.s, P.y);
       if (z){ P.mode = 'wall'; P.wall = z; P.vy = 0; P.vs = 0; P.peak = null; P.jumped = true; z.tired = false; S.fallSaid = false; sfx.grab();
         if (z.hint && !z.hinted){ z.hinted = true; flash('🧗 抓住了！搖桿往上爬，握力用完會手滑', 2.6); }
+        if (z.dodge && !S.dodgeHint){ S.dodgeHint = true; flash('🚿 左右兩邊輪流沖水：閃到乾的那邊爬！', 2.8); }
+        else if (S.rain && !S.rainHint){ S.rainHint = true; flash('🌧️ 牆濕了：握力掉比較快！', 2.4); }
         if (z.node && !z.node.warned){ z.node.warned = true; flash('🎋 竹節往外斜：越上面越斜、握力掉越快！中間接縫可以喘口氣', 3.0); say('哇…底下是空的！'); }
         else if (z.over && !z.warned){ z.warned = true; flash('🧱 小凸牆：握力掉比較快，一口氣爬上去！', 2.6); } }
     }
@@ -1122,6 +1195,7 @@ function step(dt){
     else if (it.kind === 'drone'){ it.mesh.visible = false; sfx.cp(); gotDrone(); }
     else if (it.kind === 'boba'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🧋 加班珍奶！握力補滿，6 秒內跑得快、爬得快'); say('冰冰涼涼～珍珠好Q！'); unlock('boba'); }
     else if (it.kind === 'chicken'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍗 夜市雞排！握力補滿，6 秒內跑得快、爬得快'); say('卡滋卡滋！'); }
+    else if (it.kind === 'noodle'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍜 熱泡麵！握力補滿，6 秒內跑得快、爬得快'); say('呼～活過來了！'); }
     else if (it.kind === 'bento'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍱 吃便當！握力補滿，6 秒內跑得快、爬得快'); say('好好吃！力氣來了！'); unlock('bento'); }
     else { npcSay(it.sprite, '看這邊！笑一個！'); news('12 歲男孩徒手攀爬台北 101！目前高度 ' + Math.round(P.y * METERS) + ' 公尺，現場群眾驚呼連連……'); say('我上電視了！'); unlock('news'); }
   }
@@ -1153,6 +1227,18 @@ function step(dt){
       if (M.love){ hearts(); P.grip = P.gripMax; unlock('momlove'); } else unlock('mom');
       continue;
     }
+    if (M === MOMS[3] && hasScarf()){   // 🧣 78F: she notices the scarf
+      if (SCARF.lost){   // you left it on the AC at 62F: whatever kind of day she was having, it's over
+        M.love = false; M.npc.pose(false); npcSay(M.npc.g, '圍巾呢？！我給你的圍巾呢？！', 2.6); unlock('mom');
+        setTimeout(() => say('…被颱風吹走了。', 2.2), 1800); setTimeout(() => npcSay(M.npc.g, '回家你就知道！！', 2.2), 3800);
+      } else if (scarfBack()){   // you went back for it, and she can still tell
+        npcSay(M.npc.g, '這圍巾怎麼有冷氣機的味道？', 2.6); setTimeout(() => say('…沒有啊！你聞錯了！', 2.2), 1800);
+        if (M.love){ hearts(); P.grip = P.gripMax; flash('💖 媽媽的愛：握力補滿！'); unlock('momlove'); } else unlock('mom');
+      } else if (M.love){
+        npcSay(M.npc.g, '雨這麼大，圍巾有戴好，很乖！', 2.6); setTimeout(() => { say('媽～我愛你！！', 2.2); hearts(); P.grip = P.gripMax; flash('💖 媽媽的愛：握力補滿！'); unlock('momlove'); }, 1500);
+      } else { npcSay(M.npc.g, '淋成這樣！衣服都是我在洗欸！', 2.6); setTimeout(() => say('又是妳！！', 2.2), 1800); unlock('mom'); }
+      continue;
+    }
     if (M.love){ npcSay(M.npc.g, second ? '寶貝！媽媽又搭電梯上來了！加油！' : '艾迪加油！媽媽在這裡！', 2.6); setTimeout(() => { say(second ? '媽～我愛你！！' : '我也愛你～❤️', 2.2); hearts(); P.grip = P.gripMax; flash('💖 媽媽的愛：握力補滿！'); unlock('momlove'); }, 1500); }
     else { npcSay(M.npc.g, second ? '你給我下來！電梯我都搭到 ' + (18 + 20 * MOMS.indexOf(M)) + ' 樓了！' : '艾迪！功課寫完了沒？！', 2.6); setTimeout(() => say(second ? '又是妳！！' : '…媽？！你怎麼搭電梯上來了？！', 2.2), 1800); unlock('mom'); }
   }
@@ -1165,6 +1251,7 @@ function step(dt){
       S.best = f;   // (no ding every floor: the altimeter says it)
       if (MILESTONE[f]) say(MILESTONE[f], 2.2);
       if (f === 65) news('颱風警報：台北市明天停班停課！氣象局呼籲民眾不要外出、不要靠近高處……');
+      if (f === 75) news('最新消息：颱風登陸！101 外牆疑有 12 歲少年徒手攀爬，消防局表示：「他媽媽已經在現場了。」');
       if (f % 10 === 0) arriveCheckpoint(f);
     }
   }
@@ -1189,6 +1276,8 @@ const ACH = [
   { id: 'boba',     name: '🧋 加班珍奶',     desc: '走進亮燈的辦公室，喝到桌上的珍奶（第 5 段）' },
   { id: 'scarf',    name: '🧣 媽媽的圍巾',   desc: '把被颱風吹走的紅圍巾撿回來（第 7 段岔路）' },
   { id: 'headwind', name: '🌪️ 逆風少年',     desc: '被陣風吹著還是爬到牆頂（第 7 段）' },
+  { id: 'rainwalk', name: '☔ 雨中漫步',     desc: '第 8 段沒用粉袋就爬到 80F' },
+  { id: 'shower',   name: '🚿 免費洗澡',     desc: '一趟被排水管的水沖到 3 次（第 8 段）' },
   { id: 'hardhat',  name: '🏗️ 工地安全帽',   desc: '4 塊會掉的鷹架板都踩過，中間沒摔下去（第 6 段）' },
   { id: 'man',      name: '💪 我是男子漢',   desc: '全破後不靠網子、一條命，從 1F 一次爬到頂' },
 ];
@@ -1384,7 +1473,7 @@ function gotCoin(id){
 }
 let newsT = 0;
 function news(txt){ $('newsTxt').textContent = txt + '　　　'; $('news').classList.add('on'); clearTimeout(newsT); newsT = setTimeout(() => $('news').classList.remove('on'), 7500); }
-const MILESTONE = { 3: '好…好高喔', 5: '地上的人變好小', 8: '不要往下看…不要往下看…', 12: '我好像看到我家了！', 17: '腿在抖…', 20: '媽我在這裡！', 42: '天黑了…好暗', 47: '台北的夜景好漂亮…', 50: '一半了！！！', 52: '這裡怎麼在施工…', 57: '工人叔叔都下班了嗎…', 60: '工地畢業！', 62: '衣服要被吹走了…', 65: '颱風假？！太好了，不用考試了！！', 68: '可是…我現在在 101 外面耶…' };
+const MILESTONE = { 3: '好…好高喔', 5: '地上的人變好小', 8: '不要往下看…不要往下看…', 12: '我好像看到我家了！', 17: '腿在抖…', 20: '媽我在這裡！', 42: '天黑了…好暗', 47: '台北的夜景好漂亮…', 50: '一半了！！！', 52: '這裡怎麼在施工…', 57: '工人叔叔都下班了嗎…', 60: '工地畢業！', 62: '衣服要被吹走了…', 65: '颱風假？！太好了，不用考試了！！', 68: '可是…我現在在 101 外面耶…', 73: '鞋子裡都是水…', 76: '內褲也濕了啦…', 79: '雨好像小一點了？' };
 function arriveCheckpoint(f){
   storeCp(f); sfx.cp();
   const segNo = f / 10, t = S.t - S.segT0, best = segBest(), prev = best[segNo];
@@ -1392,6 +1481,8 @@ function arriveCheckpoint(f){
   if (!S.segFalls) unlock('steady');
   if (segNo === 4 && !S.segSlips) unlock('bamboo');
   if (segNo === 5){ if (!S.segNets) unlock('fireworks'); for (let i = 0; i < 6; i++) setTimeout(() => burst(), i * 260); }
+  if (segNo === 8 && !S.segChalk) unlock('rainwalk');
+  S.segChalk = false;
   if (t < 40) unlock('fast');
   if (f >= 20 && !S.usedChalk) unlock('nochalk');
   S.segFalls = 0; S.segPoop = 0; S.segPhotos = 0; S.segSlips = 0; S.segNets = 0;
@@ -1471,7 +1562,7 @@ function updateStriker(dt){
 }
 function updatePoop(dt){
   if (S.phase !== 'run') { flyer.visible = poop.visible = false; return; }
-  if (PO.state === 'idle' && S.t > PO.next && P.y > 4){
+  if (PO.state === 'idle' && S.t > PO.next && P.y > 4 && !S.rain){   // (in the rain the pigeons are all hiding)
     PO.state = 'fly'; PO.dir = Math.random() < 0.5 ? -1 : 1; PO.s = P.s - PO.dir * 9; PO.y = P.y + 4.5; PO.dropped = false; flyer.visible = true; sfx.coo();
   }
   if (PO.state === 'fly'){
@@ -1499,6 +1590,11 @@ const heartSprites = [];
 function hearts(){
   const t = canvasTex(64, 64, (x) => { x.font = '48px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('💖', 32, 34); });
   for (let i = 0; i < 8; i++){ const h = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true })); h.scale.set(0.6, 0.6, 1); h.position.copy(me.group.position); h.position.y += 1.6; h.userData = { vx: (Math.random() - 0.5) * 1.6, vy: 1.5 + Math.random() * 1.5, life: 2 }; scene.add(h); heartSprites.push(h); }
+}
+let dropTex = null;
+function drops(){   // 💧 a little splash at Eddie's feet (they fly about like the hearts do)
+  dropTex = dropTex || canvasTex(32, 32, (x) => { x.fillStyle = '#8fd3ff'; x.strokeStyle = '#3a7bc8'; x.lineWidth = 2; x.beginPath(); x.arc(16, 18, 8, 0, 7); x.fill(); x.stroke(); });
+  for (let i = 0; i < 6; i++){ const h = new THREE.Sprite(new THREE.SpriteMaterial({ map: dropTex, transparent: true })); h.scale.set(0.22, 0.22, 1); h.position.copy(me.group.position); h.position.y += 0.2; h.userData = { vx: (Math.random() - 0.5) * 3.4, vy: 1 + Math.random() * 2, life: 0.45 }; scene.add(h); heartSprites.push(h); }
 }
 function updateHearts(dt){ for (let i = heartSprites.length - 1; i >= 0; i--){ const h = heartSprites[i], u = h.userData; u.life -= dt; h.position.x += u.vx * dt; h.position.y += u.vy * dt; h.material.opacity = Math.min(1, u.life); if (u.life <= 0){ scene.remove(h); heartSprites.splice(i, 1); } } }
 // the "next step" marker: a bouncing ▼ over the next foothold (or wall) above you
@@ -1612,7 +1708,7 @@ $('manBox').addEventListener('change', () => { $('contBtn').hidden = $('manBox')
 $('manPick').style.display = manOpen() ? '' : 'none';
 if (!manOpen()){ $('manLock').style.display = ''; $('manLock').textContent = '🔒 ' + TOTAL_FLOORS + ' 層全部通關後解鎖：💪 男子漢模式'; }
 document.querySelectorAll('.homeLink').forEach(a => { if (ON_LIVE) a.href = 'https://cooldragon313.github.io/eddie-world/'; else if (!ON_LOCAL) a.hidden = true; });
-if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, die, ST, get WIND(){ return WIND; }, get SCARF(){ return SCARF; }, get wearScarf(){ return wearScarf; }, get hasScarf(){ return hasScarf; }, get SCARF_KEY(){ return SCARF_KEY; }, get SCARF_BACK_KEY(){ return SCARF_BACK_KEY; }, get SCARF_SPOT(){ return SCARF_SPOT; }, neonOn, OFFICE, burst, SPOT, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, eventPhoto, pooped, get BOOK(){ return BOOK; } };   // local testing only
+if (ON_LOCAL) window.__tw = { get S(){ return S; }, P, die, ST, get WIND(){ return WIND; }, get SCARF(){ return SCARF; }, get wearScarf(){ return wearScarf; }, get hasScarf(){ return hasScarf; }, get SCARF_KEY(){ return SCARF_KEY; }, get SCARF_BACK_KEY(){ return SCARF_BACK_KEY; }, get SCARF_SPOT(){ return SCARF_SPOT; }, get FALLS(){ return FALLS; }, neonOn, OFFICE, burst, SPOT, plats, walls, chalks, ROUTE, startAt, step, keys, joy, tJ, playIntro, endIntro, updateCamera, say, npcSay, momNpc, cradle, updatePoop: dt => updatePoop(dt), me, PHOTOS, MOMS, frame, gotDrone, showAlbum, eventPhoto, pooped, get BOOK(){ return BOOK; } };   // local testing only
 
 // ---------- Eddie's pose ----------
 // both arms up in a big V (Q-version heads are too big to make a heart over them; a big 💖 floats between the two instead)
@@ -1701,8 +1797,9 @@ function drawWind(dt, now){
   WIND.f += (want - WIND.f) * Math.min(1, dt * 4); if (S.windDir || S.breeze) WIND.dir = S.windDir || S.breeze;
   const cv = $('windLines'), c = cv.getContext('2d');
   if (cv.width !== innerWidth || cv.height !== innerHeight){ cv.width = innerWidth; cv.height = innerHeight; }
+  const rainK = running ? rainAt(P.y) : 0;
   const W = cv.width, H = cv.height, amount = warn ? 0.3 + WIND.f * 0.3 : blow ? WIND.f : running && S.breeze ? 0.22 : 0;
-  if (!amount && !WIND.lines.length){ if (WIND.drawn){ c.clearRect(0, 0, W, H); WIND.drawn = false; } return Math.max(2, Math.round(WIND.f * 12)); }
+  if (!amount && !rainK && !WIND.lines.length){ if (WIND.drawn){ c.clearRect(0, 0, W, H); WIND.drawn = false; } return Math.max(2, Math.round(WIND.f * 12)); }
   // which way "along the wall" goes on screen right now (it flips and turns with the corners)
   const a = surf(P.s, 0.8, P.y).project(camera), b = surf(P.s + 1, 0.8, P.y).project(camera), go = (Math.sign(b.x - a.x) || 1) * WIND.dir;
   if (Math.random() < amount * dt * 26 && WIND.lines.length < 26)
@@ -1716,6 +1813,12 @@ function drawWind(dt, now){
     const pts = []; for (let i = 0; i <= 8; i++){ const t = i / 8; pts.push([l.x - l.go * l.len * t, l.y + Math.sin(t * 3 + l.ph + now * 3) * 7]); }
     for (const [col, w] of [['rgba(50,90,120,.28)', l.thick + 2.5], ['rgba(255,255,255,.92)', l.thick]]){
       c.strokeStyle = col; c.lineWidth = w; c.beginPath(); pts.forEach((q, i) => i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); c.stroke(); }
+  }
+  if (rainK){   // 🌧️ rain: thin slanted streaks, leaning the way the wind goes
+    const lean = go * (0.08 + WIND.f * 0.55), n = Math.round(110 * rainK), L = 26; c.strokeStyle = 'rgba(215,232,255,.55)'; c.lineWidth = 1.6; c.beginPath();
+    for (let i = 0; i < n; i++){ const sp = 900 + (i * 37) % 500, y = (i * 271.3 + now * sp) % (H + 60) - 30, x = ((i * 613.7 + y * lean) % (W + 60) + W + 60) % (W + 60) - 30;
+      c.moveTo(x, y); c.lineTo(x + lean * L, y + L); }
+    c.stroke();
   }
   WIND.lines = WIND.lines.filter(l => l.go > 0 ? l.x - l.len < W : l.x + l.len > 0); WIND.drawn = true;
   return Math.max(2, Math.round(WIND.f * 12));
@@ -1806,6 +1909,12 @@ function updateNight(dt, now){
   if (storm){ scene.background.lerp(STORM_SKY, storm); scene.fog.color.lerp(STORM_SKY, storm); }
   if (bolt){ scene.background.lerp(BOLT_SKY, bolt * 0.8); scene.fog.color.lerp(BOLT_SKY, bolt * 0.5); }
   hemi.intensity = 0.85 - 0.5 * nk + bolt * 0.5; sun.intensity = 0.6 - 0.45 * nk;
+  const rainK = S.phase === 'run' ? rainAt(P.y) : 0; scene.fog.near = 120 - 85 * rainK; scene.fog.far = 420 - 240 * rainK; sfx.rain(rainK);   // the city disappears behind the rain
+  fallTex.offset.y += dt * 2.4;
+  for (const f of FALLS){   // 🚿 pouring / a trickle just before it / a dribble
+    const on = S.phase === 'run' && fallOn(f), warn = S.phase === 'run' && fallWarn(f), wx = on ? 1 : warn ? 0.28 : 0.12;
+    f.mesh.scale.x += (wx - f.mesh.scale.x) * Math.min(1, dt * 14); f.mat.opacity = on ? 0.72 : warn ? 0.55 : 0.28;
+  }
   SPOT.s = P.s + Math.sin(now * 0.35) * 9; SPOT.y = P.y + 2 + Math.sin(now * 0.23) * 5;
   spot.position.copy(surf(SPOT.s, 46, 0)); spot.target.position.copy(surf(SPOT.s, 0, SPOT.y)); spot.intensity = 3.2 * nk;
   const L = spot.position.distanceTo(spot.target.position);
