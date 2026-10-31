@@ -186,7 +186,7 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
 - ⚠️ wrangler deploy 之後，Cloudflare 大約要 5 分鐘才換成新版，先確認新路由有回應再上網頁
 
 ## 2026-10-30 — 101 跑酷 21–40F（分支 `restyle-storybook` 74e0d43＋之後的 docs，**還沒上架**）
-- 試玩連結（101）：https://claude.ai/artifact/EkQswp7qfPUCGuFULc2zk9 — 更新：`python tools/build_family.py --only tower --preview <scratchpad>/tower-preview.html` 後發布到同一個 artifact
+- 試玩連結（101）：舊連結 EkQswp7… 已被刪，下次重新發布一個新的 — 更新：`python tools/build_family.py --only tower --preview <scratchpad>/tower-preview.html` 後發布到同一個 artifact
 - 做完：
   - 第 3 段（21–30F）「冷氣機森林」加難：滴水冷氣更窄更滑、風吹在濕冷氣上 ×2；側路藏 🌀 爆破貝利亞（玩具）
   - 第 4 段（31–40F）「竹節初登場」：橫移牆 → 竹節外凸牆 → 38F 第二個媽媽窗戶；35F 安全網；成就 🎋 竹節征服者（不手滑）
@@ -242,3 +242,63 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
   3. 第 5 段夜幕降臨（設計稿在 docs/PLAN-101-難度表.md，照「每段必備清單」做，含 3 個照片點）
   4. 之前列的第 4 段改版點子（繞一圈、辦公室捷徑、如意、古錢幣、珍奶、跑步機）— docs/PLAN-101跑酷.md v2.5
 - 待 Bernie 決定：第 4、5 段岔路放哪個玩具（iPad／乒乓球拍／寶可夢卡冊／存錢小豬公／JJ CD）；媽媽照片維持隨機（媽媽生氣那天拍不到）還是有空拍機時一定開心
+
+## 2026-10-30 下午 — 101 第 5 段夜幕降臨＋冷氣機＋手殘版（家裡 PC，分支 `restyle-storybook`，**還沒上架**）
+- 大廳已改名「艾迪的幻想世界」（✅ 已上架 main c80ad74）
+- 冷氣機重畫：白色室外機＋圓形風扇格柵（會轉）＋側邊散熱片＋支架＋銅管（`acUnit()`）
+- 第 5 段 41–50F（`BUILT = 50`）：細節看 docs/PLAN-101-難度表.md「第 5 段實作」；第一間窗戶房間＝加班辦公室（`buildOffice()`）
+- 🐣 手殘版：開始畫面勾選（存 `etfm-tower2-easy`）：握力消耗 ×0.65、颱風間隔 +5 秒、霓虹黑 0.5 秒
+- 修 bug：鴿子被踩到不會飛走（一行註解把程式吃掉了）
+- 試玩連結（家裡 PC 發的新連結，101）：見下一行
+- 下一步：Bernie 實玩第 5 段 → 回饋調數字；下階段＝家裡相簿＋照片存伺服器（R2）；之後的窗戶房間：風阻尼器（87–92F）最推
+- 101 試玩連結（第 5 段版）：https://claude.ai/artifact/LCkqyB3M38ig1bkX7JWaWz — 更新：`python tools/build_family.py --only tower --preview <scratchpad>/tower-preview.html` 後發布到同一個 artifact（家裡 PC 的 session）
+
+## 🔗 目前有效的試玩連結（2026-10-30 整理；更早的試玩連結都已刪除）
+- 101 跑酷：https://claude.ai/artifact/LCkqyB3M38ig1bkX7JWaWz
+- 艾迪的幻想世界大廳：https://claude.ai/artifact/TgHYAgVNVqzEnmumwuamNU
+- 恐怖考前複習夜：https://claude.ai/artifact/22KEpAkE6hMkbmHdEin8Bs
+- 逃離土星：沒有試玩版，玩正式網址
+- 角色原型（參考用，保留）：艾迪 11zvrShMMHSVBgN43xA17Z、媽媽 6uHQME8BxUenFG77wqMm3i、小屁孩 4KMMx6mQamrWN8R3XiNfsu、空拍機拍立得 VgkxdJXrupR78ipJ5B5cC6
+- 上面文件裡提到的 EkQswp7…、7CVMoMJ…、2V9EGsX…、1GfYgGk…、2r6p379…、MsykofcN…、KQxdw7J…、JzZMRGc… 都已刪除，別再用
+
+## 2026-10-30 下午：101 調難＋💪 男子漢模式（只在 restyle-storybook，正式站未上）
+一般版跳距拉長、窗台變窄（手殘版＝舊手感），拿掉每層叮聲和窗戶亂閃。男子漢模式：101 層全破才解鎖，一次從 1F 爬到頂，沒網子、一條命，摔超過 3 層樓結束。Bernie 要之後各關過關都有類似的男子漢版，其他關還沒做。細節見 docs/PLAN-101-難度表.md。
+
+## 2026-10-30 下午：逃離土星排行榜顯示「你現在第幾名」（✅ 已上架：main `a93918f`，伺服器 Cloudflare 版本 `51e6f85a`）
+開始畫面的排行榜下面多一行：`📍 你現在第 N 名 · 共 M 人 · 最佳 X 秒`（沒成績／前 50 名外各有文字）；跑完沒進前 50 也會提示。伺服器 `GET /race_board` 帶登入 token 會多回 `me`、`total`、`boardMax`，`/race_reward` 也一樣；舊客戶端不受影響。
+只挑這個改動上 main，101 調難／男子漢模式仍留分支。⚠️ wrangler deploy 後舊的 Durable Object 約 5 分鐘才換掉，先確認伺服器回新格式再推前端。正式站已確認沒登入、亂傳 token 都正常；登入後的名次要真人帳號看。
+第 6 段 51–60F 天空工地已在分支（BUILT=60）：鷹架板、吊臂、58F 媽媽，另修檢查點第一跳；一樣待 Bernie 點頭才上架。
+調難第二輪也在分支：跳距節奏、落地慣性、撞人鴿、風旗（取代螢幕箭頭），細節見難度表。
+
+## 2026-10-30 傍晚：酒鬼嘔吐物重做（已上架 main `41d6137`）
+Bernie 反映看不到嘔吐物，查出直拿手機時會被切在畫面最左邊，又只閃 0.75 秒。改成：被抱住 0.6 秒後，酒鬼轉頭從嘴巴噴一道馬賽克方塊，落成畫面中間地上的馬賽克水窪，留 2.6 秒；拿掉中央「噁～」大字（會擋住）；開場說明改「吐得滿地都是」。⚠️ 馬賽克不能碰到玩家（大人抱小孩＋馬賽克會被解讀歪），噴的方向是刻意往玩家反方向。本機測過直拿、橫拿、樓梯、靠牆；Bernie 點頭後只把這兩個 race 檔上 main，101 的分支內容沒跟著上。
+
+## 🔜 下次接手先看這段（2026-10-30 收工）
+**狀態**：`restyle-storybook` 已 push，含 101 第 5、6 段（1–60F）、三輪調難、撞人鴿、風旗、💪男子漢模式。**`main` 還沒上任何這些，正式站仍是 1–40F 舊版。** 上架要等 Bernie 實玩點頭：main 上 `git checkout restyle-storybook -- .`、commit、push，再到線上驗 tower.html（沒動伺服器，不用 wrangler deploy）。
+**試玩**：https://claude.ai/artifact/LCkqyB3M38ig1bkX7JWaWz （測試版男子漢模式一直開著）
+
+**等 Bernie 回饋**
+1. 第三輪（左右來回＋全速長跳）夠不夠難。他前兩輪都說「完全沒難度」，要問是哪一段、幾秒爬完。
+2. 風旗示範 OK 嗎（他要先看示範才決定）。
+3. 落地會滑是一次加很重的改動，太兇就調 `tower.src.html` 的地面抓地力 7。
+
+**已知問題 / 待做**
+- 踏點疊成兩欄後，摔下去常被下面接住，代價變小，男子漢「摔超過 3 層」也難觸發，規則可能要改。
+- 機器人（scratchpad 的 towerbot.js，沒進 repo）目前爬不完一般版，別拿它當難度依據；驗「路沒斷」要用實際 `step()` 逐跳試。
+- 男子漢：蓋到 101F 時，解鎖判定要接到頂樓結局（目前掛在 `arriveCheckpoint`）。Bernie 要其他關過關也有男子漢版，未設計。
+- 下一段第 7 段 61–70F 颱風前夕未動工；相簿＋照片存伺服器是更下一階段；岔路玩具未定。
+
+## 2026-10-30 晚：風旗換成風線＋58F 媽媽的紅圍巾（只在 restyle-storybook，還沒上架）
+Bernie 嫌風旗難看，拿掉。細節見 docs/PLAN-101-難度表.md 最下面。第 7 段要接「圍巾被吹走、去岔路撿回來」。⚠️ 開發視窗隱藏時瀏覽器幾乎不跑畫面，也可能截到舊畫面；測試用 `__tw.frame(t, true)` 手動跑。
+
+## 2026-10-30 晚：101 第 7 段颱風前夕（BUILT=70，只在 restyle-storybook，還沒上架）
+細節見 docs/PLAN-101-難度表.md 最下面。下一段：第 8 段雨中攀登（71–80F，78F 媽媽）。Bernie 說難度先這樣，不用再加難。
+
+## 101 第 8 段（2026-10-31）
+- 71–80F 雨中攀登做好在分支 `restyle-storybook`（BUILT=80），細節在 docs/PLAN-101-難度表.md 最後一節。
+- 還沒上線，等 Bernie 說「佈上去」（第 5–8 段一起，純網頁，不用 wrangler deploy）。
+- 🍜 熱泡麵、💪 #5、3 張照片是先放的，等 Bernie 確認。下一段是第 9 段「觀景台明星」（81–90F）。
+
+## 101 第 9 段（2026-10-31）
+- 81–90F 觀景台明星做好在分支（BUILT=90），細節在 docs/PLAN-101-難度表.md 最後一節。Bernie 會把第 5–9 段一起測，還沒上線。
+- 🍍、💪 #6、3 張照片是先放的，等 Bernie 確認。下一段是第 10 段「雲端之上」（91–100F，98F 媽媽、亂流）和 101F 結局。
