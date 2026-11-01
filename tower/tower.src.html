@@ -1118,7 +1118,10 @@ function step(dt){
   // wind (from 11F): a warned gust — 2 s ahead the wind lines (and the scarf) start going which way, and how hard
   const onNode = P.mode === 'wall' && P.wall.node;
   if (onNode && !S.windDir) S.windNext = Math.max(S.windNext, S.t + 3);   // no typhoon while you hang off a bamboo node: it comes once you're over
-  const gust = P.y > 30 && S.windDir && S.t > S.windAt && S.t < S.windAt + 1.6 && !onNode && !(P.on && P.on.room);
+  // 💨 gusts only where you can take them: on a wall, or a ledge at least 4 m wide. A small foothold never gets wind (Bernie 2026-11-01: that's luck, not skill)
+  const windSafe = P.mode === 'wall' ? !onNode : P.mode === 'ground' && P.on && !P.on.room && (P.on.ring || P.on.s1 - P.on.s0 >= 4);
+  if (S.windDir && !windSafe && P.mode !== 'air'){ S.windDir = 0; S.windNext = S.t + 6; }   // you moved on to somewhere small: it dies down
+  const gust = P.y > 30 && S.windDir && S.t > S.windAt && S.t < S.windAt + 1.6 && windSafe;
   S.breeze = segOf(P.y) === 7 && P.y > 183 && !S.windDir ? S.breezeDir || 1 : 0;   // 🌪️ all through segment 7 it never stops: it keeps blowing the way the last gust did
   S.rain = rainAt(P.y) > 0.5;
   // 🚿 under a gutter: on a wall it washes you down and eats your grip, in the air it knocks you out of your jump, on a ledge it only slows you
@@ -1130,8 +1133,8 @@ function step(dt){
   if (S.rain && !S.fallHint && FALLS.some(f => sDist(P.s, f.s) < 6 && Math.abs(P.y - f.y0) < 4)){ S.fallHint = true; flash('🚿 破掉的排水管：水下來會把你往下沖！等水停了再過', 3.0); }
   if (gust && P.mode === 'wall') P.wall.gusted = true;
   if (P.y > 28){
-    if (!S.windDir && S.t > S.windNext - 2){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; S.windK = (0.7 + Math.random() * (0.5 + segOf(P.y) * 0.12)) * (S.easy ? 0.7 : 1); sfx.wind(); say(P.mode === 'wall' ? '抓緊抓緊！' : '哇！風好大！'); if (segOf(P.y) === 7 || segOf(P.y) === 8) S.boltAt = S.t + 1.5; }
-    if (S.windDir && S.t > S.windAt + 1.6){ S.breezeDir = S.windDir; S.windDir = 0; S.windNext = S.t + (segOf(P.y) >= 7 ? 5 : segOf(P.y) >= 3 ? 8 : 9) + Math.random() * (segOf(P.y) >= 7 ? 2 : 3) + (S.easy ? 5 : 0); }
+    if (!S.windDir && windSafe && S.t > S.windNext - 2){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = Math.max(S.windNext, S.t + 2); S.windK = (0.45 + Math.random() * 0.35) * (S.easy ? 0.7 : 1); sfx.wind(); say(P.mode === 'wall' ? '抓緊抓緊！' : '哇！風好大！'); if (segOf(P.y) === 7 || segOf(P.y) === 8) S.boltAt = S.t + 1.5; }
+    if (S.windDir && S.t > S.windAt + 1.6){ S.breezeDir = S.windDir; S.windDir = 0; S.windNext = S.t + (segOf(P.y) === 7 ? 8 : 13) + Math.random() * 3 + (S.easy ? 5 : 0); }
   }
   if (P.mode === 'wall'){
     const z = P.wall;
@@ -1166,7 +1169,7 @@ function step(dt){
     const wet = P.mode === 'ground' && P.on && P.on.type === 'drip';
     P.vs += (ix * RUN * (S.t < (P.boostUntil || 0) ? 1.3 : 1) - P.vs) * Math.min(1, dt * (P.mode === 'ground' ? (wet ? 0.9 : S.easy ? 14 : 7) : S.easy ? 6 : 2));
     if (wet) P.vs += P.on.slide * 8 * dt;   // the water carries you toward the edge
-    if (gust) P.vs += S.windDir * 9 * (S.windK || 1) * (wet ? 2 : 1) * dt;   // wind on a wet AC = whoosh
+    if (gust) P.vs += S.windDir * 9 * (S.windK || 1) * dt;
     if (S.breeze && P.mode === 'air') P.vs += S.breeze * (S.easy ? 1.2 : 2) * dt;   // the steady wind only moves you in the air: you can always stop and rest
     if (soak){ if (P.mode === 'air') P.vy = Math.max(P.vy - 60 * dt, Math.min(P.vy, -16)); else P.vs *= 1 - Math.min(1, dt * 4); }
     if (P.mode === 'ground' && P.on && P.on.type === 'neon' && !neonOn(P.on)){   // the sign went dark under you
