@@ -1272,7 +1272,8 @@ let cs = 7, cy = 0;
 // medium / long (near the limit) / short + narrow (a full-speed jump overshoots it) / medium.
 // Long jumps are capped by how much speed you can build on the foothold you're leaving, so all of them are possible.
 const JUMPY = { sill: 1, ac: 1, flag: 1, drip: 1, neon: 1 };
-const SEG_W = [2.0, 1.7, 1.5, 1.3, 1.2, 1.1, 1.1, 1.3, 1.2], SEG_LONG = [0.72, 0.76, 0.8, 0.83, 0.85, 0.86, 0.78, 0.78, 0.8];   // (segment 7: a bit shorter, a headwind eats into every jump)
+// segments 5–9 tuned 2026-11-01 against a human-reaction model (not a perfect bot): about as passable as segments 2–4, a little harder each segment
+const SEG_W = [2.0, 1.7, 1.5, 1.3, 1.9, 1.7, 1.6, 1.6, 1.5], SEG_LONG = [0.72, 0.76, 0.8, 0.83, 0.64, 0.7, 0.72, 0.72, 0.72];
 const reachOf = (r, v) => v * (JUMP_V + Math.sqrt(Math.max(0, JUMP_V * JUMP_V - 2 * GRAV * r))) / GRAV;
 const runUp = x => { let v = 0, d = 0; for (let i = 0; i < 120 && d < x; i++){ v += (RUN - v) * 7 / 60; d += v / 60; } return v; };   // speed after a run-up of x m (ground grip below)
 let rhythm = 0, lastW = 99, lastType = '', lastSlide = 0, zigN = 0, lastDir = 1;
@@ -1281,12 +1282,12 @@ let rhythm = 0, lastW = 99, lastType = '', lastSlide = 0, zigN = 0, lastDir = 1;
 const ZIG = [[1, 1, -1, -1], [1, -1]];
 function hardStep(type, gap, rise, w, y, beat){
   const k = Math.min(8, Math.floor(Math.max(y, 0) / 30)), W = SEG_W[k];
-  if (type === 'plank') return [gap, W];
+  if (type === 'plank') return [k >= 4 ? gap * 0.8 : gap, W];
   if (!JUMPY[type] || gap <= 0) return [gap, w];
-  const full = reachOf(rise, RUN), most = reachOf(rise, runUp(lastW - 0.1)) * 0.93;
+  const full = reachOf(rise, RUN), most = reachOf(rise, runUp(lastW - 0.1)) * (k >= 4 ? 0.72 : 0.93);
   const long = Math.min(most, full * SEG_LONG[k]);
   if (lastType === 'drip') return [Math.min(gap, 1.0), type === 'flag' ? 0.8 : Math.max(W, 1.5)];   // you can't run on a wet AC: the jump off it is a short one
-  if (beat === 2) return [0.9, type === 'flag' ? 0.8 : Math.max(0.9, W * 0.8)];
+  if (beat === 2) return [0.9, type === 'flag' ? 0.8 : Math.max(0.9, W * (k >= 4 ? 1.1 : 0.8))];
   const g = beat === 1 ? long : Math.min(most, full * (SEG_LONG[k] - 0.12));
   return [g, type === 'flag' ? 0.8 : W];
 }
@@ -1302,7 +1303,7 @@ const foot = (type, gap, rise, w, o) => {
       const q = plat('balcony', dir > 0 ? cs + 1.0 : prev.s0 - 1.0 - 4.5, 4.5, cy + 0.3, { lit: cy >= 120 }); ROUTE.push(q); cs = q.s1; cy = q.y; lastW = 4.5; lastType = 'balcony'; sprint = true;
     }
     const beat = jumpy ? rhythm++ % 4 : 0; [gap, w] = hardStep(type, gap, rise, w, cy, beat);
-    if (sprint) gap = reachOf(rise, RUN) * 0.93;
+    if (sprint) gap = reachOf(rise, RUN) * (Math.floor(cy / 30) >= 4 ? 0.72 : 0.93);
   }
   const at = () => dir > 0 ? cs + gap : ROUTE[ROUTE.length - 1].s0 - gap - w, amp = (o && o.amp) || 0;
   if (NOCORNER[type] && Math.floor((at() - amp) / SIDE) !== Math.floor((at() + w + amp - 0.01) / SIDE)){
@@ -1483,7 +1484,7 @@ const rainDeck = foot('balcony', 1.2, 0.5, 6.0, { lit: true, line: '下雨了…
 waterFall(rainDeck.s0 + 2.3, rainDeck.s0 + 3.7, rainDeck.y - 0.5, rainDeck.y + 5, 0);   // the first one falls on a wide ledge: it can't hurt you, you just see what it does
 foot('ac', 1.7, 2.0, 1.6);
 const birdDeck = foot('balcony', 1.2, 2.0, 3.2, { lit: true, pigeon: true, flock: 3, soggy: true });   // the pigeons hiding from the rain (so no pigeon bombs in this segment)
-const fallSill = foot('balcony', 2.6, 2.1, 2.2, { lit: true });
+const fallSill = foot('balcony', 2.0, 2.1, 2.2, { lit: true });
 gapFall(birdDeck, fallSill, 1.0);
 const dodgeWall = climb(1.0, 4.5, 3.6, { chalk: true, dodge: true });   // a wide wall, two gutters taking turns: climb on the dry side
 waterFall(dodgeWall.s0, dodgeWall.s0 + 1.8, dodgeWall.y0 + 1.8, dodgeWall.y1 + 2, 0.4);
@@ -1525,7 +1526,7 @@ let dawnCap, seam2;
   ROUTE.push(lo, seam1, mid, seam2, hi, dawnCap); cs = dawnCap.s1; cy = dawnCap.y; Object.assign(N2, { s0: lo.s0, s1: hi.s1, seamY: seam1.y, seams: [seam1.y, seam2.y] });
 }
 // 89F: a long room with a big open window, tourists, the ticket lady, and the tower's golden wind damper at the back
-foot('balcony', 1.2, 0.4, 7.0, { lit: true, line: '上面有一扇好大的窗戶…' });   // round to the next face: the room needs a whole one
+foot('balcony', 1.2, 0.4, Math.ceil((cs + 1.2) / SIDE) * SIDE + 1 - (cs + 1.2), { lit: true, line: '上面有一扇好大的窗戶…' });   // ends just round the corner: the room needs a whole face
 const DECK = foot('room', 1.2, 266.8 - cy, 14.5, { room: true, observ: true, depth: 3.4, standOut: 2.2, line: '哇…裡面好多人' });
 const deckExit = foot('balcony', 0.3, 0.6, 3.0, { lit: true });   // out the far end
 checkpoint(90);                                              // y 270
@@ -2068,7 +2069,10 @@ function step(dt){
   // wind (from 11F): a warned gust — 2 s ahead the wind lines (and the scarf) start going which way, and how hard
   const onNode = P.mode === 'wall' && P.wall.node;
   if (onNode && !S.windDir) S.windNext = Math.max(S.windNext, S.t + 3);   // no typhoon while you hang off a bamboo node: it comes once you're over
-  const gust = P.y > 30 && S.windDir && S.t > S.windAt && S.t < S.windAt + 1.6 && !onNode && !(P.on && P.on.room);
+  // 💨 gusts only where you can take them: on a wall, or a ledge at least 4 m wide. A small foothold never gets wind (Bernie 2026-11-01: that's luck, not skill)
+  const windSafe = P.mode === 'wall' ? !onNode : P.mode === 'ground' && P.on && !P.on.room && (P.on.ring || P.on.s1 - P.on.s0 >= 4);
+  if (S.windDir && !windSafe && P.mode !== 'air'){ S.windDir = 0; S.windNext = S.t + 6; }   // you moved on to somewhere small: it dies down
+  const gust = P.y > 30 && S.windDir && S.t > S.windAt && S.t < S.windAt + 1.6 && windSafe;
   S.breeze = segOf(P.y) === 7 && P.y > 183 && !S.windDir ? S.breezeDir || 1 : 0;   // 🌪️ all through segment 7 it never stops: it keeps blowing the way the last gust did
   S.rain = rainAt(P.y) > 0.5;
   // 🚿 under a gutter: on a wall it washes you down and eats your grip, in the air it knocks you out of your jump, on a ledge it only slows you
@@ -2080,8 +2084,8 @@ function step(dt){
   if (S.rain && !S.fallHint && FALLS.some(f => sDist(P.s, f.s) < 6 && Math.abs(P.y - f.y0) < 4)){ S.fallHint = true; flash('🚿 破掉的排水管：水下來會把你往下沖！等水停了再過', 3.0); }
   if (gust && P.mode === 'wall') P.wall.gusted = true;
   if (P.y > 28){
-    if (!S.windDir && S.t > S.windNext - 2){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = S.windNext; S.windK = (0.7 + Math.random() * (0.5 + segOf(P.y) * 0.12)) * (S.easy ? 0.7 : 1); sfx.wind(); say(P.mode === 'wall' ? '抓緊抓緊！' : '哇！風好大！'); if (segOf(P.y) === 7 || segOf(P.y) === 8) S.boltAt = S.t + 1.5; }
-    if (S.windDir && S.t > S.windAt + 1.6){ S.breezeDir = S.windDir; S.windDir = 0; S.windNext = S.t + (segOf(P.y) >= 7 ? 5 : segOf(P.y) >= 3 ? 8 : 9) + Math.random() * (segOf(P.y) >= 7 ? 2 : 3) + (S.easy ? 5 : 0); }
+    if (!S.windDir && windSafe && S.t > S.windNext - 2){ S.windDir = Math.random() < 0.5 ? -1 : 1; S.windAt = Math.max(S.windNext, S.t + 2); S.windK = (0.45 + Math.random() * 0.35) * (S.easy ? 0.7 : 1); sfx.wind(); say(P.mode === 'wall' ? '抓緊抓緊！' : '哇！風好大！'); if (segOf(P.y) === 7 || segOf(P.y) === 8) S.boltAt = S.t + 1.5; }
+    if (S.windDir && S.t > S.windAt + 1.6){ S.breezeDir = S.windDir; S.windDir = 0; S.windNext = S.t + (segOf(P.y) === 7 ? 8 : 13) + Math.random() * 3 + (S.easy ? 5 : 0); }
   }
   if (P.mode === 'wall'){
     const z = P.wall;
@@ -2116,7 +2120,7 @@ function step(dt){
     const wet = P.mode === 'ground' && P.on && P.on.type === 'drip';
     P.vs += (ix * RUN * (S.t < (P.boostUntil || 0) ? 1.3 : 1) - P.vs) * Math.min(1, dt * (P.mode === 'ground' ? (wet ? 0.9 : S.easy ? 14 : 7) : S.easy ? 6 : 2));
     if (wet) P.vs += P.on.slide * 8 * dt;   // the water carries you toward the edge
-    if (gust) P.vs += S.windDir * 9 * (S.windK || 1) * (wet ? 2 : 1) * dt;   // wind on a wet AC = whoosh
+    if (gust) P.vs += S.windDir * 9 * (S.windK || 1) * dt;
     if (S.breeze && P.mode === 'air') P.vs += S.breeze * (S.easy ? 1.2 : 2) * dt;   // the steady wind only moves you in the air: you can always stop and rest
     if (soak){ if (P.mode === 'air') P.vy = Math.max(P.vy - 60 * dt, Math.min(P.vy, -16)); else P.vs *= 1 - Math.min(1, dt * 4); }
     if (P.mode === 'ground' && P.on && P.on.type === 'neon' && !neonOn(P.on)){   // the sign went dark under you
