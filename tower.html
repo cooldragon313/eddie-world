@@ -1329,6 +1329,10 @@ function branch(from, dir, list){
 }
 const checkpoint = floor => {
   if (floor * FLOOR_H - cy > 2.6) console.warn('route: ' + floor + 'F checkpoint is ' + (floor * FLOOR_H - cy).toFixed(1) + ' above the last foothold');
+  const last = ROUTE[ROUTE.length - 1], low = floor * FLOOR_H - cy;
+  if (low > 0 && low < 0.35 && last && last.y != null){   // a foothold that ends up just under the deck looks flush with it, but you'd sink in and walk straight through the floor: bring it level
+    last.y = last.y0 = floor * FLOOR_H + 0.02; const z = ROUTE[ROUTE.length - 2]; if (z && z.y1 != null && last.y - z.y1 < 0.5) z.y1 = last.y - 0.1;
+  }
   const p = plat('cp', 0, PER, floor * FLOOR_H, { ring: true, floor, cp: true }); ROUTE.push(p); cy = floor * FLOOR_H; lastW = 99; lastType = ''; lastDir = 1; };
 // ---- segment 1: 1–10F — learn to jump, then the first climbing wall
 foot('sill', 1.0, 2.0, 3.0, { hop: true });
@@ -2189,7 +2193,8 @@ function step(dt){
         if (p.type === 'neon' && !neonOn(p)) continue;          // a dark neon sign isn't there
         const top = p.type === 'gondola' ? (p.cur == null ? p.y0 : p.cur) : p.y;
         if (!onSpan(p, P.s, p.ring ? 0 : S.easy ? 0.6 : 0.1)) continue;   // 🐣 手殘版: land a bit off the edge and still make it
-        if (prevY >= top - 0.06 - Math.max(0, p.dy || 0) && P.y <= top){ landed = p; P.y = top; break; }
+        if (prevY >= top - (p.cp && !P.jumped ? 0.95 : 0.06) - Math.max(0, p.dy || 0) && P.y <= top){   // (walking off a foothold just under a checkpoint deck steps up onto it)
+          landed = p; P.y = top; break; }
       }
     }
     if (landed){
