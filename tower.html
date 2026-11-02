@@ -2050,7 +2050,7 @@ function startAt(floor){
   PO.state = 'idle'; PO.next = 6; flyer.visible = false; poop.visible = false;
   ST.state = 'idle'; ST.next = 8; striker.visible = false;
   for (const p of plats) if (p.bird){ p.bird.fly = 0; p.bird.g.visible = true; p.bird.g.position.copy(p.bird.home); p.bird.g.rotation.z = 0; }
-  P.peak = null; P.jumped = false;
+  P.peak = null; P.jumped = false; P.kicked = null; P.grabAt = -9;
   for (const p of plats) if (p.type === 'plank'){ p.gone = false; p.fallAt = 0; p.mesh.position.set(0, 0, 0); }
   S.man = manOpen() && $('manBox').checked; me.group.scale.setScalar(EDDIE_SCALE);
   for (const p of plats) if (p.net && p.mesh) p.mesh.visible = !S.man;   // no nets. you said so.
@@ -2159,7 +2159,11 @@ function step(dt){
       else P.y = z.y1 - 0.3;
     }
     else if (P.y < z.y0 - 1){ P.mode = 'air'; P.vy = 0; P.noGrab = 0.4; P.wall = null; }   // (below wallAt's reach: a jump from under the wall must not grab and be dropped in the same breath)
-    else if (fresh){ P.mode = 'air'; P.vy = JUMP_V * 0.9; P.vs = (ix || P.face) * 4; P.noGrab = 0.3; P.wall = null; sfx.jump(); }
+    else if (fresh || S.t - (P.jumpBuf || -9) < 0.1){   // 🦵 a kick off the wall: right after you hit it, it throws you back the way you came (Mario); later on, wherever you're pushing. Not back onto the same wall until you've stood on something
+      const k = S.t - (P.grabAt || -9) < 0.35 && P.grabDir ? -P.grabDir : ix ? Math.sign(ix) : P.face;
+      P.mode = 'air'; P.vy = JUMP_V * 0.95; P.vs = k * RUN; P.face = k; P.noGrab = 0.15; P.kicked = z; P.wall = null; P.jumpBuf = -9; sfx.jump();
+      if (!S.kickHint){ S.kickHint = true; flash('🦵 反踢！抓到牆的瞬間按跳，會往反方向彈出去', 2.6); }
+    }
     if (P.mode === 'wall' && P.grip <= 0){ P.slipped = true; P.mode = 'air'; P.vy = -1; P.vs = 0; P.noGrab = 1.2; P.wall = null; S.segSlips = (S.segSlips || 0) + 1; sfx.slip(); flash('😱 手滑了！'); say('哇啊啊啊——'); }
     if (P.mode === 'wall' && P.grip < 28 && !(P.wall || z).tired){ (P.wall || z).tired = true; say(pick(['手好痠…', '快沒力了！', '撐住撐住…'])); }
   } else {
@@ -2177,7 +2181,7 @@ function step(dt){
       if (!(P.on && P.on.type === 'drip')) P.grip = Math.max(P.grip, Math.min(rest, P.grip + dt * 22));   // resting takes a few seconds (not on a wet AC)
       if (P.on && P.on.type === 'gondola') P.y += P.on.dy;
       if (P.on && P.on.type === 'crane') P.s += P.on.ds || 0;
-      P.lastGround = S.t; P.jumped = false;
+      P.lastGround = S.t; P.jumped = false; P.kicked = null;
     }
     // jump: a press just before landing still counts, and so does one just after walking off an edge
     if (fresh) P.jumpBuf = S.t;
@@ -2243,7 +2247,7 @@ function step(dt){
     // touch a climbing wall in the air → grab it
     if (P.mode === 'air' && !P.noGrab){
       const z = wallAt(P.s, P.y);
-      if (z){ P.mode = 'wall'; P.wall = z; P.vy = 0; P.vs = 0; P.peak = null; P.jumped = true; z.tired = false; S.fallSaid = false; sfx.grab();
+      if (z && z !== P.kicked){ P.grabDir = Math.abs(P.vs) > 1 ? Math.sign(P.vs) : 0; P.grabAt = S.t; P.kicked = null; P.mode = 'wall'; P.wall = z; P.vy = 0; P.vs = 0; P.peak = null; P.jumped = true; z.tired = false; S.fallSaid = false; sfx.grab();
         if (z.hint && !z.hinted){ z.hinted = true; flash('🧗 抓住了！搖桿往上爬，握力用完會手滑', 2.6); }
         if (z.dodge && !S.dodgeHint){ S.dodgeHint = true; flash('🚿 左右兩邊輪流沖水：閃到乾的那邊爬！', 2.8); }
         else if (S.rain && !S.rainHint){ S.rainHint = true; flash('🌧️ 牆濕了：握力掉比較快！', 2.4); }
@@ -2626,9 +2630,14 @@ const ST = { state: 'idle', next: 8, s: 0, y: 0, dir: 1, hit: false };
 const ST_GAP = [99, 13, 11, 9, 8, 7, 6, 6, 5, 5];
 function updateStriker(dt){
   const seg = segOf(P.y);
+  if (ST.state === 'stomped'){   // 🥾 tumbling away
+    ST.y -= dt * 14; striker.position.copy(surf(ST.s, 1.0, ST.y)); striker.rotation.z += dt * 12;
+    if (S.t > ST.goneAt){ ST.state = 'idle'; striker.visible = false; striker.rotation.z = 0; ST.next = S.t + ST_GAP[seg - 1] + Math.random() * 3; }
+    return;
+  }
   if (ST.state === 'idle'){
     if (S.easy || seg < 2 || S.t < ST.next || (P.on && (P.on.ring || P.on.room || P.on.type === 'neon' || P.on.type === 'plank' || P.on.type === 'crane' || P.on.type === 'gondola')) || (P.wall && P.wall.node)) return;   // (never while you're on the bamboo node: that's hard enough)
-    ST.state = 'fly'; ST.dir = Math.random() < 0.5 ? -1 : 1; ST.s = P.s - ST.dir * 11; ST.y = P.y + 1; ST.hit = false; striker.visible = true;
+    ST.state = 'fly'; ST.dir = Math.random() < 0.5 ? -1 : 1; ST.s = P.s - ST.dir * 15; ST.y = P.y + 1; ST.hit = false; striker.visible = true;   // (from far enough out that you can jump up and come down on it)
     ST.brolly = seg <= 8 && seg >= 7 && P.y > 183; for (const c of striker.children) c.visible = c === brolly ? ST.brolly : !ST.brolly;
     if (ST.brolly) npcSay(striker, '咻——', 0.9); else { sfx.coo(); npcSay(striker, '咕！！', 0.9); }
   }
@@ -2636,6 +2645,11 @@ function updateStriker(dt){
   striker.position.copy(surf(ST.s, 1.0, ST.y)); striker.rotation.y = faceAngle(ST.s) + (ST.dir > 0 ? -Math.PI / 2 : Math.PI / 2);
   striker.userData.wings.forEach((w, i) => { w.rotation.x = Math.sin(S.t * 30 + i * Math.PI) * 0.8; });
   if (ST.brolly) brolly.rotation.x += dt * 9;
+  if (!ST.hit && P.mode === 'air' && P.vy < 0 && sDist(ST.s, P.s) < 1.0 && P.y > ST.y - 0.3 && P.y < ST.y + 1.2){   // 🥾 come down on it: it's gone, and you bounce
+    ST.hit = true; ST.state = 'stomped'; ST.goneAt = S.t + 1; P.vy = JUMP_V * 1.15; P.jumped = true; P.peak = null; P.kicked = null; sfx.bounce();
+    say(ST.brolly ? pick(['踩爛雨傘！', '傘沒收！', '嘿咻——']) : pick(['踩到鴿子！', '活該！', '嘿咻——']), 1.2);
+    return;
+  }
   if (!ST.hit && !(P.wall && P.wall.node) && sDist(ST.s, P.s) < 0.7 && Math.abs(ST.y - P.y - 1) < 0.85){
     ST.hit = true; S.shake = 0.25; sfx.bonk(); say(ST.brolly ? pick(['誰的雨傘啦！！', '哇啊——', '傘！傘傘傘！']) : pick(['可惡的鴿子！！', '哇啊——', '你撞我幹嘛啦！']));
     if (P.mode === 'wall') P.grip -= 30;
