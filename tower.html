@@ -2157,7 +2157,7 @@ function step(dt){
         if (top.nodeTop){ P.mantleAt = S.t; sfx.mantle(); flash('🎋 翻上竹節！', 1.8); say(pick(['嘿咻——翻上來了！', '呼…竹節征服！', '我上來了！'])); } }
       else P.y = z.y1 - 0.3;
     }
-    else if (P.y < z.y0 - 0.6){ P.mode = 'air'; P.vy = 0; P.noGrab = 0.4; P.wall = null; }
+    else if (P.y < z.y0 - 1){ P.mode = 'air'; P.vy = 0; P.noGrab = 0.4; P.wall = null; }   // (below wallAt's reach: a jump from under the wall must not grab and be dropped in the same breath)
     else if (fresh){ P.mode = 'air'; P.vy = JUMP_V * 0.9; P.vs = (ix || P.face) * 4; P.noGrab = 0.3; P.wall = null; sfx.jump(); }
     if (P.mode === 'wall' && P.grip <= 0){ P.slipped = true; P.mode = 'air'; P.vy = -1; P.vs = 0; P.noGrab = 1.2; P.wall = null; S.segSlips = (S.segSlips || 0) + 1; sfx.slip(); flash('😱 手滑了！'); say('哇啊啊啊——'); }
     if (P.mode === 'wall' && P.grip < 28 && !(P.wall || z).tired){ (P.wall || z).tired = true; say(pick(['手好痠…', '快沒力了！', '撐住撐住…'])); }
