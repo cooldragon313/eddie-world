@@ -254,7 +254,7 @@ C:\Users\plee3\Downloads\AI FOLDER\escapetsunamiformoney，分支 restyle-storyb
 - 101 試玩連結（第 5 段版）：https://claude.ai/artifact/LCkqyB3M38ig1bkX7JWaWz — 更新：`python tools/build_family.py --only tower --preview <scratchpad>/tower-preview.html` 後發布到同一個 artifact（家裡 PC 的 session）
 
 ## 🔗 目前有效的試玩連結（2026-10-30 整理；更早的試玩連結都已刪除）
-- 101 跑酷：https://claude.ai/artifact/LCkqyB3M38ig1bkX7JWaWz
+- 101 跑酷：https://claude.ai/artifact/Ae2BubcrwvGupnKX9AXkHH
 - 艾迪的幻想世界大廳：https://claude.ai/artifact/TgHYAgVNVqzEnmumwuamNU
 - 恐怖考前複習夜：https://claude.ai/artifact/22KEpAkE6hMkbmHdEin8Bs
 - 逃離土星：沒有試玩版，玩正式網址
@@ -310,4 +310,4 @@ Bernie 嫌風旗難看，拿掉。細節見 docs/PLAN-101-難度表.md 最下面
 main（`14c3132`）和 restyle-storybook 內容完全相同，101 第 5–9 段、風的新規則、難度重調、男子漢模式都已上線，正式站 BUILT=90。下一段：第 10 段雲端之上（91–100F，98F 媽媽、亂流）＋101F 結局，男子漢解鎖要接到頂樓結局。🍜、🍍、💪 #5 #6、第 8–9 段的 6 張照片仍是先放的，等 Bernie 確認。
 
 ## 2026-11-02 下午：101 蓋完了（第 10 段＋101F 結局，只在 restyle-storybook，還沒上架）
-BUILT=100，全 101 層可以爬完。細節和驗證看 docs/PLAN-101-難度表.md 最後一節。純網頁，上架不用 wrangler deploy。Bernie 說「佈上去」才推 main（main 目前落後這個分支的只有這批）。試玩：見下面這行。
+BUILT=100，全 101 層可以爬完。細節和驗證看 docs/PLAN-101-難度表.md 最後一節。純網頁，上架不用 wrangler deploy。Bernie 說「佈上去」才推 main（main 目前落後這個分支的只有這批）。試玩：https://claude.ai/artifact/Ae2BubcrwvGupnKX9AXkHH （更新：`python tools/build_family.py --only tower --preview <scratchpad>/tower-preview.html` 後發布到同一個 artifact）
