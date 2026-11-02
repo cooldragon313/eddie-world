@@ -311,3 +311,6 @@ main（`14c3132`）和 restyle-storybook 內容完全相同，101 第 5–9 段�
 
 ## 2026-11-02 下午：101 蓋完了（第 10 段＋101F 結局，只在 restyle-storybook，還沒上架）
 BUILT=100，全 101 層可以爬完。細節和驗證看 docs/PLAN-101-難度表.md 最後一節。純網頁，上架不用 wrangler deploy。Bernie 說「佈上去」才推 main（main 目前落後這個分支的只有這批）。試玩：https://claude.ai/artifact/Ae2BubcrwvGupnKX9AXkHH （更新：`python tools/build_family.py --only tower --preview <scratchpad>/tower-preview.html` 後發布到同一個 artifact）
+
+## 2026-11-02：全樓時機檢查（只在 restyle-storybook，還沒上架）
+霓虹、鷹架板、吊籃、排水管、鴿子都調過，規則和驗證看 docs/PLAN-101-難度表.md 最後一節。

@@ -1300,8 +1300,8 @@ const foot = (type, gap, rise, w, o) => {
   if (o && o.hop) w = 3.0;                                   // the first hop off a checkpoint: an easy one
   else {
     const jumpy = JUMPY[type] && gap > 0, k = Math.min(8, Math.floor(Math.max(cy, 0) / 30)), prev = ROUTE[ROUTE.length - 1];
-    if ((jumpy || type === 'plank') && lastType !== 'gondola' && lastType !== 'crane' && !prev.ring){ const z = ZIG[Math.min(1, k)]; dir = o && o.dir ? o.dir : lastType === 'drip' ? lastSlide || 1 : z[zigN++ % z.length]; }
-    if (jumpy && rhythm % 8 === 5 && k > 0 && type !== 'drip'){   // every so often a long ledge and a gap only a flat-out sprint clears
+    if ((jumpy || type === 'plank') && lastType !== 'gondola' && lastType !== 'crane' && !prev.ring){ const z = ZIG[Math.min(1, k)]; if (o && o.dir) dir = o.dir; else if (lastType === 'drip') dir = lastSlide || 1; else { dir = z[zigN++ % z.length]; if (lastType === 'plank') dir = lastDir; } }   // (planks drop out from under you: no stopping to turn round on one)
+    if (jumpy && rhythm % 8 === 5 && k > 0 && type !== 'drip' && type !== 'neon' && lastType !== 'neon' && lastType !== 'plank'){   // every so often a long ledge and a gap only a flat-out sprint clears
       const q = plat('balcony', dir > 0 ? cs + 1.0 : prev.s0 - 1.0 - 4.5, 4.5, cy + 0.3, { lit: cy >= 120 }); ROUTE.push(q); cs = q.s1; cy = q.y; lastW = 4.5; lastType = 'balcony'; sprint = true;
     }
     const beat = jumpy ? rhythm++ % 4 : 0; [gap, w] = hardStep(type, gap, rise, w, cy, beat);
@@ -1350,7 +1350,7 @@ cs += 1.5;
 foot('sill', 1.0, 2.2, 2.6, { hop: true });
 photo('flag', '細細的旗桿', '很細很細的地方', foot('flag', 1.8, 2.0, 1.6, { line: '這根旗桿好細…' }), { pose: 'balance' });       // a flagpole: tiny landing
 foot('sill', 1.4, 2.3, 2.4);
-const cradle = foot('gondola', 1.5, 1.8, 2.6, { range: 5.0, speed: 0.4 }); // rides up 5 → reach the next sill from the top
+const cradle = foot('gondola', 1.5, 1.8, 2.6, { range: 5.0, speed: 0.55 }); // rides up 5 → reach the next sill from the top
 cy += 5.0;
 photo('cradle', '吊籃兜風', '坐車要記得跟司機打招呼', cradle, { ride: true });
 photo('news', '📺 上電視了', '有人在等你受訪', branch(foot('sill', 1.4, 2.0, 2.4), -1, [['sill', 1.6, 2.2, 2.0], ['balcony', 1.6, 2.2, 2.6, { item: 'reporter' }]]), { pose: 'wave', at: 0.6, cam: { side: 0.8, out: 5.2, up: 1.8 } });   // stand to the left so the crew is in it too   // 📸 the TV crew
@@ -1414,8 +1414,8 @@ foot('sill', 1.0, 2.2, 3.0, { lit: true, hop: true });       // breather: lit wi
 const neonFrom = foot('sill', 1.2, 2.2, 2.6, { lit: true, pigeon: true, sleepy: true });
 foot('neon', 1.4, 2.1, 1.4, { first: true, ph: 0, sign: 0 });   // (narrow: it has to stop short of the corner)
 foot('sill', 1.3, 2.1, 2.0, { lit: true });
-photo('neon', '霓虹燈下', '閃閃發亮的招牌上…', foot('neon', 1.4, 2.0, 2.0, { ph: 1.1, sign: 1 }), { pose: 'v', cam: { side: 1.6, out: 4.5, up: 0.4, look: 0.8 } });
-foot('neon', 1.5, 2.0, 1.8, { ph: 1.4, sign: 2 });   // just behind the one before it: both are lit most of the time, so there's a window to hop across
+photo('neon', '霓虹燈下', '閃閃發亮的招牌上…', foot('neon', 1.4, 2.0, 2.0, { ph: 1.1, sign: 1, dir: 1 }), { pose: 'v', cam: { side: 1.6, out: 4.5, up: 0.4, look: 0.8 } });
+foot('neon', 1.5, 2.0, 1.8, { ph: 0.2, sign: 2, dir: 1 });   // 0.9 s behind the one before it, and straight on (no turning round on a sign that's about to go out)
 foot('balcony', 1.2, 0.5, 6.0, { lit: true, line: '那邊的窗戶開著，還亮著燈…' });   // a long ledge round to the next face, so the office sits on one face
 // the office (about 45F): a big open window — walk in, a cold 珍奶 on a desk, someone working late
 const OFFICE = foot('room', 1.3, 2.0, 9.0, { room: true, standOut: 1.5, lit: true, line: '哇…有人在加班' });
@@ -1489,8 +1489,8 @@ const birdDeck = foot('balcony', 1.2, 2.0, 3.2, { lit: true, pigeon: true, flock
 const fallSill = foot('balcony', 2.0, 2.1, 2.2, { lit: true });
 gapFall(birdDeck, fallSill, 1.0);
 const dodgeWall = climb(1.0, 4.5, 3.6, { chalk: true, dodge: true });   // a wide wall, two gutters taking turns: climb on the dry side
-waterFall(dodgeWall.s0, dodgeWall.s0 + 1.8, dodgeWall.y0 + 1.8, dodgeWall.y1 + 2, 0.4);
-waterFall(dodgeWall.s0 + 1.8, dodgeWall.s1, dodgeWall.y0 + 1.8, dodgeWall.y1 + 2, 1.9);
+waterFall(dodgeWall.s0, dodgeWall.s0 + 1.8, dodgeWall.y0 + 1.8, dodgeWall.y1 - 0.2, 0.4);
+waterFall(dodgeWall.s0 + 1.8, dodgeWall.s1, dodgeWall.y0 + 1.8, dodgeWall.y1 - 0.2, 1.9);
 const dodgeTop = ROUTE[ROUTE.length - 1];
 const soakA = foot('sill', 1.6, 2.0, 2.0, { lit: true });
 const soakB = foot('ac', 1.6, 2.0, 1.6);
@@ -1566,7 +1566,7 @@ cs = Math.floor(cs / SIDE) === Math.floor((cs + 4.4) / SIDE) ? cs : Math.ceil(cs
 climb(1.2, 3.0, 3.0, {});
 const SUMMIT = ROUTE[ROUTE.length - 1]; SUMMIT.summit = true;
 // side paths: a dark neon run to a 雞排 (left of the sleeping pigeon)
-branch(neonFrom, -1, [['neon', 1.6, 2.1, 1.6, { ph: 0.5, sign: 3 }], ['neon', 1.8, 2.0, 1.4, { ph: 1.5, sign: 4 }], ['sill', 1.8, 2.1, 1.8, { item: 'chicken', lit: true }]]);
+branch(neonFrom, -1, [['neon', 1.6, 2.1, 1.6, { ph: 0.5, sign: 3 }], ['neon', 1.8, 2.0, 1.4, { ph: -0.4, sign: 4 }], ['sill', 1.8, 2.1, 1.8, { item: 'chicken', lit: true }]]);
 // safety nets halfway up each segment: a fall costs at most 5 floors
 plat('net', 0, PER, 5 * FLOOR_H - 0.4, { ring: true, net: true });
 plat('net', 0, PER, 15 * FLOOR_H - 0.4, { ring: true, net: true });
@@ -1964,6 +1964,7 @@ const sfx = (() => {
       const want = on ? k * 0.05 : 0; if (want !== rainK){ rainK = want; rainG.gain.setTargetAtTime(want, ac.currentTime, 0.4); }
     },
     splat: () => { hiss(0.18, 0.3, 700, 200); tone('sine', 300, 120, 0.15, 0.12); },
+    tick: () => tone('sine', 660, 0, 0.05, 0.03),
     beat: () => { tone('sine', 70, 50, 0.12, 0.35); tone('sine', 65, 45, 0.12, 0.28, 0.16); },
     coo: () => { tone('sine', 520, 420, 0.12, 0.07); tone('sine', 480, 380, 0.14, 0.07, 0.15); },
   };
@@ -2061,14 +2062,15 @@ function startAt(floor){
 function onSpan(p, s, pad){ if (p.ring) return true; return wrapS(s - (p.s0 - pad)) <= p.s1 - p.s0 + 2 * pad; }
 const sDist = (a, b) => { const d = wrapS(a - b); return Math.min(d, PER - d); };   // shortest distance round the tower
 function wallAt(s, y){ for (const z of walls) if (onSpan(z, s, 0.1) && y + 0.9 >= z.y0 && y + 0.3 <= z.y1) return z; return null; }
-// neon: on for (cycle − off), dark for 'off' seconds; the last 0.4 s before dark it flickers
-const neonCycle = () => S.easy ? [2.5, 0.5] : [3, 1];
+// neon: on for (cycle − off), dark for 'off' seconds. A run-up and a jump take about 0.9 s, so it flickers for the last 0.9 s:
+// steady = you'll make it, flickering = too late. Signs in a row run 0.9 s behind each other, so going from a lit sign always lands on a lit one
+const neonCycle = () => S.easy ? [3, 0.4] : [3, 0.7];
 function neonOn(p){ const [c, off] = neonCycle(); return ((S.t + p.ph) % c) < c - off; }
-function neonWarn(p){ const [c, off] = neonCycle(), k = (S.t + p.ph) % c; return k > c - off - 0.4 && k < c - off; }
+function neonWarn(p){ const [c, off] = neonCycle(), k = (S.t + p.ph) % c; return k > c - off - 0.9 && k < c - off; }
 // 🌧️ segment 8: how hard it's raining at height y; 🚿 a gutter pours for a bit (a thin trickle just before) every 3 s
 const rainAt = y => clamp((y - 209) / 3, 0, 1) * (1 - clamp((y - 241) / 6, 0, 1));
 const fallOn = f => (S.t + f.ph) % 3 < (S.easy ? 0.8 : 1.3);
-const fallWarn = f => (S.t + f.ph) % 3 > 2.5;
+const fallWarn = f => (S.t + f.ph) % 3 > 2.2;
 // the searchlight sweeping up from the street (segment 5): where it points now
 const SPOT = { s: 0, y: 0 };
 const spotLit = q => sDist((q.s0 + q.s1) / 2, SPOT.s) < 4 && Math.abs(q.y - SPOT.y) < 5;
@@ -2211,12 +2213,12 @@ function step(dt){
           say(pick(['哇啊啊——', '彈起來了！！', '布布布布——']), 1.2);
         }
         if (landed.type === 'plank'){
-          if (!landed.fallAt) landed.fallAt = S.t + (S.easy ? 1.4 : 0.8);
+          if (!landed.fallAt) landed.fallAt = S.t + (S.easy ? 1.6 : 1.1);
           if (landed.first && !S.plankHint){ S.plankHint = true; flash('🪵 鷹架板踩了就會掉！別站太久，快跳下一塊', 2.8); say('它在抖！！'); }
           (S.planks = S.planks || new Set()).add(landed); if (S.planks.size >= 4) unlock('hardhat');
         }
         if (landed.type === 'crane' && landed.first && !S.craneHint){ S.craneHint = true; flash('🏗️ 施工吊臂會左右擺，站上去會載著你走：等它擺到底再跳！', 3.0); say('哇～在動在動！'); }
-        if (landed.type === 'neon' && landed.first && !S.neonHint){ S.neonHint = true; flash('💡 霓虹招牌：亮的時候站得住，燈一黑就會掉下去！看準節奏再跳', 3.0); }
+        if (landed.type === 'neon' && landed.first && !S.neonHint){ S.neonHint = true; flash('💡 霓虹招牌：穩定亮著才跳，開始閃就來不及了！燈黑會掉下去', 3.2); }
         if (segOf(P.y) === 5 && !landed.lit && !landed.ring && !spotLit(landed) && !(S.owlSeen || (S.owlSeen = new Set())).has(landed)){ S.owlSeen.add(landed); S.owl = (S.owl || 0) + 1; if (S.owl >= 5) unlock('owl'); }   // 5 different dark footholds
         if (landed.type === 'seam' && !S.seamHint){ S.seamHint = true; flash('😮‍💨 竹節接縫：喘口氣，握力最多回到 6 成', 2.4); say('好窄…先喘一下'); }
         if (landed.type === 'drip'){
@@ -2619,7 +2621,7 @@ const ST_GAP = [99, 13, 11, 9, 8, 7, 6, 6, 5, 5];
 function updateStriker(dt){
   const seg = segOf(P.y);
   if (ST.state === 'idle'){
-    if (S.easy || seg < 2 || S.t < ST.next || (P.on && (P.on.ring || P.on.room)) || (P.wall && P.wall.node)) return;   // (never while you're on the bamboo node: that's hard enough)
+    if (S.easy || seg < 2 || S.t < ST.next || (P.on && (P.on.ring || P.on.room || P.on.type === 'neon' || P.on.type === 'plank' || P.on.type === 'crane' || P.on.type === 'gondola')) || (P.wall && P.wall.node)) return;   // (never while you're on the bamboo node: that's hard enough)
     ST.state = 'fly'; ST.dir = Math.random() < 0.5 ? -1 : 1; ST.s = P.s - ST.dir * 11; ST.y = P.y + 1; ST.hit = false; striker.visible = true;
     ST.brolly = seg <= 8 && seg >= 7 && P.y > 183; for (const c of striker.children) c.visible = c === brolly ? ST.brolly : !ST.brolly;
     if (ST.brolly) npcSay(striker, '咻——', 0.9); else { sfx.coo(); npcSay(striker, '咕！！', 0.9); }
@@ -3113,7 +3115,10 @@ function updateNight(dt, now){
   const L = spot.position.distanceTo(spot.target.position);
   beam.position.copy(spot.position).lerp(spot.target.position, 0.5); beam.scale.set(1, 1, L); beam.lookAt(spot.target.position); beam.material.opacity = 0.16 * nk * (1 - dawn);
   for (const p of plats) if (p.neon){
-    const on = neonOn(p), warn = on && neonWarn(p) && Math.sin(now * 60) > 0;
+    const on = neonOn(p);
+    if (on && p.wasOff && S.phase === 'run' && sDist((p.s0 + p.s1) / 2, P.s) < 7 && Math.abs(p.y - P.y) < 5) sfx.tick();
+    p.wasOff = !on;
+    const warn = on && neonWarn(p) && Math.sin(now * 60) > 0;
     p.neon.glow.color.copy(on && !warn ? p.neon.col : p.neon.dark); p.neon.face.material.opacity = on && !warn ? 1 : 0.25;
   }
   if (nk > 0.7 && P.y > 136 && P.y < 181 && now > fwNext){ fwNext = now + 1.3 + Math.random(); burst(); }
