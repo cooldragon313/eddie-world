@@ -1497,8 +1497,9 @@ waterFall(dodgeWall.s0, dodgeWall.s0 + 1.8, dodgeWall.y0 + 1.8, dodgeWall.y1 - 0
 waterFall(dodgeWall.s0 + 1.8, dodgeWall.s1, dodgeWall.y0 + 1.8, dodgeWall.y1 - 0.2, 1.9);
 const dodgeTop = ROUTE[ROUTE.length - 1];
 const soakA = foot('sill', 1.6, 2.0, 2.0, { lit: true });
+soakA.s1 = soakA.s0 + 3.8;                                   // wide: the jump up to it is short, and at a full run you'd sail right over a narrow one (the next foothold goes left from s0, so nothing moves)
 const soakB = foot('ac', 1.6, 2.0, 1.6);
-gapFall(soakA, soakB, 2.0);
+waterFall(soakB.s1 + 0.1, soakB.s1 + 1.3, soakA.y + 1.2, soakB.y + 3.5, 2.0);   // only over the jump A → B: it stops above the deck below, so it never lands on the jump up to A
 foot('balcony', 1.2, 2.0, 4.0, { lit: true, line: '那邊又有一扇窗…' });
 climb(1.0, 4.5, 2.0, { momWall: true });                     // mom's 78F window next to its top
 foot('drip', 1.4, 2.0, 1.7, { slide: -1, dir: -1 });   // to the left: her window is on the right here (the left would bend round a corner)
