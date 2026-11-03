@@ -612,6 +612,7 @@ foot('sill', 1.6, 2.0, 2.0, { lit: true });
 checkpoint(100);                                             // y 300
 branch(cloudDeck, -1, [['ac', 1.8, 2.2, 1.6], ['sill', 2.0, 2.0, 1.5, { item: 'rice', lit: true }]]);   // 🍙 up and to the left
 branch(lastPole, -1, [['flag', 2.0, 2.1, 1.1], ['sill', 2.0, 2.0, 1.5, { item: 'gripup', id: 'g7', lit: true }]]);   // 💪 #7
+branch(turbDeck, -1, [['ac', 1.8, 2.2, 1.6], ['sill', 2.0, 2.0, 1.5, { item: 'icecream', lit: true }]]);   // 🍦 up and to the left, in the clouds
 photo('clouds', '雲海', '雲在腳下的感覺', cloudDeck, { pose: 'v', cam: { side: 1.2, out: 4.2, up: 0.6, look: 0.4 } });
 photo('pole100', '最細的旗桿', '這麼高，還要踩這麼細的', lastPole, { pose: 'balance' });
 photo('sky98', '98 樓的風', '媽媽的窗戶旁邊，再一下就到了', sky98, { pose: 'wave' });
@@ -838,6 +839,9 @@ for (const it of ITEMS){
   } else if (it.kind === 'cake'){   // 🍍 a pineapple cake in a little gold box
     g.add(new THREE.Mesh(sbRoundBox(0.7, 0.22, 0.5, 0.05), LM(0xe0a83a)));
     const top = new THREE.Mesh(sbRoundBox(0.72, 0.05, 0.52, 0.02), LM(0xb5313a)); top.position.y = 0.13; g.add(top);
+  } else if (it.kind === 'icecream'){   // 🍦 a soft-serve, swirled like a cloud
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.03, 0.5, 12), LM(0xd8a058)); cone.position.y = -0.1; g.add(cone);
+    for (let i = 0; i < 3; i++){ const sw = new THREE.Mesh(new THREE.SphereGeometry(0.24 - i * 0.06, 12, 8), LM(0xfffaf0)); sw.position.y = 0.2 + i * 0.15; sw.scale.y = 0.75; g.add(sw); }
   } else if (it.kind === 'rice'){   // 🍙 a rice ball (mom packed it)
     const ball = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.62, 3), LM(0xfff8ec)); ball.rotation.x = 0.1; g.add(ball);
     const nori = new THREE.Mesh(sbRoundBox(0.46, 0.26, 0.3, 0.03), LM(0x24302a)); nori.position.y = -0.2; g.add(nori);
@@ -1316,6 +1320,7 @@ function step(dt){
     else if (it.kind === 'boba'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🧋 加班珍奶！握力補滿，6 秒內跑得快、爬得快'); say('冰冰涼涼～珍珠好Q！'); unlock('boba'); }
     else if (it.kind === 'chicken'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍗 夜市雞排！握力補滿，6 秒內跑得快、爬得快'); say('卡滋卡滋！'); }
     else if (it.kind === 'cake'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍍 鳳梨酥！握力補滿，6 秒內跑得快、爬得快'); say('外皮酥酥的！'); }
+    else if (it.kind === 'icecream'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍦 雲朵霜淇淋！握力補滿，6 秒內跑得快、爬得快'); say('好冰！跟雲一樣軟～'); }
     else if (it.kind === 'rice'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍙 媽媽包的飯糰！握力補滿，6 秒內跑得快、爬得快'); say('媽…連這裡都有…'); }
     else if (it.kind === 'noodle'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍜 熱泡麵！握力補滿，6 秒內跑得快、爬得快'); say('呼～活過來了！'); }
     else if (it.kind === 'bento'){ it.mesh.visible = false; sfx.chalk(); P.grip = P.gripMax; P.boostUntil = S.t + 6; flash('🍱 吃便當！握力補滿，6 秒內跑得快、爬得快'); say('好好吃！力氣來了！'); unlock('bento'); }
