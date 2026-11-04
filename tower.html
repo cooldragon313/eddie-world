@@ -45,6 +45,11 @@
   #grip{position:fixed;left:50%;bottom:calc(132px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;width:min(56vw,260px);height:14px;
         background:rgba(0,0,0,.35);border:2px solid #fff;border-radius:999px;overflow:hidden;opacity:0;transition:opacity .25s;pointer-events:none}
   #grip.on{opacity:1}
+  #stam{position:fixed;left:50%;bottom:calc(132px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;width:min(40vw,180px);height:10px;
+        background:rgba(0,0,0,.35);border:2px solid #fff;border-radius:999px;overflow:hidden;opacity:0;transition:opacity .25s;pointer-events:none}
+  #stam.on{opacity:1}
+  #stam i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#5ab4ff,#9ff0ff)}
+  #stam.tired i{background:#9aa3ad}
   #grip i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#7cc79a,#ffcf5a)}
   #grip.low i{background:#e0584a}
   #gripLbl{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;font:900 13px var(--sb-font);color:#fff;text-shadow:0 0 3px #000;opacity:0;transition:opacity .25s;pointer-events:none}
@@ -94,6 +99,7 @@
   .tb{position:fixed;z-index:7;right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));width:92px;height:92px;border-radius:50%;
       border:3px solid var(--sb-ink);background:var(--sb-gold-soft);font:900 20px var(--sb-font);color:var(--sb-ink);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 rgba(91,58,41,.35);touch-action:none}
   .tb.on{transform:translateY(3px);box-shadow:0 1px 0 rgba(91,58,41,.35)}
+  #tD{bottom:calc(128px + env(safe-area-inset-bottom,0px));width:72px;height:72px;font-size:16px;background:#ffe0c2}
   @media (hover:hover) and (pointer:fine){ .tb,#joy{display:none} }
   .card{position:fixed;inset:0;z-index:12;display:flex;align-items:center;justify-content:center;background:rgba(10,20,40,.55);padding:14px}
   .card[hidden]{display:none!important}
@@ -137,7 +143,7 @@
 <div class="camtxt" id="floorTag">1F</div>
 <div class="camtxt" id="coinTag">🪙 +0</div>
 <div id="lower"><b id="lowerB"></b><span id="lowerS"></span></div>
-<div id="gripLbl">💪 握力</div><div id="grip"><i id="gripFill"></i></div>
+<div id="gripLbl">💪 握力</div><div id="grip"><i id="gripFill"></i></div><div id="stam"><i id="stamFill"></i></div>
 <canvas id="windLines"></canvas>
 <div id="flash"></div>
 <div id="tired"></div>
@@ -148,7 +154,7 @@
 <div class="say" id="sayMe"></div><div class="say npc" id="sayNpc"></div>
 <div class="topbtns"><button id="soundBtn" type="button">🔊</button><button id="quitBtn" type="button">🏠 存檔</button></div>
 <div id="joy"><div id="knob"></div></div>
-<div class="tb" id="tJ">⤴ 跳</div>
+<div class="tb" id="tJ">⤴ 跳</div><div class="tb" id="tD">⚡ 衝刺</div>
 <div class="bars" id="barT"></div><div class="bars" id="barB"></div>
 <div id="cards"><p id="cardTxt"></p></div>
 <button id="skip" type="button" hidden>跳過 ▶▶</button>
@@ -161,7 +167,7 @@
     <li>繞著 101 外牆往上爬：<b>跳</b>上窗台、冷氣機、吊籃；<b>碰到攀爬牆會自動抓住</b>，用搖桿往上爬。</li>
     <li>抓牆會用掉 <b>💪 握力</b>，站上落腳點休息就會回來；牆上的 🧂 粉袋可以補滿。</li>
     <li>一段 10 層（約 1 分鐘），每段終點是施工平台＝檢查點。越高的樓層金幣越多，登頂大獎 $460。</li>
-    <li>電腦：方向鍵／WASD 移動、爬牆，空白鍵跳。</li>
+    <li>電腦：方向鍵／WASD 移動、爬牆，空白鍵跳，<b>按住 Shift 衝刺</b>（跑得快、跳得遠，有體力條）。</li>
   </ul>
   <button class="btn" id="startBtn" type="button">🎬 開拍！從 1F 開始</button>
   <button class="btn" id="contBtn" type="button" hidden></button>
@@ -1166,6 +1172,7 @@ const SEGS = [null, ['出發！', 1], ['轉角遇到吊籃', 2], ['冷氣機森�
 const segOf = y => Math.min(10, Math.floor(Math.max(0, y) / (10 * 3)) + 1);
 const TOTAL_FLOORS = 101, TOWER_H = TOTAL_FLOORS * FLOOR_H, METERS = 508 / (TOTAL_FLOORS * FLOOR_H + 30);
 const GRAV = 30, JUMP_V = 13.2, RUN = 6.5, CLIMB = 2.2;
+const SPRINT = RUN * 1.5, STAMINA_DRAIN = 1 / 4.5, STAMINA_FILL = 1 / 2.5;   // ⚡ hold Shift, same as 逃離土星: lasts 4.5 s, back in 2.5 s
 const FATAL_DROP = 3 * FLOOR_H;   // 💪 男子漢模式: fall further than this (3 floors) without grabbing anything and you're a pancake
 const wrapS = s => ((s % PER) + PER) % PER;
 function surf(s, out, y){
@@ -2021,7 +2028,9 @@ $('joy').addEventListener('pointerdown', e => { joy.id = e.pointerId; $('joy').s
 $('joy').addEventListener('pointermove', e => { if (e.pointerId === joy.id) moveJoy(e); });
 const endJoy = () => { joy.id = null; joy.x = joy.y = 0; $('knob').style.transform = ''; };
 $('joy').addEventListener('pointerup', endJoy); $('joy').addEventListener('pointercancel', endJoy);
-const tJ = { on: false };
+const tJ = { on: false }, tD = { on: false };
+$('tD').addEventListener('pointerdown', e => { e.preventDefault(); tD.on = true; $('tD').classList.add('on'); });
+{ const upD = () => { tD.on = false; $('tD').classList.remove('on'); }; for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) $('tD').addEventListener(ev, upD); }
 $('tJ').addEventListener('pointerdown', e => { e.preventDefault(); tJ.on = true; $('tJ').classList.add('on'); });
 const upJ = () => { tJ.on = false; $('tJ').classList.remove('on'); };
 $('tJ').addEventListener('pointerup', upJ); $('tJ').addEventListener('pointercancel', upJ); $('tJ').addEventListener('pointerleave', upJ);
@@ -2035,7 +2044,7 @@ function startAt(floor){
   S = { phase: 'run', t: 0, best: floor, start: floor, coins: 0, jumpHeld: true, segT0: 0, seg: {}, windNext: 6, windDir: 0, windAt: 0, shot: null, shotT: 0, cine: 0 };
   claimFrom = floor; claimAt = performance.now();
   const on = plats.find(p => p.ring && p.floor === floor) || plats[0];
-  P.gripMax = 100 + 25 * gripUps().length;
+  P.gripMax = 100 + 25 * gripUps().length; P.stam = 1; P.stamTired = false;
   // start where the route reaches this checkpoint (keeps "how far round the tower" continuous)
   const cpI = ROUTE.indexOf(on), startS = floor && cpI > 0 ? ROUTE[cpI - 1].s1 + 0.6 : 9;
   Object.assign(P, { s: startS, y, vs: 0, vy: 0, mode: 'ground', on, wall: null, grip: P.gripMax, noGrab: 0, slipped: false });
@@ -2054,7 +2063,7 @@ function startAt(floor){
   PO.state = 'idle'; PO.next = 6; flyer.visible = false; poop.visible = false;
   ST.state = 'idle'; ST.next = 8; striker.visible = false;
   for (const p of plats) if (p.bird){ p.bird.fly = 0; p.bird.g.visible = true; p.bird.g.position.copy(p.bird.home); p.bird.g.rotation.z = 0; }
-  P.peak = null; P.jumped = false; P.kicked = null; P.grabAt = -9;
+  P.peak = null; P.jumped = false; P.kicked = null; P.grabAt = -9; P.stam = 1; P.stamTired = false;
   for (const p of plats) if (p.type === 'plank'){ p.gone = false; p.fallAt = 0; p.mesh.position.set(0, 0, 0); }
   S.man = manOpen() && $('manBox').checked; me.group.scale.setScalar(EDDIE_SCALE);
   for (const p of plats) if (p.net && p.mesh) p.mesh.visible = !S.man;   // no nets. you said so.
@@ -2172,7 +2181,10 @@ function step(dt){
     if (P.mode === 'wall' && P.grip < 28 && !(P.wall || z).tired){ (P.wall || z).tired = true; say(pick(['手好痠…', '快沒力了！', '撐住撐住…'])); }
   } else {
     const wet = P.mode === 'ground' && P.on && P.on.type === 'drip';
-    P.vs += (ix * RUN * (S.t < (P.boostUntil || 0) ? 1.3 : 1) - P.vs) * Math.min(1, dt * (P.mode === 'ground' ? (wet ? 0.9 : S.easy ? 14 : 7) : S.easy ? 6 : 2));
+    const dash = (keys.ShiftLeft || keys.ShiftRight || tD.on) && ix && !P.stamTired && P.stam > 0.02;
+    if (dash){ P.stam = Math.max(0, P.stam - STAMINA_DRAIN * dt); if (P.stam <= 0.02) P.stamTired = true; }   // (out of breath: no sprint until it's back to half)
+    else { P.stam = Math.min(1, P.stam + STAMINA_FILL * dt); if (P.stam > 0.5) P.stamTired = false; }
+    P.vs += (ix * (dash ? SPRINT : RUN) * (S.t < (P.boostUntil || 0) ? 1.3 : 1) - P.vs) * Math.min(1, dt * (P.mode === 'ground' ? (wet ? 0.9 : S.easy ? 14 : 7) : S.easy ? 6 : 2));
     if (wet) P.vs += P.on.slide * 8 * dt;   // the water carries you toward the edge
     if (gust) P.vs += S.windDir * 9 * (S.windK || 1) * dt;
     if (S.breeze && P.mode === 'air') P.vs += S.breeze * (S.easy ? 1.2 : 2) * dt;   // the steady wind only moves you in the air: you can always stop and rest
@@ -3201,6 +3213,7 @@ function frame(nowMs, manual){
   $('gripFill').style.width = Math.max(0, P.grip / P.gripMax * 100) + '%'; $('grip').classList.toggle('low', P.grip < 30);
   $('grip').style.width = 'min(' + Math.min(92, 56 * P.gripMax / 100) + 'vw,' + (260 * P.gripMax / 100) + 'px)';   // a longer bar for a bigger grip
   $('gripLbl').textContent = '💪 握力' + (P.gripMax > 100 ? '（上限 ' + P.gripMax + '）' : '');
+  $('stam').classList.toggle('on', S.phase === 'run' && !gripOn && P.stam < 0.995); $('stamFill').style.width = Math.round(P.stam * 100) + '%'; $('stam').classList.toggle('tired', !!P.stamTired);
   $('tired').classList.toggle('on', S.phase === 'run' && P.mode === 'wall' && P.grip < 30);
   sweat.visible = S.phase === 'run' && P.grip < 45; if (sweat.visible){ sweat.position.copy(me.group.position); sweat.position.y += 2.1 + ((now * 1.5) % 1) * -0.6; sweat.position.addScaledVector(softNormal(P.s), 0.4); }
   for (const it of ITEMS) if (it.kind === 'coin' && it.mesh.visible) it.mesh.rotation.y = faceAngle(it.s) + now * 3;
